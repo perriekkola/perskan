@@ -54,7 +54,8 @@ local function Perskan_OnLoad()
     MainMenuBar.EndCaps.RightEndCap:Hide()
 end
 
-Perskan:RegisterEvent("PLAYER_LOGIN")
+Perskan:RegisterEvent("PLAYER_ENTERING_WORLD")
+Perskan:RegisterEvent("PLAYER_JOINED_PVP_MATCH")
 Perskan:SetScript("OnEvent", Perskan_OnLoad)
 
 SettingsPanel:HookScript("OnHide", Perskan_OnLoad)
