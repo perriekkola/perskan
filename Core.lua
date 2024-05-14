@@ -29,10 +29,18 @@ local function Perskan_OnLoad()
         if bottomRightState == false then
             LibEditModeOverride:ReanchorFrame(StanceBar, "BOTTOMLEFT", MultiBarBottomLeftButton1, "TOPLEFT", 0, 3)
             LibEditModeOverride:ReanchorFrame(PetActionBar, "BOTTOMRIGHT", MultiBarBottomLeftButton12, "TOPRIGHT", -2, 3)
+            LibEditModeOverride:ReanchorFrame(PossessActionBar, "BOTTOMRIGHT", MultiBarBottomLeftButton12, "TOPRIGHT",
+                -2, 3)
+            LibEditModeOverride:ReanchorFrame(MainMenuBarVehicleLeaveButton, "BOTTOMLEFT", MultiBarBottomLeftButton1,
+                "TOPLEFT", 0, 3)
         else
             LibEditModeOverride:ReanchorFrame(StanceBar, "BOTTOMLEFT", MultiBarBottomRightButton1, "TOPLEFT", 0, 3)
             LibEditModeOverride:ReanchorFrame(PetActionBar, "BOTTOMRIGHT", MultiBarBottomRightButton12, "TOPRIGHT", -2,
                 3)
+            LibEditModeOverride:ReanchorFrame(PossessActionBar, "BOTTOMRIGHT", MultiBarBottomRightButton12, "TOPRIGHT",
+                -2, 3)
+            LibEditModeOverride:ReanchorFrame(MainMenuBarVehicleLeaveButton, "BOTTOMLEFT", MultiBarBottomRightButton1,
+                "TOPLEFT", 0, 3)
         end
 
         LibEditModeOverride:ApplyChanges()
@@ -56,6 +64,7 @@ end
 
 Perskan:RegisterEvent("PLAYER_ENTERING_WORLD")
 Perskan:RegisterEvent("PLAYER_JOINED_PVP_MATCH")
+Perskan:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
 Perskan:SetScript("OnEvent", Perskan_OnLoad)
 
 SettingsPanel:HookScript("OnHide", Perskan_OnLoad)
