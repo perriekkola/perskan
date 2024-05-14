@@ -1,0 +1,9 @@
+## Title: Perskan's Pack
+## Notes: Lua snippets altering the default UI
+## Author: Per Riekkola
+## Interface: 100207
+## Version: 1.0
+
+Perskan.xml
+Libs\LibStub.lua
+Libs\LibEditModeOverride\LibEditModeOverride.xml
