@@ -64,7 +64,6 @@ end
 
 Perskan:RegisterEvent("PLAYER_ENTERING_WORLD")
 Perskan:RegisterEvent("PLAYER_JOINED_PVP_MATCH")
-Perskan:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
 Perskan:SetScript("OnEvent", Perskan_OnLoad)
 
 SettingsPanel:HookScript("OnHide", Perskan_OnLoad)
