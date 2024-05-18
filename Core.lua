@@ -1,90 +1,37 @@
 local Perskan = CreateFrame("Frame")
-defaultBottomMargin = 8
-oneBarMargin = 20
-twoBarMargin = 40
 
 local function Perskan_OnLoad()
-    local LibEditModeOverride = LibStub("LibEditModeOverride-1.0")
+    -- Scale buffs on target/focus frame
+    local buffSize = 22
+    hooksecurefunc("TargetFrame_UpdateBuffAnchor", function(_, buff)
+        buff:SetSize(buffSize, buffSize)
+    end)
+    hooksecurefunc("TargetFrame_UpdateDebuffAnchor", function(_, debuff)
+        debuff:SetSize(buffSize, buffSize)
+    end)
 
-    -- Move actionbars and override edit mode
-    if LibEditModeOverride:IsReady() then
-        LibEditModeOverride:LoadLayouts()
+    -- Move ToT
+    TargetFrameToT:ClearAllPoints()
+    TargetFrameToT:SetPoint("TOPLEFT", TargetFrame, "BOTTOMRIGHT", -80, 22)
 
-        -- Check if there is a status tracking bar
-        local bottomMargin = defaultBottomMargin
-        if MainStatusTrackingBarContainer:IsVisible() then
-            bottomMargin = oneBarMargin
+    -- Set a stealable texture even if you have no purge
+    local function TargetFrame_UpdateAuras(self)
+        for buff in self.auraPools:GetPool("TargetBuffFrameTemplate"):EnumerateActive() do
+            local data = C_UnitAuras.GetAuraDataByAuraInstanceID(buff.unit, buff.auraInstanceID);
+            buff.Stealable:SetShown(data.isStealable or data.dispelName == "Magic");
+
+            local stealableSize = buffSize + 8
+            buff.Stealable:SetSize(stealableSize, stealableSize)
+            buff.Stealable:SetPoint("TOPLEFT", buff, "TOPLEFT", -4, 4)
         end
-        if SecondaryStatusTrackingBarContainer:IsVisible() then
-            bottomMargin = twoBarMargin
-        end
-
-        -- Reanchor actionbars
-        LibEditModeOverride:ReanchorFrame(MainMenuBar, "BOTTOM", UIParent, "BOTTOM", 0, bottomMargin)
-        LibEditModeOverride:ReanchorFrame(MultiBarBottomLeft, "BOTTOM", MainMenuBar, "TOP", 0, 4)
-        LibEditModeOverride:ReanchorFrame(MultiBarBottomRight, "BOTTOM", MultiBarBottomLeft, "TOP", 0, 1)
-
-        -- Check if MultiBarBottomRight is activated, then move stance and pet bar
-        local bottomLeftState, bottomRightState, sideRightState, sideRight2State = GetActionBarToggles()
-        if bottomRightState == false then
-            LibEditModeOverride:ReanchorFrame(StanceBar, "BOTTOMLEFT", MultiBarBottomLeftButton1, "TOPLEFT", 0, 3)
-            LibEditModeOverride:ReanchorFrame(PetActionBar, "BOTTOMRIGHT", MultiBarBottomLeftButton12, "TOPRIGHT", -2, 3)
-            LibEditModeOverride:ReanchorFrame(PossessActionBar, "BOTTOMRIGHT", MultiBarBottomLeftButton12, "TOPRIGHT",
-                -2, 3)
-            LibEditModeOverride:ReanchorFrame(MainMenuBarVehicleLeaveButton, "BOTTOMLEFT", MultiBarBottomLeftButton1,
-                "TOPLEFT", 0, 3)
-        else
-            LibEditModeOverride:ReanchorFrame(StanceBar, "BOTTOMLEFT", MultiBarBottomRightButton1, "TOPLEFT", 0, 3)
-            LibEditModeOverride:ReanchorFrame(PetActionBar, "BOTTOMRIGHT", MultiBarBottomRightButton12, "TOPRIGHT", -2,
-                3)
-            LibEditModeOverride:ReanchorFrame(PossessActionBar, "BOTTOMRIGHT", MultiBarBottomRightButton12, "TOPRIGHT",
-                -2, 3)
-            LibEditModeOverride:ReanchorFrame(MainMenuBarVehicleLeaveButton, "BOTTOMLEFT", MultiBarBottomRightButton1,
-                "TOPLEFT", 0, 3)
-        end
-
-        LibEditModeOverride:ApplyChanges()
     end
 
-    -- Hard position UIParentBottomManagedFrameContainer
-    local dummy = function()
-    end
-    UIParentBottomManagedFrameContainer:ClearAllPoints()
-    UIParentBottomManagedFrameContainer:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 200)
-    UIParentBottomManagedFrameContainer.ClearAllPoints = dummy
-    UIParentBottomManagedFrameContainer.SetPoint = dummy
+    hooksecurefunc(TargetFrame, "UpdateAuras", TargetFrame_UpdateAuras);
+    hooksecurefunc(FocusFrame, "UpdateAuras", TargetFrame_UpdateAuras);
 
     -- Scale various UI frames
     EncounterBar:SetScale(0.8)
-
-    -- Hide gryphons
-    MainMenuBar.EndCaps.LeftEndCap:Hide()
-    MainMenuBar.EndCaps.RightEndCap:Hide()
 end
 
 Perskan:RegisterEvent("PLAYER_ENTERING_WORLD")
-Perskan:RegisterEvent("PLAYER_JOINED_PVP_MATCH")
 Perskan:SetScript("OnEvent", Perskan_OnLoad)
-
-SettingsPanel:HookScript("OnHide", Perskan_OnLoad)
-
-local function MoveMainMenuBar(margin)
-    MainMenuBar:ClearAllPoints()
-    MainMenuBar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, margin)
-end
-
-MainStatusTrackingBarContainer:HookScript("OnHide", function()
-    MoveMainMenuBar(defaultBottomMargin)
-end)
-
-MainStatusTrackingBarContainer:HookScript("OnShow", function()
-    MoveMainMenuBar(oneBarMargin)
-end)
-
-SecondaryStatusTrackingBarContainer:HookScript("OnHide", function()
-    MoveMainMenuBar(oneBarMargin)
-end)
-
-SecondaryStatusTrackingBarContainer:HookScript("OnShow", function()
-    MoveMainMenuBar(twoBarMargin)
-end)
