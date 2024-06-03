@@ -2,7 +2,7 @@ local Perskan = CreateFrame("Frame")
 
 local function Perskan_OnLoad()
     -- Scale buffs on target/focus frame
-    local buffSize = 22
+    local buffSize = 20
     hooksecurefunc("TargetFrame_UpdateBuffAnchor", function(_, buff)
         buff:SetSize(buffSize, buffSize)
     end)
@@ -22,7 +22,7 @@ local function Perskan_OnLoad()
 
             local stealableSize = buffSize + 8
             buff.Stealable:SetSize(stealableSize, stealableSize)
-            buff.Stealable:SetPoint("TOPLEFT", buff, "TOPLEFT", -4, 4)
+            buff.Stealable:SetPoint("CENTER", buff, "CENTER")
         end
     end
 
