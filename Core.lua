@@ -11,6 +11,21 @@ local function Perskan_OnLoad()
         end
     end
     hooksecurefunc("CompactUnitFrame_OnLoad", MoveDebuffs)
+
+    -- Set a stealable texture even if you have no purge
+    local function TargetFrame_UpdateAuras(self)
+        for buff in self.auraPools:GetPool("TargetBuffFrameTemplate"):EnumerateActive() do
+            local buffSize = buff.GetHeight(buff)
+            local data = C_UnitAuras.GetAuraDataByAuraInstanceID(buff.unit, buff.auraInstanceID)
+            buff.Stealable:SetShown(data.isStealable or data.dispelName == "Magic")
+            local stealableSize = buffSize
+            buff.Stealable:SetSize(stealableSize, stealableSize)
+            buff.Stealable:SetPoint("CENTER", buff, "CENTER")
+        end
+    end
+
+    hooksecurefunc(TargetFrame, "UpdateAuras", TargetFrame_UpdateAuras)
+    hooksecurefunc(FocusFrame, "UpdateAuras", TargetFrame_UpdateAuras)
 end
 
 Perskan:RegisterEvent("PLAYER_ENTERING_WORLD")
