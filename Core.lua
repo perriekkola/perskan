@@ -12,13 +12,14 @@ local function Perskan_OnLoad()
 
     -- Move ToT
     TargetFrameToT:ClearAllPoints()
-    TargetFrameToT:SetPoint("TOPLEFT", TargetFrame, "BOTTOMRIGHT", -80, 22)
+    TargetFrameToT:SetPoint("TOPLEFT", TargetFrame, "BOTTOMRIGHT", -90, 22)
 
     -- Set a stealable texture even if you have no purge
+    -- ...also move buffs
     local function TargetFrame_UpdateAuras(self)
         for buff in self.auraPools:GetPool("TargetBuffFrameTemplate"):EnumerateActive() do
-            local data = C_UnitAuras.GetAuraDataByAuraInstanceID(buff.unit, buff.auraInstanceID);
-            buff.Stealable:SetShown(data.isStealable or data.dispelName == "Magic");
+            local data = C_UnitAuras.GetAuraDataByAuraInstanceID(buff.unit, buff.auraInstanceID)
+            buff.Stealable:SetShown(data.isStealable or data.dispelName == "Magic")
 
             local stealableSize = buffSize + 8
             buff.Stealable:SetSize(stealableSize, stealableSize)
