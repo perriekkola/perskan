@@ -15,7 +15,6 @@ local function Perskan_OnLoad()
     TargetFrameToT:SetPoint("TOPLEFT", TargetFrame, "BOTTOMRIGHT", -90, 22)
 
     -- Set a stealable texture even if you have no purge
-    -- ...also move buffs
     local function TargetFrame_UpdateAuras(self)
         for buff in self.auraPools:GetPool("TargetBuffFrameTemplate"):EnumerateActive() do
             local data = C_UnitAuras.GetAuraDataByAuraInstanceID(buff.unit, buff.auraInstanceID)
