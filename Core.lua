@@ -18,7 +18,7 @@ local function Perskan_OnLoad()
             local buffSize = buff.GetHeight(buff)
             local data = C_UnitAuras.GetAuraDataByAuraInstanceID(buff.unit, buff.auraInstanceID)
             buff.Stealable:SetShown(data.isStealable or data.dispelName == "Magic")
-            local stealableSize = buffSize
+            local stealableSize = buffSize + 2
             buff.Stealable:SetSize(stealableSize, stealableSize)
             buff.Stealable:SetPoint("CENTER", buff, "CENTER")
         end
