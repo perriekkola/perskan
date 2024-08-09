@@ -18,7 +18,29 @@ local function Perskan_OnLoad()
 
     hooksecurefunc(TargetFrame, "UpdateAuras", TargetFrame_UpdateAuras)
     hooksecurefunc(FocusFrame, "UpdateAuras", TargetFrame_UpdateAuras)
+
+    -- Toggle action bars based on spec
+    local specsToCheck = {"Devastation", "Retribution"}
+
+    local function isSpecInList(specName, specList)
+        for _, name in ipairs(specList) do
+            if name == specName then
+                return true
+            end
+        end
+        return false
+    end
+
+    local id, name, description, icon, background, role = GetSpecializationInfo(GetSpecialization())
+    print("Specialization: " .. name)
+
+    if isSpecInList(name, specsToCheck) then
+        Settings.SetValue("PROXY_SHOW_ACTIONBAR_3", false)
+    else
+        Settings.SetValue("PROXY_SHOW_ACTIONBAR_3", true)
+    end
 end
 
 Perskan:RegisterEvent("PLAYER_ENTERING_WORLD")
+Perskan:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
 Perskan:SetScript("OnEvent", Perskan_OnLoad)
