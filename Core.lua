@@ -32,7 +32,6 @@ local function Perskan_OnLoad()
     end
 
     local id, name, description, icon, background, role = GetSpecializationInfo(GetSpecialization())
-    print("Specialization: " .. name)
 
     if isSpecInList(name, specsToCheck) then
         Settings.SetValue("PROXY_SHOW_ACTIONBAR_3", false)
