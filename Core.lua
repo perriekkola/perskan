@@ -1,6 +1,7 @@
 local Perskan = CreateFrame("Frame")
+local settingsLoaded = false
 
-local function Perskan_OnLoad()
+local function Perskan_OnLoad(self, event, ...)
     -- Scale various UI frames
     EncounterBar:SetScale(0.8)
 
@@ -20,26 +21,34 @@ local function Perskan_OnLoad()
     hooksecurefunc(FocusFrame, "UpdateAuras", TargetFrame_UpdateAuras)
 
     -- Toggle action bars based on spec
-    local specsToCheck = {"Devastation", "Retribution"}
+    if event == "SETTINGS_LOADED" then
+        settingsLoaded = true
+    end
 
-    local function isSpecInList(specName, specList)
-        for _, name in ipairs(specList) do
-            if name == specName then
-                return true
+    if settingsLoaded then
+        local specsToCheck = {"Devastation", "Retribution"}
+
+        local function isSpecInList(specName, specList)
+            for _, name in ipairs(specList) do
+                if name == specName then
+                    return true
+                end
             end
+            return false
         end
-        return false
+
+        local id, name, description, icon, background, role = GetSpecializationInfo(GetSpecialization())
+
+        if isSpecInList(name, specsToCheck) then
+            Settings.SetValue("PROXY_SHOW_ACTIONBAR_3", false)
+        else
+            Settings.SetValue("PROXY_SHOW_ACTIONBAR_3", true)
+        end
     end
 
-    local id, name, description, icon, background, role = GetSpecializationInfo(GetSpecialization())
-
-    if isSpecInList(name, specsToCheck) then
-        Settings.SetValue("PROXY_SHOW_ACTIONBAR_3", false)
-    else
-        Settings.SetValue("PROXY_SHOW_ACTIONBAR_3", true)
-    end
 end
 
 Perskan:RegisterEvent("PLAYER_ENTERING_WORLD")
+Perskan:RegisterEvent("SETTINGS_LOADED")
 Perskan:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
 Perskan:SetScript("OnEvent", Perskan_OnLoad)
