@@ -44,71 +44,101 @@ local function DetailsAnchor()
         return
     end
 
+    if not IsAddOnLoaded("Details") then
+        return
+    end
+
     local details1 = _G["DetailsBaseFrame1"]
     local details2 = _G["DetailsBaseFrame2"]
 
     local anchor, x
     local mainDetailsHeight = 88
+    local secondaryDetailsHeight = 140
+
+    local highestArenaFrame = nil
+    for i = 1, 5 do
+        local frame = _G["ArenaEnemyMatchFrame" .. i]
+        if frame and frame:IsVisible() then
+            highestArenaFrame = frame
+        end
+    end
 
     if ObjectiveTrackerFrame:IsVisible() then
         anchor = ObjectiveTrackerFrame.NineSlice.Center
-        x = 7
+        x = 10
     elseif Boss1TargetFrame:IsVisible() then
         anchor = BossTargetFrameContainer
-        x = 26
+        x = 2
     elseif VehicleSeatIndicator:IsVisible() then
         anchor = VehicleSeatIndicator
-        x = -127
+        x = 2
+    elseif DurabilityFrame:IsVisible() then
+        anchor = DurabilityFrame
+        x = 2
+    elseif highestArenaFrame then
+        anchor = highestArenaFrame
+        x = 20
     else
         anchor = MinimapCompassTexture
-        x = -44
+        x = -1
     end
 
     if details1 then
         details1:ClearAllPoints()
-        details1:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", x, -50)
+        details1:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", x, -50)
 
-        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
-        if ObjectiveTrackerFrame:IsVisible() and trackerHeight > 310 then
-            details1:SetHeight(0)
-        else
-            details1:SetHeight(mainDetailsHeight)
-        end
+        --[[ C_Timer.After(0.1, function()
+            local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
+            if ObjectiveTrackerFrame:IsVisible() and trackerHeight > 285 then
+                details1:SetHeight(0)
+            else
+                details1:SetHeight(mainDetailsHeight)
+            end
+        end) ]]
     end
     if details2 then
         details2:ClearAllPoints()
         details2:SetPoint("TOPLEFT", details1, "BOTTOMLEFT", 0, -20)
-        details2:SetHeight(140)
     end
+
+    local function adjustHeight()
+        local currentSegment = Details:GetCurrentCombat()
+        local damageActorList = currentSegment:GetActorList(DETAILS_ATTRIBUTE_DAMAGE)
+        local healingActorList = currentSegment:GetActorList(DETAILS_ATTRIBUTE_HEAL)
+
+        local totalDamagePlayers = #damageActorList
+        local totalHealPlayers = #healingActorList
+
+        local baseHeight = 28
+        local heightPerPlayer = 20
+
+        local healHeight = baseHeight + (totalHealPlayers * heightPerPlayer)
+        local damageHeight = baseHeight + (totalDamagePlayers * heightPerPlayer)
+
+        details1:SetHeight(healHeight)
+        details2:SetHeight(damageHeight)
+    end
+
+    adjustHeight()
 end
 
-hooksecurefunc(QuestObjectiveTracker, "Update", function()
-    DetailsAnchor()
-end)
+local function HookDetailsAnchor()
+    hooksecurefunc(QuestObjectiveTracker, "Update", DetailsAnchor)
+    ObjectiveTrackerFrame:HookScript("OnShow", DetailsAnchor)
+    VehicleSeatIndicator:HookScript("OnShow", DetailsAnchor)
+    Boss1TargetFrame:HookScript("OnShow", DetailsAnchor)
+    ObjectiveTrackerFrame:HookScript("OnHide", DetailsAnchor)
+    VehicleSeatIndicator:HookScript("OnHide", DetailsAnchor)
+    Boss1TargetFrame:HookScript("OnHide", DetailsAnchor)
 
-ObjectiveTrackerFrame:HookScript("OnShow", function()
-    DetailsAnchor()
-end)
-
-VehicleSeatIndicator:HookScript("OnShow", function()
-    DetailsAnchor()
-end)
-
-Boss1TargetFrame:HookScript("OnShow", function()
-    DetailsAnchor()
-end)
-
-ObjectiveTrackerFrame:HookScript("OnHide", function()
-    DetailsAnchor()
-end)
-
-VehicleSeatIndicator:HookScript("OnHide", function()
-    DetailsAnchor()
-end)
-
-Boss1TargetFrame:HookScript("OnHide", function()
-    DetailsAnchor()
-end)
+    for i = 1, 5 do
+        local frame = _G["ArenaEnemyMatchFrame" .. i]
+        if frame then
+            frame:HookScript("OnShow", DetailsAnchor)
+            frame:HookScript("OnHide", DetailsAnchor)
+        end
+    end
+end
 
 function Perskan:InitializeCVars()
     SetCVar("Sound_AmbienceVolume", self.db.profile.soundAmbienceVolume)
@@ -119,34 +149,11 @@ function Perskan:InitializeCVars()
     SetCVar("cameraDistanceMaxZoomFactor", self.db.profile.cameraDistanceMaxZoomFactor)
 end
 
--- Need to create settings sliders here since we need to access AdjustActionBars function
-local function CreateSpecSliders()
-    local numSpecs = GetNumSpecializations()
-
-    for i = 1, numSpecs do
-        local id, name, description, icon, background, role = GetSpecializationInfo(i)
-        options.args["spec" .. i] = {
-            type = "range",
-            name = name,
-            desc = description,
-            min = 1,
-            max = 3,
-            step = 1,
-            get = function(info)
-                return Perskan.db.profile[name] or 3
-            end,
-            set = function(info, value)
-                Perskan.db.profile[name] = value
-                AdjustActionBars()
-            end
-        }
-    end
-end
-
 function Perskan:OnEnable()
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
     self:RegisterEvent("SETTINGS_LOADED")
     self:RegisterEvent("QUEST_LOG_UPDATE")
+    self:RegisterEvent("PLAYER_ENTERING_WORLD")
     self:RegisterEvent("PLAYER_LOGIN", "InitializeCVars")
 end
 
@@ -158,11 +165,16 @@ function Perskan:QUEST_LOG_UPDATE()
     DetailsAnchor()
 end
 
+function Perskan:PLAYER_ENTERING_WORLD()
+    AdjustActionBars()
+end
+
 function Perskan:SETTINGS_LOADED()
     settingsLoaded = true
     AdjustActionBars()
     HighlightStealableAuras()
     ScaleUIFrames()
-    CreateSpecSliders()
+    CreateSpecSliders(AdjustActionBars)
+    HookDetailsAnchor()
     DetailsAnchor()
 end

@@ -241,6 +241,29 @@ options = {
     }
 }
 
+function CreateSpecSliders(AdjustActionBars)
+    local numSpecs = GetNumSpecializations()
+
+    for i = 1, numSpecs do
+        local id, name, description, icon, background, role = GetSpecializationInfo(i)
+        options.args["spec" .. i] = {
+            type = "range",
+            name = name,
+            desc = description,
+            min = 1,
+            max = 3,
+            step = 1,
+            get = function(info)
+                return Perskan.db.profile[name] or 3
+            end,
+            set = function(info, value)
+                Perskan.db.profile[name] = value
+                AdjustActionBars()
+            end
+        }
+    end
+end
+
 function Perskan:OnInitialize()
     self.db = LibStub("AceDB-3.0"):New(addonName .. "DB", defaults, true)
     AC:RegisterOptionsTable(addonName .. "_Options", options)
