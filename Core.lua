@@ -219,7 +219,7 @@ local function ScaleUIFrames()
     EncounterBar:SetScale(Perskan.db.profile.encounterBarScale or 0.8)
 end
 
-local function HighlightStealaableAuras()
+local function HighlightStealableAuras()
     local function TargetFrame_UpdateAuras(self)
         for buff in self.auraPools:GetPool("TargetBuffFrameTemplate"):EnumerateActive() do
             local buffSize = buff.GetHeight(buff)
@@ -294,7 +294,7 @@ end
 function Perskan:SETTINGS_LOADED()
     settingsLoaded = true
     AdjustActionBars()
-    HighlightStealaableAuras()
+    HighlightStealableAuras()
     ScaleUIFrames()
     CreateSpecSliders()
 end
