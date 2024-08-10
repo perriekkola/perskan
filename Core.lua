@@ -39,6 +39,77 @@ local function HighlightStealableAuras()
     end
 end
 
+local function DetailsAnchor()
+    if not Perskan.db.profile.reanchorDetailsWindow then
+        return
+    end
+
+    local details1 = _G["DetailsBaseFrame1"]
+    local details2 = _G["DetailsBaseFrame2"]
+
+    local anchor, x
+    local mainDetailsHeight = 88
+
+    if ObjectiveTrackerFrame:IsVisible() then
+        anchor = ObjectiveTrackerFrame.NineSlice.Center
+        x = 7
+    elseif Boss1TargetFrame:IsVisible() then
+        anchor = BossTargetFrameContainer
+        x = 26
+    elseif VehicleSeatIndicator:IsVisible() then
+        anchor = VehicleSeatIndicator
+        x = -127
+    else
+        anchor = MinimapCompassTexture
+        x = -44
+    end
+
+    if details1 then
+        details1:ClearAllPoints()
+        details1:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", x, -50)
+
+        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
+        if ObjectiveTrackerFrame:IsVisible() and trackerHeight > 310 then
+            details1:SetHeight(0)
+        else
+            details1:SetHeight(mainDetailsHeight)
+        end
+    end
+    if details2 then
+        details2:ClearAllPoints()
+        details2:SetPoint("TOPLEFT", details1, "BOTTOMLEFT", 0, -20)
+        details2:SetHeight(140)
+    end
+end
+
+hooksecurefunc(QuestObjectiveTracker, "Update", function()
+    DetailsAnchor()
+end)
+
+ObjectiveTrackerFrame:HookScript("OnShow", function()
+    DetailsAnchor()
+end)
+
+VehicleSeatIndicator:HookScript("OnShow", function()
+    DetailsAnchor()
+end)
+
+Boss1TargetFrame:HookScript("OnShow", function()
+    DetailsAnchor()
+end)
+
+ObjectiveTrackerFrame:HookScript("OnHide", function()
+    DetailsAnchor()
+end)
+
+VehicleSeatIndicator:HookScript("OnHide", function()
+    DetailsAnchor()
+end)
+
+Boss1TargetFrame:HookScript("OnHide", function()
+    DetailsAnchor()
+end)
+
 function Perskan:InitializeCVars()
     SetCVar("Sound_AmbienceVolume", self.db.profile.soundAmbienceVolume)
     SetCVar("cameraYawMoveSpeed", self.db.profile.cameraYawMoveSpeed)
@@ -75,11 +146,16 @@ end
 function Perskan:OnEnable()
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
     self:RegisterEvent("SETTINGS_LOADED")
+    self:RegisterEvent("QUEST_LOG_UPDATE")
     self:RegisterEvent("PLAYER_LOGIN", "InitializeCVars")
 end
 
 function Perskan:ACTIVE_TALENT_GROUP_CHANGED()
     AdjustActionBars()
+end
+
+function Perskan:QUEST_LOG_UPDATE()
+    DetailsAnchor()
 end
 
 function Perskan:SETTINGS_LOADED()
@@ -88,4 +164,5 @@ function Perskan:SETTINGS_LOADED()
     HighlightStealableAuras()
     ScaleUIFrames()
     CreateSpecSliders()
+    DetailsAnchor()
 end

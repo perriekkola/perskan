@@ -14,6 +14,7 @@ local defaults = {
         cameraDistanceMaxZoomFactor = 2.5,
         encounterBarScale = 0.8,
         highlightStealableAuras = true,
+        reanchorDetailsWindow = false,
         objectiveTrackerScale = 1.0
     }
 }
@@ -206,13 +207,36 @@ options = {
         },
         header4 = {
             type = "header",
-            name = "Amount of actionbars per specialization",
+            name = "Re-anchor Details Window",
             order = 16
+        },
+        reanchorDetailsWindow = {
+            type = "toggle",
+            name = "Re-anchor Details Window",
+            desc = "Toggle re-anchoring of the Details window.",
+            get = function(info)
+                return Perskan.db.profile.reanchorDetailsWindow or false
+            end,
+            set = function(info, value)
+                Perskan.db.profile.reanchorDetailsWindow = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 17
         },
         spacer4 = {
             type = "description",
             name = " ",
-            order = 17
+            order = 18
+        },
+        header5 = {
+            type = "header",
+            name = "Amount of actionbars per specialization",
+            order = 19
+        },
+        spacer5 = {
+            type = "description",
+            name = " ",
+            order = 20
         }
     }
 }
