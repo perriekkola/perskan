@@ -18,6 +18,7 @@ end
 
 local function ScaleUIFrames()
     EncounterBar:SetScale(Perskan.db.profile.encounterBarScale or 0.8)
+    ObjectiveTrackerFrame:SetScale(Perskan.db.profile.objectiveTrackerScale or 1)
 end
 
 local function HighlightStealableAuras()

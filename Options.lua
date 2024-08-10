@@ -13,7 +13,8 @@ local defaults = {
         nameplateOtherTopInset = 0.09,
         cameraDistanceMaxZoomFactor = 2.5,
         encounterBarScale = 0.8,
-        highlightStealableAuras = true
+        highlightStealableAuras = true,
+        objectiveTrackerScale = 1.0
     }
 }
 
@@ -159,15 +160,31 @@ options = {
             end,
             order = 10
         },
+        objectiveTrackerScale = {
+            type = "range",
+            name = "Objective Tracker Scale",
+            desc = "Adjust the scale of the objective tracker.",
+            min = 0.5,
+            max = 2.0,
+            step = 0.1,
+            get = function(info)
+                return Perskan.db.profile.objectiveTrackerScale or 1.0
+            end,
+            set = function(info, value)
+                Perskan.db.profile.objectiveTrackerScale = value
+                ObjectiveTrackerFrame:SetScale(value)
+            end,
+            order = 11
+        },
         spacer2 = {
             type = "description",
             name = " ",
-            order = 11
+            order = 12
         },
         header3 = {
             type = "header",
             name = "Highlight all stealable auras",
-            order = 12
+            order = 13
         },
         highlightStealableAuras = {
             type = "toggle",
@@ -180,22 +197,22 @@ options = {
                 Perskan.db.profile.highlightStealableAuras = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 13
+            order = 14
         },
         spacer3 = {
             type = "description",
             name = " ",
-            order = 14
+            order = 15
         },
         header4 = {
             type = "header",
             name = "Amount of actionbars per specialization",
-            order = 15
+            order = 16
         },
         spacer4 = {
             type = "description",
             name = " ",
-            order = 16
+            order = 17
         }
     }
 }
