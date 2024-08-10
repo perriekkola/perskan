@@ -166,7 +166,7 @@ options = {
             desc = "Adjust the scale of the objective tracker.",
             min = 0.5,
             max = 2.0,
-            step = 0.1,
+            step = 0.05,
             get = function(info)
                 return Perskan.db.profile.objectiveTrackerScale or 1.0
             end,
