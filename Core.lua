@@ -88,7 +88,3 @@ function Perskan:SETTINGS_LOADED()
     ScaleUIFrames()
     CreateSpecSliders()
 end
-
-function Perskan:SlashCommand(msg)
-    Settings.OpenToCategory(addonName)
-end

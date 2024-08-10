@@ -211,3 +211,7 @@ function Perskan:OnInitialize()
 
     self:RegisterChatCommand(string.lower(addonName), "SlashCommand")
 end
+
+function Perskan:SlashCommand(msg)
+    Settings.OpenToCategory(addonName)
+end
