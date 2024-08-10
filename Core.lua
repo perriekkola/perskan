@@ -6,35 +6,62 @@ local f = CreateFrame("Frame")
 
 local settingsLoaded = false
 
-local defaults = {
-    profile = {
-        message = "Welcome Home!",
-        showOnScreen = true
-    }
-}
-
 local options = {
     name = addonName,
     handler = Perskan,
     type = "group",
     args = {
-        msg = {
-            type = "input",
-            name = "Message",
-            desc = "The message to be displayed when you get home.",
-            usage = "<Your message>",
-            get = "GetMessage",
-            set = "SetMessage"
+        header = {
+            type = "header",
+            name = "Amount of bars per specialization",
+            order = 1
         },
-        showOnScreen = {
-            type = "toggle",
-            name = "Show on Screen",
-            desc = "Toggles the display of the message on the screen.",
-            get = "IsShowOnScreen",
-            set = "ToggleShowOnScreen"
+        spacer = {
+            type = "description",
+            name = " ",
+            order = 2
         }
     }
 }
+
+local function AdjustActionBars()
+    if settingsLoaded then
+        local id, name, description, icon, background, role = GetSpecializationInfo(GetSpecialization())
+        local numActionBars = Perskan.db.profile[name] or 3
+
+        for i = 2, 3 do
+            local actionBarSetting = "PROXY_SHOW_ACTIONBAR_" .. i
+            if i <= numActionBars then
+                Settings.SetValue(actionBarSetting, true)
+            else
+                Settings.SetValue(actionBarSetting, false)
+            end
+        end
+    end
+end
+
+local function CreateSpecSliders()
+    local numSpecs = GetNumSpecializations()
+
+    for i = 1, numSpecs do
+        local id, name, description, icon, background, role = GetSpecializationInfo(i)
+        options.args["spec" .. i] = {
+            type = "range",
+            name = name,
+            desc = description,
+            min = 1,
+            max = 3,
+            step = 1,
+            get = function(info)
+                return Perskan.db.profile[name] or 3
+            end,
+            set = function(info, value)
+                Perskan.db.profile[name] = value
+                AdjustActionBars()
+            end
+        }
+    end
+end
 
 local function InitialSetup()
     -- Scale various UI frames
@@ -54,29 +81,6 @@ local function InitialSetup()
 
     hooksecurefunc(TargetFrame, "UpdateAuras", TargetFrame_UpdateAuras)
     hooksecurefunc(FocusFrame, "UpdateAuras", TargetFrame_UpdateAuras)
-end
-
-local function AdjustActionBars()
-    if settingsLoaded then
-        local specsToCheck = {"Devastation", "Retribution"}
-
-        local function isSpecInList(specName, specList)
-            for _, name in ipairs(specList) do
-                if name == specName then
-                    return true
-                end
-            end
-            return false
-        end
-
-        local id, name, description, icon, background, role = GetSpecializationInfo(GetSpecialization())
-
-        if isSpecInList(name, specsToCheck) then
-            Settings.SetValue("PROXY_SHOW_ACTIONBAR_3", false)
-        else
-            Settings.SetValue("PROXY_SHOW_ACTIONBAR_3", true)
-        end
-    end
 end
 
 function Perskan:OnInitialize()
@@ -104,24 +108,9 @@ function Perskan:SETTINGS_LOADED()
     settingsLoaded = true
     InitialSetup()
     AdjustActionBars()
+    CreateSpecSliders()
 end
 
 function Perskan:SlashCommand(msg)
     Settings.OpenToCategory(addonName)
-end
-
-function Perskan:GetMessage(info)
-    return self.db.profile.message
-end
-
-function Perskan:SetMessage(info, value)
-    self.db.profile.message = value
-end
-
-function Perskan:IsShowOnScreen(info)
-    return self.db.profile.showOnScreen
-end
-
-function Perskan:ToggleShowOnScreen(info, value)
-    self.db.profile.showOnScreen = value
 end
