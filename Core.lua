@@ -1,6 +1,7 @@
 local addonName = ...
-local details1 = _G["DetailsBaseFrame1"]
-local details2 = _G["DetailsBaseFrame2"]
+local details = _G.Details
+local details1 = details:GetInstance(1)
+local details2 = details:GetInstance(2)
 local mainDetailsHeight = 88
 local secondaryDetailsHeight = 140
 
@@ -75,17 +76,22 @@ local function ReanchorDetailsWindows()
     end
 
     if details1 then
-        details1:ClearAllPoints()
-        details1:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", x, -50)
+        details1.baseframe:ClearAllPoints()
+        details1.baseframe:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", x, -50)
     end
+
     if details2 then
-        details2:ClearAllPoints()
-        details2:SetPoint("TOPLEFT", details1, "BOTTOMLEFT", 0, -20)
+        details2.baseframe:ClearAllPoints()
+        details2.baseframe:SetPoint("TOPLEFT", details1.baseframe, "BOTTOMLEFT", 0, -20)
     end
 end
 
-local function AdjustDetailsHeight(window, maxHeight)
+local function AdjustDetailsHeight(instance, maxHeight)
     if not C_AddOns.IsAddOnLoaded("Details") then
+        return
+    end
+
+    if not instance then
         return
     end
 
@@ -95,7 +101,9 @@ local function AdjustDetailsHeight(window, maxHeight)
     numGroupMembers = math.max(numGroupMembers, 1)
     local newHeight = math.min(baseHeight + (numGroupMembers * heightPerPlayer), maxHeight)
 
-    window:SetHeight(newHeight)
+    local pos_table = instance:CreatePositionTable()
+    pos_table.h = newHeight
+    instance:RestorePositionFromPositionTable(pos_table)
 end
 
 local function ResizeAllDetailsWindows()
@@ -109,17 +117,32 @@ local function ResizeAllDetailsWindows()
 end
 
 local function ToggleDetailsWindows()
-    ResizeAllDetailsWindows()
+    if not details1 or not details2 then
+        return
+    end
+
+    details1:ShowWindow()
+    details2:ShowWindow()
 
     if not ObjectiveTrackerFrame:IsVisible() then
+        ResizeAllDetailsWindows()
+        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
         return
     end
 
     C_Timer.After(0.1, function()
+        if not ObjectiveTrackerFrame:IsVisible() then
+            return
+        end
+
         local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
+
         if trackerHeight > 305 then
-            details1:SetHeight(0)
+            details1:HideWindow()
+            details2:HideWindow()
         else
+            details1:ShowWindow()
+            details2:ShowWindow()
             ResizeAllDetailsWindows()
         end
     end)
@@ -153,13 +176,38 @@ local function InitializeCVars()
     SetCVar("cameraDistanceMaxZoomFactor", profile.cameraDistanceMaxZoomFactor)
 end
 
+local function CombatLogEventHandler(event, ...)
+    local timestamp, subEvent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName,
+        destFlags, destRaidFlags, spellId, spellName, spellSchool, amount, overkill, school, resisted, blocked,
+        absorbed, critical, glancing, crushing = CombatLogGetCurrentEventInfo()
+
+    -- Check if the source is you or a party member
+    if sourceGUID == UnitGUID("player") or UnitInParty(sourceName) then
+        -- Get the current combat object
+        local combat = details:GetCurrentCombat()
+
+        -- Get actors on damage and healing cache
+        local damageActors = combat:GetActorsOnDamageCache()
+        local healingActors = combat:GetActorsOnHealingCache()
+
+        -- Print the number of actors that are players only
+        print("Number of damage actors (players only):", #damageActors)
+        print("Number of healing actors (players only):", #healingActors)
+
+        -- Process the event
+        print("Event: " .. subEvent)
+        ResizeAllDetailsWindows()
+    end
+end
+
 function Perskan:OnEnable()
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", AdjustActionBars)
-    self:RegisterEvent("QUEST_LOG_UPDATE", ReanchorDetailsWindows)
+    self:RegisterEvent("QUEST_LOG_UPDATE", ToggleDetailsWindows)
     self:RegisterEvent("PLAYER_ENTERING_WORLD", AdjustActionBars)
     self:RegisterEvent("GROUP_ROSTER_UPDATE", ResizeAllDetailsWindows)
     self:RegisterEvent("PLAYER_LOGIN", InitializeCVars)
     self:RegisterEvent("SETTINGS_LOADED")
+    self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", CombatLogEventHandler)
 end
 
 function Perskan:SETTINGS_LOADED()
