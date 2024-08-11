@@ -45,6 +45,9 @@ local function ReanchorDetailsWindows()
         return
     end
 
+    details1.baseframe:SetWidth(254)
+    details2.baseframe:SetWidth(254)
+
     local anchor, x
     local highestArenaFrame = nil
 
@@ -176,30 +179,6 @@ local function InitializeCVars()
     SetCVar("cameraDistanceMaxZoomFactor", profile.cameraDistanceMaxZoomFactor)
 end
 
-local function CombatLogEventHandler(event, ...)
-    local timestamp, subEvent, hideCaster, sourceGUID, sourceName, sourceFlags, sourceRaidFlags, destGUID, destName,
-        destFlags, destRaidFlags, spellId, spellName, spellSchool, amount, overkill, school, resisted, blocked,
-        absorbed, critical, glancing, crushing = CombatLogGetCurrentEventInfo()
-
-    -- Check if the source is you or a party member
-    if sourceGUID == UnitGUID("player") or UnitInParty(sourceName) then
-        -- Get the current combat object
-        local combat = details:GetCurrentCombat()
-
-        -- Get actors on damage and healing cache
-        local damageActors = combat:GetActorsOnDamageCache()
-        local healingActors = combat:GetActorsOnHealingCache()
-
-        -- Print the number of actors that are players only
-        print("Number of damage actors (players only):", #damageActors)
-        print("Number of healing actors (players only):", #healingActors)
-
-        -- Process the event
-        print("Event: " .. subEvent)
-        ResizeAllDetailsWindows()
-    end
-end
-
 function Perskan:OnEnable()
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", AdjustActionBars)
     self:RegisterEvent("QUEST_LOG_UPDATE", ToggleDetailsWindows)
@@ -207,7 +186,6 @@ function Perskan:OnEnable()
     self:RegisterEvent("GROUP_ROSTER_UPDATE", ResizeAllDetailsWindows)
     self:RegisterEvent("PLAYER_LOGIN", InitializeCVars)
     self:RegisterEvent("SETTINGS_LOADED")
-    self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", CombatLogEventHandler)
 end
 
 function Perskan:SETTINGS_LOADED()
