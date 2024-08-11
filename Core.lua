@@ -48,12 +48,12 @@ local function DetailsAnchor()
         return
     end
 
-    local details1 = _G["DetailsBaseFrame1"]
-    local details2 = _G["DetailsBaseFrame2"]
+    details1 = _G["DetailsBaseFrame1"]
+    details2 = _G["DetailsBaseFrame2"]
 
     local anchor, x
-    local mainDetailsHeight = 88
-    local secondaryDetailsHeight = 140
+    mainDetailsHeight = 88
+    secondaryDetailsHeight = 140
 
     local highestArenaFrame = nil
     for i = 1, 5 do
@@ -100,26 +100,6 @@ local function DetailsAnchor()
         details2:ClearAllPoints()
         details2:SetPoint("TOPLEFT", details1, "BOTTOMLEFT", 0, -20)
     end
-
-    local function adjustHeight()
-        local currentSegment = Details:GetCurrentCombat()
-        local damageActorList = currentSegment:GetActorList(DETAILS_ATTRIBUTE_DAMAGE)
-        local healingActorList = currentSegment:GetActorList(DETAILS_ATTRIBUTE_HEAL)
-
-        local totalDamagePlayers = #damageActorList
-        local totalHealPlayers = #healingActorList
-
-        local baseHeight = 28
-        local heightPerPlayer = 20
-
-        local healHeight = baseHeight + (totalHealPlayers * heightPerPlayer)
-        local damageHeight = baseHeight + (totalDamagePlayers * heightPerPlayer)
-
-        details1:SetHeight(healHeight)
-        details2:SetHeight(damageHeight)
-    end
-
-    adjustHeight()
 end
 
 local function HookDetailsAnchor()
@@ -140,6 +120,22 @@ local function HookDetailsAnchor()
     end
 end
 
+local function AdjustDetailsHeight()
+    local baseHeight = 32
+    local heightPerPlayer = 28
+    local numGroupMembers = GetNumGroupMembers() + 1
+    local healHeight = baseHeight + (numGroupMembers * heightPerPlayer)
+    local damageHeight = baseHeight + (numGroupMembers * heightPerPlayer)
+
+    healHeight = math.min(healHeight, mainDetailsHeight)
+    damageHeight = math.min(damageHeight, secondaryDetailsHeight)
+
+    details1:SetHeight(healHeight)
+    details2:SetHeight(damageHeight)
+
+    DetailsAnchor()
+end
+
 function Perskan:InitializeCVars()
     SetCVar("Sound_AmbienceVolume", self.db.profile.soundAmbienceVolume)
     SetCVar("cameraYawMoveSpeed", self.db.profile.cameraYawMoveSpeed)
@@ -154,6 +150,7 @@ function Perskan:OnEnable()
     self:RegisterEvent("SETTINGS_LOADED")
     self:RegisterEvent("QUEST_LOG_UPDATE")
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
+    self:RegisterEvent("GROUP_ROSTER_UPDATE")
     self:RegisterEvent("PLAYER_LOGIN", "InitializeCVars")
 end
 
@@ -169,6 +166,10 @@ function Perskan:PLAYER_ENTERING_WORLD()
     AdjustActionBars()
 end
 
+function Perskan:GROUP_ROSTER_UPDATE()
+    AdjustDetailsHeight()
+end
+
 function Perskan:SETTINGS_LOADED()
     settingsLoaded = true
     AdjustActionBars()
@@ -177,4 +178,5 @@ function Perskan:SETTINGS_LOADED()
     CreateSpecSliders(AdjustActionBars)
     HookDetailsAnchor()
     DetailsAnchor()
+    AdjustDetailsHeight()
 end
