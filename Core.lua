@@ -43,7 +43,7 @@ local function HighlightStealableAuras()
     end
 end
 
-local function DetailsAnchor()
+local function ReanchorDetailsWindows()
     if not Perskan.db.profile.reanchorDetailsWindow then
         return
     end
@@ -92,20 +92,20 @@ local function DetailsAnchor()
     end
 end
 
-local function HookDetailsAnchor()
-    hooksecurefunc(QuestObjectiveTracker, "Update", DetailsAnchor)
-    ObjectiveTrackerFrame:HookScript("OnShow", DetailsAnchor)
-    VehicleSeatIndicator:HookScript("OnShow", DetailsAnchor)
-    Boss1TargetFrame:HookScript("OnShow", DetailsAnchor)
-    ObjectiveTrackerFrame:HookScript("OnHide", DetailsAnchor)
-    VehicleSeatIndicator:HookScript("OnHide", DetailsAnchor)
-    Boss1TargetFrame:HookScript("OnHide", DetailsAnchor)
+local function HookReanchorDetailsWindows()
+    hooksecurefunc(QuestObjectiveTracker, "Update", ReanchorDetailsWindows)
+    ObjectiveTrackerFrame:HookScript("OnShow", ReanchorDetailsWindows)
+    VehicleSeatIndicator:HookScript("OnShow", ReanchorDetailsWindows)
+    Boss1TargetFrame:HookScript("OnShow", ReanchorDetailsWindows)
+    ObjectiveTrackerFrame:HookScript("OnHide", ReanchorDetailsWindows)
+    VehicleSeatIndicator:HookScript("OnHide", ReanchorDetailsWindows)
+    Boss1TargetFrame:HookScript("OnHide", ReanchorDetailsWindows)
 
     for i = 1, 5 do
         local frame = _G["ArenaEnemyMatchFrame" .. i]
         if frame then
-            frame:HookScript("OnShow", DetailsAnchor)
-            frame:HookScript("OnHide", DetailsAnchor)
+            frame:HookScript("OnShow", ReanchorDetailsWindows)
+            frame:HookScript("OnHide", ReanchorDetailsWindows)
         end
     end
 end
@@ -117,7 +117,13 @@ local function AdjustDetailsHeight(window, maxHeight)
 
     local baseHeight = 32
     local heightPerPlayer = 28
-    local numGroupMembers = GetNumGroupMembers() + 1
+    local numGroupMembers
+
+    if IsActiveBattlefieldArena() then
+        numGroupMembers = 6
+    else
+        numGroupMembers = GetNumGroupMembers() + 1
+    end
 
     window:SetHeight(math.min(baseHeight + (numGroupMembers * heightPerPlayer), maxHeight))
 end
@@ -130,7 +136,7 @@ local function ResizeAllDetailsWindows()
     AdjustDetailsHeight(details1, mainDetailsHeight)
     AdjustDetailsHeight(details2, secondaryDetailsHeight)
 
-    DetailsAnchor()
+    ReanchorDetailsWindows()
 end
 
 function Perskan:InitializeCVars()
@@ -156,7 +162,7 @@ function Perskan:ACTIVE_TALENT_GROUP_CHANGED()
 end
 
 function Perskan:QUEST_LOG_UPDATE()
-    DetailsAnchor()
+    ReanchorDetailsWindows()
 end
 
 function Perskan:PLAYER_ENTERING_WORLD()
@@ -169,11 +175,12 @@ end
 
 function Perskan:SETTINGS_LOADED()
     settingsLoaded = true
+    CreateSpecSliders(AdjustActionBars)
+
     AdjustActionBars()
     HighlightStealableAuras()
     ScaleUIFrames()
-    CreateSpecSliders(AdjustActionBars)
-    HookDetailsAnchor()
-    DetailsAnchor()
+    ReanchorDetailsWindows()
+    HookReanchorDetailsWindows()
     ResizeAllDetailsWindows()
 end
