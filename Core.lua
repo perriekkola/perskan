@@ -65,14 +65,14 @@ local function ReanchorDetailsWindows()
     if ObjectiveTrackerFrame:IsVisible() then
         anchor = ObjectiveTrackerFrame.NineSlice.Center
         x = 10
+    elseif DurabilityFrame:IsVisible() then
+        anchor = DurabilityFrame
+        x = 2
     elseif Boss1TargetFrame:IsVisible() then
         anchor = BossTargetFrameContainer
         x = 2
     elseif VehicleSeatIndicator:IsVisible() then
         anchor = VehicleSeatIndicator
-        x = 2
-    elseif DurabilityFrame:IsVisible() then
-        anchor = DurabilityFrame
         x = 2
     elseif highestArenaFrame then
         anchor = highestArenaFrame
