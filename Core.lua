@@ -159,7 +159,7 @@ local function ToggleDetailsWindows()
 
         local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
 
-        if trackerHeight > 305 then
+        if trackerHeight > 310 then
             details1:HideWindow()
             details2:HideWindow()
         else
