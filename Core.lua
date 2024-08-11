@@ -1,11 +1,12 @@
 local addonName = ...
 local details = _G.Details
+local details1, details2
+local mainDetailsHeight = 88
+local secondaryDetailsHeight = 140
 
 if details then
-    local details1 = details:GetInstance(1)
-    local details2 = details:GetInstance(2)
-    local mainDetailsHeight = 88
-    local secondaryDetailsHeight = 140
+    details1 = details:GetInstance(1)
+    details2 = details:GetInstance(2)
 end
 
 local function AdjustActionBars()
