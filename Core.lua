@@ -92,31 +92,13 @@ local function ReanchorDetailsWindows()
     end
 end
 
-local function HookReanchorDetailsWindows()
-    hooksecurefunc(QuestObjectiveTracker, "Update", ReanchorDetailsWindows)
-    ObjectiveTrackerFrame:HookScript("OnShow", ReanchorDetailsWindows)
-    VehicleSeatIndicator:HookScript("OnShow", ReanchorDetailsWindows)
-    Boss1TargetFrame:HookScript("OnShow", ReanchorDetailsWindows)
-    ObjectiveTrackerFrame:HookScript("OnHide", ReanchorDetailsWindows)
-    VehicleSeatIndicator:HookScript("OnHide", ReanchorDetailsWindows)
-    Boss1TargetFrame:HookScript("OnHide", ReanchorDetailsWindows)
-
-    for i = 1, 5 do
-        local frame = _G["ArenaEnemyMatchFrame" .. i]
-        if frame then
-            frame:HookScript("OnShow", ReanchorDetailsWindows)
-            frame:HookScript("OnHide", ReanchorDetailsWindows)
-        end
-    end
-end
-
 local function AdjustDetailsHeight(window, maxHeight)
     if not IsAddOnLoaded("Details") then
         return
     end
 
     local baseHeight = 32
-    local heightPerPlayer = 28
+    local heightPerPlayer = 27
     local numGroupMembers
 
     if IsActiveBattlefieldArena() then
@@ -137,6 +119,40 @@ local function ResizeAllDetailsWindows()
     AdjustDetailsHeight(details2, secondaryDetailsHeight)
 
     ReanchorDetailsWindows()
+end
+
+local function ToggleDetailsWindows()
+    if not ObjectiveTrackerFrame:IsVisible() then
+        return
+    end
+
+    C_Timer.After(0.1, function()
+        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
+
+        if trackerHeight > 305 then
+            details1:SetHeight(0)
+        else
+            ResizeAllDetailsWindows()
+        end
+    end)
+end
+
+local function HookReanchorDetailsWindows()
+    hooksecurefunc(QuestObjectiveTracker, "Update", ToggleDetailsWindows)
+    ObjectiveTrackerFrame:HookScript("OnShow", ToggleDetailsWindows)
+    VehicleSeatIndicator:HookScript("OnShow", ToggleDetailsWindows)
+    Boss1TargetFrame:HookScript("OnShow", ToggleDetailsWindows)
+    ObjectiveTrackerFrame:HookScript("OnHide", ToggleDetailsWindows)
+    VehicleSeatIndicator:HookScript("OnHide", ToggleDetailsWindows)
+    Boss1TargetFrame:HookScript("OnHide", ToggleDetailsWindows)
+
+    for i = 1, 5 do
+        local frame = _G["ArenaEnemyMatchFrame" .. i]
+        if frame then
+            frame:HookScript("OnShow", ToggleDetailsWindows)
+            frame:HookScript("OnHide", ToggleDetailsWindows)
+        end
+    end
 end
 
 function Perskan:InitializeCVars()

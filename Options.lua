@@ -142,7 +142,7 @@ options = {
         },
         header2 = {
             type = "header",
-            name = "Encounter bar scale",
+            name = "UI scaling",
             order = 9
         },
         encounterBarScale = {
