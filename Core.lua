@@ -40,7 +40,7 @@ local function HighlightStealableAuras()
 end
 
 local function ReanchorDetailsWindows()
-    if not Perskan.db.profile.reanchorDetailsWindow or not IsAddOnLoaded("Details") then
+    if not Perskan.db.profile.reanchorDetailsWindow or not C_AddOns.IsAddOnLoaded("Details") then
         return
     end
 
@@ -85,20 +85,21 @@ local function ReanchorDetailsWindows()
 end
 
 local function AdjustDetailsHeight(window, maxHeight)
-    if not IsAddOnLoaded("Details") then
+    if not C_AddOns.IsAddOnLoaded("Details") then
         return
     end
 
     local baseHeight = 32
     local heightPerPlayer = 27
-    local numGroupMembers = IsActiveBattlefieldArena() and 6 or GetNumGroupMembers() + 1
+    local numGroupMembers = IsActiveBattlefieldArena() and 6 or GetNumGroupMembers()
+    numGroupMembers = math.max(numGroupMembers, 1)
     local newHeight = math.min(baseHeight + (numGroupMembers * heightPerPlayer), maxHeight)
 
     window:SetHeight(newHeight)
 end
 
 local function ResizeAllDetailsWindows()
-    if not IsAddOnLoaded("Details") then
+    if not C_AddOns.IsAddOnLoaded("Details") then
         return
     end
 
