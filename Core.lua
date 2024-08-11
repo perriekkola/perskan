@@ -6,6 +6,10 @@ local mainDetailsHeight = 88
 local secondaryDetailsHeight = 140
 
 local function AdjustActionBars()
+    if InCombatLockdown() then
+        return
+    end
+
     if settingsLoaded then
         local id, name = GetSpecializationInfo(GetSpecialization())
         local numActionBars = Perskan.db.profile[name] or 3
