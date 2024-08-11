@@ -92,16 +92,9 @@ local function AdjustDetailsHeight(window, maxHeight)
     local baseHeight = 32
     local heightPerPlayer = 27
     local numGroupMembers = IsActiveBattlefieldArena() and 6 or GetNumGroupMembers() + 1
-
     local newHeight = math.min(baseHeight + (numGroupMembers * heightPerPlayer), maxHeight)
-    local screenHeight = UIParent:GetHeight()
-    local windowBottom = window:GetBottom()
 
-    if windowBottom and (windowBottom - newHeight) < 0 then
-        window:SetHeight(0)
-    else
-        window:SetHeight(newHeight)
-    end
+    window:SetHeight(newHeight)
 end
 
 local function ResizeAllDetailsWindows()
@@ -115,8 +108,9 @@ local function ResizeAllDetailsWindows()
 end
 
 local function ToggleDetailsWindows()
+    ResizeAllDetailsWindows()
+
     if not ObjectiveTrackerFrame:IsVisible() then
-        ResizeAllDetailsWindows()
         return
     end
 
