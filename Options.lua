@@ -15,7 +15,7 @@ local defaults = {
         encounterBarScale = 0.8,
         highlightStealableAuras = true,
         reanchorDetailsWindow = false,
-        objectiveTrackerScale = 1.0
+        objectiveTrackerScale = 0.95
     }
 }
 
