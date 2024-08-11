@@ -1,4 +1,8 @@
 local addonName = ...
+local details1 = _G["DetailsBaseFrame1"]
+local details2 = _G["DetailsBaseFrame2"]
+local mainDetailsHeight = 88
+local secondaryDetailsHeight = 140
 
 local function AdjustActionBars()
     if settingsLoaded then
@@ -48,12 +52,7 @@ local function DetailsAnchor()
         return
     end
 
-    details1 = _G["DetailsBaseFrame1"]
-    details2 = _G["DetailsBaseFrame2"]
-
     local anchor, x
-    mainDetailsHeight = 88
-    secondaryDetailsHeight = 140
 
     local highestArenaFrame = nil
     for i = 1, 5 do
@@ -86,15 +85,6 @@ local function DetailsAnchor()
     if details1 then
         details1:ClearAllPoints()
         details1:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", x, -50)
-
-        --[[ C_Timer.After(0.1, function()
-            local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
-            if ObjectiveTrackerFrame:IsVisible() and trackerHeight > 285 then
-                details1:SetHeight(0)
-            else
-                details1:SetHeight(mainDetailsHeight)
-            end
-        end) ]]
     end
     if details2 then
         details2:ClearAllPoints()
@@ -120,18 +110,25 @@ local function HookDetailsAnchor()
     end
 end
 
-local function AdjustDetailsHeight()
+local function AdjustDetailsHeight(window, maxHeight)
+    if not IsAddOnLoaded("Details") then
+        return
+    end
+
     local baseHeight = 32
     local heightPerPlayer = 28
     local numGroupMembers = GetNumGroupMembers() + 1
-    local healHeight = baseHeight + (numGroupMembers * heightPerPlayer)
-    local damageHeight = baseHeight + (numGroupMembers * heightPerPlayer)
 
-    healHeight = math.min(healHeight, mainDetailsHeight)
-    damageHeight = math.min(damageHeight, secondaryDetailsHeight)
+    window:SetHeight(math.min(baseHeight + (numGroupMembers * heightPerPlayer), maxHeight))
+end
 
-    details1:SetHeight(healHeight)
-    details2:SetHeight(damageHeight)
+local function ResizeAllDetailsWindows()
+    if not IsAddOnLoaded("Details") then
+        return
+    end
+
+    AdjustDetailsHeight(details1, mainDetailsHeight)
+    AdjustDetailsHeight(details2, secondaryDetailsHeight)
 
     DetailsAnchor()
 end
@@ -167,7 +164,7 @@ function Perskan:PLAYER_ENTERING_WORLD()
 end
 
 function Perskan:GROUP_ROSTER_UPDATE()
-    AdjustDetailsHeight()
+    ResizeAllDetailsWindows()
 end
 
 function Perskan:SETTINGS_LOADED()
@@ -178,5 +175,5 @@ function Perskan:SETTINGS_LOADED()
     CreateSpecSliders(AdjustActionBars)
     HookDetailsAnchor()
     DetailsAnchor()
-    AdjustDetailsHeight()
+    ResizeAllDetailsWindows()
 end
