@@ -6,16 +6,12 @@ local secondaryDetailsHeight = 140
 
 local function AdjustActionBars()
     if settingsLoaded then
-        local id, name, description, icon, background, role = GetSpecializationInfo(GetSpecialization())
+        local id, name = GetSpecializationInfo(GetSpecialization())
         local numActionBars = Perskan.db.profile[name] or 3
 
         for i = 2, 3 do
             local actionBarSetting = "PROXY_SHOW_ACTIONBAR_" .. i
-            if i <= numActionBars then
-                Settings.SetValue(actionBarSetting, true)
-            else
-                Settings.SetValue(actionBarSetting, false)
-            end
+            Settings.SetValue(actionBarSetting, i <= numActionBars)
         end
     end
 end
@@ -26,9 +22,9 @@ local function ScaleUIFrames()
 end
 
 local function HighlightStealableAuras()
-    local function TargetFrame_UpdateAuras(self)
+    local function UpdateAuras(self)
         for buff in self.auraPools:GetPool("TargetBuffFrameTemplate"):EnumerateActive() do
-            local buffSize = buff.GetHeight(buff)
+            local buffSize = buff:GetHeight()
             local data = C_UnitAuras.GetAuraDataByAuraInstanceID(buff.unit, buff.auraInstanceID)
             buff.Stealable:SetShown(data.isStealable or data.dispelName == "Magic")
             local stealableSize = buffSize + 2
@@ -38,23 +34,19 @@ local function HighlightStealableAuras()
     end
 
     if Perskan.db.profile.highlightStealableAuras then
-        hooksecurefunc(TargetFrame, "UpdateAuras", TargetFrame_UpdateAuras)
-        hooksecurefunc(FocusFrame, "UpdateAuras", TargetFrame_UpdateAuras)
+        hooksecurefunc(TargetFrame, "UpdateAuras", UpdateAuras)
+        hooksecurefunc(FocusFrame, "UpdateAuras", UpdateAuras)
     end
 end
 
 local function ReanchorDetailsWindows()
-    if not Perskan.db.profile.reanchorDetailsWindow then
-        return
-    end
-
-    if not IsAddOnLoaded("Details") then
+    if not Perskan.db.profile.reanchorDetailsWindow or not IsAddOnLoaded("Details") then
         return
     end
 
     local anchor, x
-
     local highestArenaFrame = nil
+
     for i = 1, 5 do
         local frame = _G["ArenaEnemyMatchFrame" .. i]
         if frame and frame:IsVisible() then
@@ -99,15 +91,17 @@ local function AdjustDetailsHeight(window, maxHeight)
 
     local baseHeight = 32
     local heightPerPlayer = 27
-    local numGroupMembers
+    local numGroupMembers = IsActiveBattlefieldArena() and 6 or GetNumGroupMembers() + 1
 
-    if IsActiveBattlefieldArena() then
-        numGroupMembers = 6
+    local newHeight = math.min(baseHeight + (numGroupMembers * heightPerPlayer), maxHeight)
+    local screenHeight = UIParent:GetHeight()
+    local windowBottom = window:GetBottom()
+
+    if windowBottom and (windowBottom - newHeight) < 0 then
+        window:SetHeight(0)
     else
-        numGroupMembers = GetNumGroupMembers() + 1
+        window:SetHeight(newHeight)
     end
-
-    window:SetHeight(math.min(baseHeight + (numGroupMembers * heightPerPlayer), maxHeight))
 end
 
 local function ResizeAllDetailsWindows()
@@ -117,7 +111,6 @@ local function ResizeAllDetailsWindows()
 
     AdjustDetailsHeight(details1, mainDetailsHeight)
     AdjustDetailsHeight(details2, secondaryDetailsHeight)
-
     ReanchorDetailsWindows()
 end
 
@@ -128,7 +121,6 @@ local function ToggleDetailsWindows()
 
     C_Timer.After(0.1, function()
         local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
-
         if trackerHeight > 305 then
             details1:SetHeight(0)
         else
@@ -138,55 +130,40 @@ local function ToggleDetailsWindows()
 end
 
 local function HookReanchorDetailsWindows()
-    hooksecurefunc(QuestObjectiveTracker, "Update", ToggleDetailsWindows)
-    ObjectiveTrackerFrame:HookScript("OnShow", ToggleDetailsWindows)
-    VehicleSeatIndicator:HookScript("OnShow", ToggleDetailsWindows)
-    Boss1TargetFrame:HookScript("OnShow", ToggleDetailsWindows)
-    ObjectiveTrackerFrame:HookScript("OnHide", ToggleDetailsWindows)
-    VehicleSeatIndicator:HookScript("OnHide", ToggleDetailsWindows)
-    Boss1TargetFrame:HookScript("OnHide", ToggleDetailsWindows)
-
-    for i = 1, 5 do
-        local frame = _G["ArenaEnemyMatchFrame" .. i]
+    local function HookFrame(frame)
         if frame then
             frame:HookScript("OnShow", ToggleDetailsWindows)
             frame:HookScript("OnHide", ToggleDetailsWindows)
         end
     end
+
+    hooksecurefunc(QuestObjectiveTracker, "Update", ToggleDetailsWindows)
+    HookFrame(ObjectiveTrackerFrame)
+    HookFrame(VehicleSeatIndicator)
+    HookFrame(Boss1TargetFrame)
+
+    for i = 1, 5 do
+        HookFrame(_G["ArenaEnemyMatchFrame" .. i])
+    end
 end
 
-function Perskan:InitializeCVars()
-    SetCVar("Sound_AmbienceVolume", self.db.profile.soundAmbienceVolume)
-    SetCVar("cameraYawMoveSpeed", self.db.profile.cameraYawMoveSpeed)
-    SetCVar("cameraPivot", self.db.profile.cameraPivot and 1 or 0)
-    SetCVar("nameplateOtherBottomInset", self.db.profile.nameplateOtherBottomInset)
-    SetCVar("nameplateOtherTopInset", self.db.profile.nameplateOtherTopInset)
-    SetCVar("cameraDistanceMaxZoomFactor", self.db.profile.cameraDistanceMaxZoomFactor)
+local function InitializeCVars()
+    local profile = self.db.profile
+    SetCVar("Sound_AmbienceVolume", profile.soundAmbienceVolume)
+    SetCVar("cameraYawMoveSpeed", profile.cameraYawMoveSpeed)
+    SetCVar("cameraPivot", profile.cameraPivot and 1 or 0)
+    SetCVar("nameplateOtherBottomInset", profile.nameplateOtherBottomInset)
+    SetCVar("nameplateOtherTopInset", profile.nameplateOtherTopInset)
+    SetCVar("cameraDistanceMaxZoomFactor", profile.cameraDistanceMaxZoomFactor)
 end
 
 function Perskan:OnEnable()
-    self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
+    self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", AdjustActionBars)
+    self:RegisterEvent("QUEST_LOG_UPDATE", ReanchorDetailsWindows)
+    self:RegisterEvent("PLAYER_ENTERING_WORLD", AdjustActionBars)
+    self:RegisterEvent("GROUP_ROSTER_UPDATE", ResizeAllDetailsWindows)
+    self:RegisterEvent("PLAYER_LOGIN", InitializeCVars)
     self:RegisterEvent("SETTINGS_LOADED")
-    self:RegisterEvent("QUEST_LOG_UPDATE")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD")
-    self:RegisterEvent("GROUP_ROSTER_UPDATE")
-    self:RegisterEvent("PLAYER_LOGIN", "InitializeCVars")
-end
-
-function Perskan:ACTIVE_TALENT_GROUP_CHANGED()
-    AdjustActionBars()
-end
-
-function Perskan:QUEST_LOG_UPDATE()
-    ReanchorDetailsWindows()
-end
-
-function Perskan:PLAYER_ENTERING_WORLD()
-    AdjustActionBars()
-end
-
-function Perskan:GROUP_ROSTER_UPDATE()
-    ResizeAllDetailsWindows()
 end
 
 function Perskan:SETTINGS_LOADED()
