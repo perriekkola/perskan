@@ -116,6 +116,7 @@ end
 
 local function ToggleDetailsWindows()
     if not ObjectiveTrackerFrame:IsVisible() then
+        ResizeAllDetailsWindows()
         return
     end
 
