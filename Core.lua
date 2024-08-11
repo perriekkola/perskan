@@ -174,7 +174,6 @@ function Perskan:SETTINGS_LOADED()
     AdjustActionBars()
     HighlightStealableAuras()
     ScaleUIFrames()
-    ReanchorDetailsWindows()
     HookReanchorDetailsWindows()
-    ResizeAllDetailsWindows()
+    ToggleDetailsWindows()
 end
