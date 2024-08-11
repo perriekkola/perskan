@@ -41,10 +41,15 @@ local function HighlightStealableAuras()
 end
 
 local function HasQuestItemInObjectiveTracker()
-    for i = 1, GetNumQuestWatches() do
-        local questID = GetQuestWatchInfo(i)
+    local numQuestWatches = C_QuestLog.GetNumQuestWatches()
+    if not numQuestWatches then
+        return false
+    end
+
+    for i = 1, numQuestWatches do
+        local questID = C_QuestLog.GetQuestIDForQuestWatchIndex(i)
         if questID then
-            local link, item, charges, showItemWhenComplete = GetQuestLogSpecialItemInfo(i)
+            local link, item, charges, showItemWhenComplete = GetQuestLogSpecialItemInfo(questID)
             if item then
                 return true
             end
