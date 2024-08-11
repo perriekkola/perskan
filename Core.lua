@@ -78,8 +78,13 @@ local function ReanchorDetailsWindows()
     end
 
     if ObjectiveTrackerFrame:IsVisible() then
-        anchor = ObjectiveTrackerFrame.NineSlice.Center
-        x = 10
+        if not QuestObjectiveTracker:IsVisible() then
+            anchor = ObjectiveTrackerFrame.Header
+            x = 2
+        else
+            anchor = ObjectiveTrackerFrame.NineSlice.Center
+            x = 10
+        end
     elseif DurabilityFrame:IsVisible() then
         anchor = DurabilityFrame
         x = 2
