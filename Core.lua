@@ -40,8 +40,22 @@ local function HighlightStealableAuras()
     end
 end
 
+local function HasQuestItemInObjectiveTracker()
+    for i = 1, GetNumQuestWatches() do
+        local questID = GetQuestWatchInfo(i)
+        if questID then
+            local link, item, charges, showItemWhenComplete = GetQuestLogSpecialItemInfo(i)
+            if item then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 local function ReanchorDetailsWindows()
-    if not Perskan.db.profile.reanchorDetailsWindow or not C_AddOns.IsAddOnLoaded("Details") then
+    if (InCombatLockdown() and HasQuestItemInObjectiveTracker()) or not Perskan.db.profile.reanchorDetailsWindow or
+        not C_AddOns.IsAddOnLoaded("Details") then
         return
     end
 
@@ -152,6 +166,7 @@ local function ToggleDetailsWindows()
 end
 
 local function HookReanchorDetailsWindows()
+
     local function HookFrame(frame)
         if frame then
             frame:HookScript("OnShow", ToggleDetailsWindows)
