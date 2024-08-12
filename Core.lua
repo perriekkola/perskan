@@ -8,6 +8,7 @@ end
 
 local function AdjustActionBars()
     if InCombatLockdown() then
+        C_Timer.After(1, AdjustActionBars)
         return
     end
 
@@ -164,8 +165,13 @@ end
 function Perskan:OnEnable()
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", AdjustActionBars)
     self:RegisterEvent("SETTINGS_LOADED")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD", SetObjectiveTrackerHeight)
+    self:RegisterEvent("PLAYER_ENTERING_WORLD", OnEventPlayerEnteringWorld)
     self:RegisterEvent("PLAYER_LOGIN", InitializeCVars)
+end
+
+function Perskan:PLAYER_ENTERING_WORLD()
+    SetObjectiveTrackerHeight()
+    ResizeAllDetailsWindows()
 end
 
 function Perskan:SETTINGS_LOADED()
