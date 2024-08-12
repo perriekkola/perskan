@@ -65,23 +65,15 @@ hooksecurefunc(ObjectiveTrackerFrame, "SetHeight", function()
     SetObjectiveTrackerHeight()
 end)
 
-local framesToCheck = {DurabilityFrame, VehicleSeatIndicator, Boss1TargetFrame}
-
-for i = 1, 5 do
-    table.insert(framesToCheck, _G["ArenaEnemyMatchFrame" .. i])
-end
+local framesToCheck = {DurabilityFrame, VehicleSeatIndicator}
 
 local function ToggleDetailsWindows()
     local shouldHide = false
 
-    if not ObjectiveTrackerFrame:IsShown() then
-        shouldHide = false
-    else
-        for _, frame in ipairs(framesToCheck) do
-            if frame:IsShown() then
-                shouldHide = true
-                break
-            end
+    for _, frame in ipairs(framesToCheck) do
+        if frame:IsShown() then
+            shouldHide = true
+            break
         end
     end
 
@@ -100,11 +92,6 @@ local function HookToggleDetailsWindows()
             frame:HookScript("OnShow", ToggleDetailsWindows)
             frame:HookScript("OnHide", ToggleDetailsWindows)
         end
-    end
-
-    if ObjectiveTrackerFrame then
-        ObjectiveTrackerFrame:HookScript("OnShow", ToggleDetailsWindows)
-        ObjectiveTrackerFrame:HookScript("OnHide", ToggleDetailsWindows)
     end
 end
 
