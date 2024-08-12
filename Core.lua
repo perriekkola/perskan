@@ -16,6 +16,7 @@ local function AdjustActionBars()
 
     if settingsLoaded then
         local id, name = GetSpecializationInfo(GetSpecialization())
+
         local numActionBars = Perskan.db.profile[name] or 3
 
         for i = 2, 3 do
@@ -215,7 +216,6 @@ end
 function Perskan:OnEnable()
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", AdjustActionBars)
     self:RegisterEvent("QUEST_LOG_UPDATE", ToggleDetailsWindows)
-    self:RegisterEvent("PLAYER_ENTERING_WORLD", AdjustActionBars)
     self:RegisterEvent("GROUP_ROSTER_UPDATE", ResizeAllDetailsWindows)
     self:RegisterEvent("PLAYER_LOGIN", InitializeCVars)
     self:RegisterEvent("SETTINGS_LOADED")
