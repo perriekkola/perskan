@@ -65,13 +65,8 @@ hooksecurefunc(ObjectiveTrackerFrame, "SetHeight", function()
     SetObjectiveTrackerHeight()
 end)
 
-local framesToCheck = {DurabilityFrame, VehicleSeatIndicator, Boss1TargetFrame}
-
-for i = 1, 5 do
-    table.insert(framesToCheck, _G["ArenaEnemyMatchFrame" .. i])
-end
-
 local function ToggleDetailsWindows()
+    local framesToCheck = {DurabilityFrame, VehicleSeatIndicator, Boss1TargetFrame}
     local shouldHide = false
 
     for _, frame in ipairs(framesToCheck) do
