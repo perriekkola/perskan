@@ -1,4 +1,3 @@
-local addonName = ...
 local details = _G.Details
 local details1, details2
 
@@ -68,6 +67,10 @@ end)
 local framesToCheck = {DurabilityFrame, VehicleSeatIndicator}
 
 local function ToggleDetailsWindows()
+    if not C_AddOns.IsAddOnLoaded("Details") then
+        return
+    end
+
     local shouldHide = false
 
     for _, frame in ipairs(framesToCheck) do
@@ -95,6 +98,59 @@ local function HookToggleDetailsWindows()
     end
 end
 
+local function ReanchorDetailsWindows()
+    if InCombatLockdown() or not C_AddOns.IsAddOnLoaded("Details") then
+        return
+    end
+
+    details1.baseframe:SetWidth(254)
+    details2.baseframe:SetWidth(254)
+
+    if details1 then
+        details1.baseframe:ClearAllPoints()
+        details1.baseframe:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -2, 260)
+    end
+
+    if details2 then
+        details2.baseframe:ClearAllPoints()
+        details2.baseframe:SetPoint("TOPLEFT", details1.baseframe, "BOTTOMLEFT", 0, -20)
+    end
+end
+
+local function AdjustDetailsHeight(instance, maxHeight)
+    if not C_AddOns.IsAddOnLoaded("Details") then
+        return
+    end
+
+    if not instance then
+        return
+    end
+
+    local baseHeight = 32
+    local heightPerPlayer = 24
+
+    local numGroupMembers = IsActiveBattlefieldArena() and 6 or GetNumGroupMembers()
+    numGroupMembers = math.max(numGroupMembers, 1)
+    local newHeight = math.min(baseHeight + (numGroupMembers * heightPerPlayer), maxHeight)
+
+    local pos_table = instance:CreatePositionTable()
+    pos_table.h = newHeight
+    instance:RestorePositionFromPositionTable(pos_table)
+end
+
+local function ResizeAllDetailsWindows()
+    if InCombatLockdown() or not C_AddOns.IsAddOnLoaded("Details") then
+        return
+    end
+
+    local mainDetailsMaxHeight = 80
+    local secondaryDetailsMaxHeight = 134
+
+    AdjustDetailsHeight(details1, mainDetailsMaxHeight)
+    AdjustDetailsHeight(details2, secondaryDetailsMaxHeight)
+    ReanchorDetailsWindows()
+end
+
 local function InitializeCVars()
     local profile = self.db.profile
     SetCVar("Sound_AmbienceVolume", profile.soundAmbienceVolume)
@@ -120,4 +176,5 @@ function Perskan:SETTINGS_LOADED()
     HighlightStealableAuras()
     ScaleUIFrames()
     HookToggleDetailsWindows()
+    ResizeAllDetailsWindows()
 end
