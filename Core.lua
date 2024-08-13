@@ -112,14 +112,14 @@ local function ReanchorDetailsWindows()
     details1.baseframe:SetWidth(254)
     details2.baseframe:SetWidth(254)
 
-    if details1 then
-        details1.baseframe:ClearAllPoints()
-        details1.baseframe:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -2, 260)
-    end
-
     if details2 then
         details2.baseframe:ClearAllPoints()
-        details2.baseframe:SetPoint("TOPLEFT", details1.baseframe, "BOTTOMLEFT", 0, -20)
+        details2.baseframe:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -2, 100)
+    end
+
+    if details1 then
+        details1.baseframe:ClearAllPoints()
+        details1.baseframe:SetPoint("BOTTOMLEFT", details2.baseframe, "TOPLEFT", 0, 20)
     end
 end
 
@@ -133,7 +133,7 @@ local function AdjustDetailsHeight(instance, maxHeight, isHealingWindow)
         return
     end
 
-    local baseHeight = 28
+    local baseHeight = 26
     local heightPerPlayer = 24
 
     local numGroupMembers = IsActiveBattlefieldArena() and 6 or GetNumGroupMembers()
