@@ -53,34 +53,6 @@ local function HighlightStealableAuras()
     end
 end
 
--- Hide Details when tracker is too tall
-local function ToggleDetailsWindows()
-    if not details1 or not details2 then
-        return
-    end
-
-    if not ObjectiveTrackerFrame:IsVisible() then
-        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
-        return
-    end
-
-    C_Timer.After(0.1, function()
-        if not ObjectiveTrackerFrame:IsVisible() then
-            return
-        end
-
-        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
-
-        if trackerHeight > 310 then
-            details1:HideWindow()
-            details2:HideWindow()
-        else
-            details1:ShowWindow()
-            details2:ShowWindow()
-        end
-    end)
-end
-
 -- Reanchor Details and set width to Perskan defaults
 local function ReanchorDetailsWindows()
     print("Reanchoring Details windows")
@@ -135,6 +107,36 @@ local function ReanchorDetailsWindows()
         details2.baseframe:ClearAllPoints()
         details2.baseframe:SetPoint("TOPLEFT", details1.baseframe, "BOTTOMLEFT", 0, -20)
     end
+end
+
+-- Hide Details when tracker is too tall
+local function ToggleDetailsWindows()
+    if not details1 or not details2 then
+        return
+    end
+
+    if not ObjectiveTrackerFrame:IsVisible() then
+        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
+        return
+    end
+
+    C_Timer.After(0.1, function()
+        if not ObjectiveTrackerFrame:IsVisible() then
+            return
+        end
+
+        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
+
+        if trackerHeight > 310 then
+            details1:HideWindow()
+            details2:HideWindow()
+        else
+            details1:ShowWindow()
+            details2:ShowWindow()
+        end
+
+        ReanchorDetailsWindows()
+    end)
 end
 
 -- Resize Details windows to fit group size
@@ -268,7 +270,6 @@ end
 
 local function ObjectiveTrackerMods()
     ToggleDetailsWindows()
-    ReanchorDetailsWindows()
 end
 
 -- Events
@@ -286,7 +287,6 @@ end
 
 function Perskan:PLAYER_ENTERING_WORLD()
     ResizeAllDetailsWindows()
-    ReanchorDetailsWindows()
 end
 
 function Perskan:SETTINGS_LOADED()
