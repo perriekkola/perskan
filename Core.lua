@@ -53,58 +53,37 @@ local function HighlightStealableAuras()
     end
 end
 
--- Set ObjectiveTrackerHeight to smaller than edit mode settings
-local isSettingHeight = false
-
-local function SetObjectiveTrackerHeight()
-    if not isSettingHeight then
-        isSettingHeight = true
-        ObjectiveTrackerFrame:SetHeight(340)
-        isSettingHeight = false
-    end
-end
-
-hooksecurefunc(ObjectiveTrackerFrame, "SetHeight", function()
-    SetObjectiveTrackerHeight()
-end)
-
--- Hide Details when some frames are shown to prevent overlap with objective tracker
-local framesToCheck = {DurabilityFrame, VehicleSeatIndicator}
-
+-- Hide Details when tracker is too tall
 local function ToggleDetailsWindows()
-    if not C_AddOns.IsAddOnLoaded("Details") then
+    if not details1 or not details2 then
         return
     end
 
-    local shouldHide = false
+    if not ObjectiveTrackerFrame:IsVisible() then
+        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
+        return
+    end
 
-    for _, frame in ipairs(framesToCheck) do
-        if frame:IsShown() then
-            shouldHide = true
-            break
+    C_Timer.After(0.1, function()
+        if not ObjectiveTrackerFrame:IsVisible() then
+            return
         end
-    end
 
-    if shouldHide then
-        details1:HideWindow()
-        details2:HideWindow()
-    else
-        details1:ShowWindow()
-        details2:ShowWindow()
-    end
-end
+        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
 
-local function HookToggleDetailsWindows()
-    for _, frame in ipairs(framesToCheck) do
-        if frame then
-            frame:HookScript("OnShow", ToggleDetailsWindows)
-            frame:HookScript("OnHide", ToggleDetailsWindows)
+        if trackerHeight > 310 then
+            details1:HideWindow()
+            details2:HideWindow()
+        else
+            details1:ShowWindow()
+            details2:ShowWindow()
         end
-    end
+    end)
 end
 
 -- Reanchor Details and set width to Perskan defaults
 local function ReanchorDetailsWindows()
+    print("Reanchoring Details windows")
     if not C_AddOns.IsAddOnLoaded("Details") then
         return
     end
@@ -112,14 +91,49 @@ local function ReanchorDetailsWindows()
     details1.baseframe:SetWidth(254)
     details2.baseframe:SetWidth(254)
 
-    if details2 then
-        details2.baseframe:ClearAllPoints()
-        details2.baseframe:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -2, 100)
+    local anchor, x
+    local highestArenaFrame = nil
+
+    for i = 1, 5 do
+        local frame = _G["ArenaEnemyMatchFrame" .. i]
+        if frame and frame:IsVisible() then
+            highestArenaFrame = frame
+        end
+    end
+
+    if ObjectiveTrackerFrame:IsVisible() then
+        if not QuestObjectiveTracker:IsVisible() then
+            anchor = ObjectiveTrackerFrame.Header
+            x = 2
+        else
+            anchor = ObjectiveTrackerFrame.NineSlice.Center
+            x = 10
+        end
+    elseif DurabilityFrame:IsVisible() then
+        anchor = DurabilityFrame
+        x = 2
+    elseif Boss1TargetFrame:IsVisible() then
+        anchor = BossTargetFrameContainer
+        x = 2
+    elseif VehicleSeatIndicator:IsVisible() then
+        anchor = VehicleSeatIndicator
+        x = 2
+    elseif highestArenaFrame then
+        anchor = highestArenaFrame
+        x = 20
+    else
+        anchor = MinimapCompassTexture
+        x = -1
     end
 
     if details1 then
         details1.baseframe:ClearAllPoints()
-        details1.baseframe:SetPoint("BOTTOMLEFT", details2.baseframe, "TOPLEFT", 0, 20)
+        details1.baseframe:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", x, -50)
+    end
+
+    if details2 then
+        details2.baseframe:ClearAllPoints()
+        details2.baseframe:SetPoint("TOPLEFT", details1.baseframe, "BOTTOMLEFT", 0, -20)
     end
 end
 
@@ -252,17 +266,27 @@ local function InitializeCVars()
     SetCVar("cameraDistanceMaxZoomFactor", profile.cameraDistanceMaxZoomFactor)
 end
 
+local function ObjectiveTrackerMods()
+    ToggleDetailsWindows()
+    ReanchorDetailsWindows()
+end
+
 -- Events
 function Perskan:OnEnable()
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", AdjustActionBars)
     self:RegisterEvent("SETTINGS_LOADED")
-    self:RegisterEvent("PLAYER_ENTERING_WORLD", OnEventPlayerEnteringWorld)
+    self:RegisterEvent("PLAYER_ENTERING_WORLD")
     self:RegisterEvent("PLAYER_LOGIN", InitializeCVars)
+
+    -- ObjectiveTrackerFrame events
+    self:RegisterEvent("QUEST_WATCH_UPDATE", ObjectiveTrackerMods)
+    self:RegisterEvent("QUEST_WATCH_LIST_CHANGED", ObjectiveTrackerMods)
+    self:RegisterEvent("CONTENT_TRACKING_UPDATE", ObjectiveTrackerMods)
 end
 
 function Perskan:PLAYER_ENTERING_WORLD()
-    SetObjectiveTrackerHeight()
     ResizeAllDetailsWindows()
+    ReanchorDetailsWindows()
 end
 
 function Perskan:SETTINGS_LOADED()
@@ -272,7 +296,6 @@ function Perskan:SETTINGS_LOADED()
     AdjustActionBars()
     HighlightStealableAuras()
     ScaleUIFrames()
-    HookToggleDetailsWindows()
     ResizeAllDetailsWindows()
     CreateToggleText()
 end
