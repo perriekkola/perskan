@@ -11,25 +11,27 @@ end
 
 -- Adjust amount of action bars according to specialization
 local function AdjustActionBars()
+    print("Adjusting action bars")
+
     if InCombatLockdown() then
         C_Timer.After(1, AdjustActionBars)
         return
     end
 
-    if settingsLoaded then
-        local id, name = GetSpecializationInfo(GetSpecialization())
+    local id, name = GetSpecializationInfo(GetSpecialization())
 
-        local numActionBars = Perskan.db.profile[name] or 3
+    local numActionBars = Perskan.db.profile[name] or 3
 
-        for i = 2, 3 do
-            local actionBarSetting = "PROXY_SHOW_ACTIONBAR_" .. i
-            Settings.SetValue(actionBarSetting, i <= numActionBars)
-        end
+    for i = 2, 3 do
+        local actionBarSetting = "PROXY_SHOW_ACTIONBAR_" .. i
+        Settings.SetValue(actionBarSetting, i <= numActionBars)
     end
 end
 
 -- Scale various UI frames
 local function ScaleUIFrames()
+    print("Scaling UI frames")
+
     EncounterBar:SetScale(Perskan.db.profile.encounterBarScale or 0.8)
     ObjectiveTrackerFrame:SetScale(Perskan.db.profile.objectiveTrackerScale or 1)
 end
@@ -55,10 +57,11 @@ end
 
 -- Reanchor Details and set width to Perskan defaults
 local function ReanchorDetailsWindows()
-    print("Reanchoring Details windows")
     if not C_AddOns.IsAddOnLoaded("Details") then
         return
     end
+
+    print("Reanchoring Details windows")
 
     details1.baseframe:SetWidth(254)
     details2.baseframe:SetWidth(254)
@@ -74,7 +77,7 @@ local function ReanchorDetailsWindows()
     end
 
     if ObjectiveTrackerFrame:IsVisible() then
-        if not QuestObjectiveTracker:IsVisible() then
+        if not QuestObjectiveTracker:IsVisible() and not CampaignQuestObjectiveTracker:IsVisible() then
             anchor = ObjectiveTrackerFrame.Header
             x = 2
         else
@@ -107,36 +110,6 @@ local function ReanchorDetailsWindows()
         details2.baseframe:ClearAllPoints()
         details2.baseframe:SetPoint("TOPLEFT", details1.baseframe, "BOTTOMLEFT", 0, -20)
     end
-end
-
--- Hide Details when tracker is too tall
-local function ToggleDetailsWindows()
-    if not details1 or not details2 then
-        return
-    end
-
-    if not ObjectiveTrackerFrame:IsVisible() then
-        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
-        return
-    end
-
-    C_Timer.After(0.1, function()
-        if not ObjectiveTrackerFrame:IsVisible() then
-            return
-        end
-
-        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
-
-        if trackerHeight > 310 then
-            details1:HideWindow()
-            details2:HideWindow()
-        else
-            details1:ShowWindow()
-            details2:ShowWindow()
-        end
-
-        ReanchorDetailsWindows()
-    end)
 end
 
 -- Resize Details windows to fit group size
@@ -184,9 +157,42 @@ local function ResizeAllDetailsWindows()
         return
     end
 
+    print("Resizing Details windows")
+
     AdjustDetailsHeight(details1, mainDetailsMaxHeight, true)
     AdjustDetailsHeight(details2, secondaryDetailsMaxHeight)
     ReanchorDetailsWindows()
+end
+
+-- Hide Details when tracker is too tall
+local function ToggleDetailsWindows()
+    if not details1 or not details2 then
+        return
+    end
+
+    if not ObjectiveTrackerFrame:IsVisible() then
+        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
+        return
+    end
+
+    C_Timer.After(0.1, function()
+        if not ObjectiveTrackerFrame:IsVisible() then
+            return
+        end
+
+        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
+
+        if trackerHeight > 310 then
+            details1:HideWindow()
+            details2:HideWindow()
+        else
+            details1:ShowWindow()
+            details2:ShowWindow()
+        end
+
+        ReanchorDetailsWindows()
+        ResizeAllDetailsWindows()
+    end)
 end
 
 -- Function to expand Details windows to max size
@@ -259,6 +265,7 @@ end
 
 -- Set CVars according to Perskan's preferences
 local function InitializeCVars()
+    AdjustActionBars()
     local profile = self.db.profile
     SetCVar("Sound_AmbienceVolume", profile.soundAmbienceVolume)
     SetCVar("cameraYawMoveSpeed", profile.cameraYawMoveSpeed)
@@ -268,34 +275,32 @@ local function InitializeCVars()
     SetCVar("cameraDistanceMaxZoomFactor", profile.cameraDistanceMaxZoomFactor)
 end
 
-local function ObjectiveTrackerMods()
-    ToggleDetailsWindows()
-end
-
 -- Events
 function Perskan:OnEnable()
+    -- HighlightStealableAuras()
+    ScaleUIFrames()
+    -- ToggleDetailsWindows()
+    -- CreateToggleText()
+
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", AdjustActionBars)
-    self:RegisterEvent("SETTINGS_LOADED")
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
-    self:RegisterEvent("PLAYER_LOGIN", InitializeCVars)
 
     -- ObjectiveTrackerFrame events
-    self:RegisterEvent("QUEST_WATCH_UPDATE", ObjectiveTrackerMods)
-    self:RegisterEvent("QUEST_WATCH_LIST_CHANGED", ObjectiveTrackerMods)
-    self:RegisterEvent("CONTENT_TRACKING_UPDATE", ObjectiveTrackerMods)
+    self:RegisterEvent("QUEST_WATCH_UPDATE", ToggleDetailsWindows)
+    self:RegisterEvent("QUEST_WATCH_LIST_CHANGED", ToggleDetailsWindows)
+    self:RegisterEvent("CONTENT_TRACKING_UPDATE", ToggleDetailsWindows)
 end
 
 function Perskan:PLAYER_ENTERING_WORLD()
-    ResizeAllDetailsWindows()
-end
-
-function Perskan:SETTINGS_LOADED()
-    settingsLoaded = true
-    CreateSpecSliders(AdjustActionBars)
-
-    AdjustActionBars()
-    HighlightStealableAuras()
+    InitializeCVars()
     ScaleUIFrames()
-    ResizeAllDetailsWindows()
-    CreateToggleText()
+    AdjustActionBars()
 end
+
+SettingsPanel:HookScript("OnShow", function()
+    CreateSpecSliders(AdjustActionBars)
+end)
+
+--[[ TO-DO:
+1. Find a better event than PLAYER_LOGIN to make functions run
+2. Handle minimizing all objectives event to reanchor ]]
