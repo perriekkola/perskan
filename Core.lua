@@ -11,8 +11,6 @@ end
 
 -- Adjust amount of action bars according to specialization
 local function AdjustActionBars()
-    print("Adjusting action bars")
-
     if InCombatLockdown() then
         C_Timer.After(1, AdjustActionBars)
         return
@@ -30,8 +28,6 @@ end
 
 -- Scale various UI frames
 local function ScaleUIFrames()
-    print("Scaling UI frames")
-
     EncounterBar:SetScale(Perskan.db.profile.encounterBarScale or 0.8)
     ObjectiveTrackerFrame:SetScale(Perskan.db.profile.objectiveTrackerScale or 1)
 end
@@ -43,7 +39,7 @@ local function HighlightStealableAuras()
             local buffSize = buff:GetHeight()
             local data = C_UnitAuras.GetAuraDataByAuraInstanceID(buff.unit, buff.auraInstanceID)
             buff.Stealable:SetShown(data.isStealable or data.dispelName == "Magic")
-            local stealableSize = buffSize + 2
+            local stealableSize = buffSize + 4
             buff.Stealable:SetSize(stealableSize, stealableSize)
             buff.Stealable:SetPoint("CENTER", buff, "CENTER")
         end
@@ -60,8 +56,6 @@ local function ReanchorDetailsWindows()
     if not C_AddOns.IsAddOnLoaded("Details") then
         return
     end
-
-    print("Reanchoring Details windows")
 
     details1.baseframe:SetWidth(254)
     details2.baseframe:SetWidth(254)
@@ -112,6 +106,10 @@ local function ReanchorDetailsWindows()
     end
 end
 
+ObjectiveTrackerFrame.Header.MinimizeButton:HookScript("OnClick", ReanchorDetailsWindows)
+ObjectiveTrackerFrame:HookScript("OnShow", ReanchorDetailsWindows)
+ObjectiveTrackerFrame:HookScript("OnHide", ReanchorDetailsWindows)
+
 -- Resize Details windows to fit group size
 local function AdjustDetailsHeight(instance, maxHeight, isHealingWindow)
     if not C_AddOns.IsAddOnLoaded("Details") then
@@ -156,8 +154,6 @@ local function ResizeAllDetailsWindows()
     if not C_AddOns.IsAddOnLoaded("Details") then
         return
     end
-
-    print("Resizing Details windows")
 
     AdjustDetailsHeight(details1, mainDetailsMaxHeight, true)
     AdjustDetailsHeight(details2, secondaryDetailsMaxHeight)
@@ -264,8 +260,7 @@ local function CreateToggleText()
 end
 
 -- Set CVars according to Perskan's preferences
-local function InitializeCVars()
-    AdjustActionBars()
+local function InitializeCVars(self)
     local profile = self.db.profile
     SetCVar("Sound_AmbienceVolume", profile.soundAmbienceVolume)
     SetCVar("cameraYawMoveSpeed", profile.cameraYawMoveSpeed)
@@ -277,10 +272,10 @@ end
 
 -- Events
 function Perskan:OnEnable()
-    -- HighlightStealableAuras()
+    HighlightStealableAuras()
     ScaleUIFrames()
-    -- ToggleDetailsWindows()
-    -- CreateToggleText()
+    ToggleDetailsWindows()
+    CreateToggleText()
 
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", AdjustActionBars)
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -292,8 +287,7 @@ function Perskan:OnEnable()
 end
 
 function Perskan:PLAYER_ENTERING_WORLD()
-    InitializeCVars()
-    ScaleUIFrames()
+    InitializeCVars(self)
     AdjustActionBars()
 end
 
