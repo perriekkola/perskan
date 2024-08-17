@@ -53,12 +53,14 @@ end
 
 -- Reanchor Details and set width to Perskan defaults
 local function ReanchorDetailsWindows()
-    if not C_AddOns.IsAddOnLoaded("Details") then
+    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
         return
     end
 
-    details1.baseframe:SetWidth(254)
-    details2.baseframe:SetWidth(254)
+    local detailsWidth = 270
+
+    details1.baseframe:SetWidth(detailsWidth)
+    details2.baseframe:SetWidth(detailsWidth)
 
     local anchor, x
     local highestArenaFrame = nil
@@ -71,29 +73,33 @@ local function ReanchorDetailsWindows()
     end
 
     if ObjectiveTrackerFrame:IsVisible() then
-        if not QuestObjectiveTracker:IsVisible() and not CampaignQuestObjectiveTracker:IsVisible() then
+        if not QuestObjectiveTracker:IsVisible() and not CampaignQuestObjectiveTracker:IsVisible() and
+            not WorldQuestObjectiveTracker:IsVisible() and not AchievementObjectiveTracker:IsVisible() and
+            not AdventureObjectiveTracker:IsVisible() and not ScenarioObjectiveTracker:IsVisible() then
             anchor = ObjectiveTrackerFrame.Header
             x = 2
         else
             anchor = ObjectiveTrackerFrame.NineSlice.Center
-            x = 10
+            x = 18
         end
     elseif DurabilityFrame:IsVisible() then
         anchor = DurabilityFrame
-        x = 2
+        x = 4
     elseif Boss1TargetFrame:IsVisible() then
         anchor = BossTargetFrameContainer
-        x = 2
+        x = 4
     elseif VehicleSeatIndicator:IsVisible() then
         anchor = VehicleSeatIndicator
-        x = 2
+        x = 4
     elseif highestArenaFrame then
         anchor = highestArenaFrame
         x = 20
     else
         anchor = MinimapCompassTexture
-        x = -1
+        x = 1
     end
+
+    print(anchor:GetName(), x)
 
     if details1 then
         details1.baseframe:ClearAllPoints()
@@ -109,10 +115,18 @@ end
 ObjectiveTrackerFrame.Header.MinimizeButton:HookScript("OnClick", ReanchorDetailsWindows)
 ObjectiveTrackerFrame:HookScript("OnShow", ReanchorDetailsWindows)
 ObjectiveTrackerFrame:HookScript("OnHide", ReanchorDetailsWindows)
+VehicleSeatIndicator:HookScript("OnShow", ReanchorDetailsWindows)
+VehicleSeatIndicator:HookScript("OnHide", ReanchorDetailsWindows)
+DurabilityFrame:HookScript("OnShow", ReanchorDetailsWindows)
+DurabilityFrame:HookScript("OnHide", ReanchorDetailsWindows)
+Boss1TargetFrame:HookScript("OnShow", ReanchorDetailsWindows)
+Boss1TargetFrame:HookScript("OnHide", ReanchorDetailsWindows)
+ArenaEnemyMatchFrame:HookScript("OnShow", ReanchorDetailsWindows)
+ArenaEnemyMatchFrame:HookScript("OnHide", ReanchorDetailsWindows)
 
 -- Resize Details windows to fit group size
 local function AdjustDetailsHeight(instance, maxHeight, isHealingWindow)
-    if not C_AddOns.IsAddOnLoaded("Details") then
+    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
         return
     end
 
@@ -128,8 +142,18 @@ local function AdjustDetailsHeight(instance, maxHeight, isHealingWindow)
 
     local numHealers = 0
     if isHealingWindow then
-        for i = 1, numGroupMembers do
+        local numHealers = 0
+        local numGroupMembers = GetNumGroupMembers()
+
+        for i = 1, numGroupMembers - 1 do
             local role = UnitGroupRolesAssigned("party" .. i)
+            if role == "HEALER" then
+                numHealers = numHealers + 1
+            end
+        end
+
+        for i = 1, numGroupMembers do
+            local role = UnitGroupRolesAssigned("raid" .. i)
             if role == "HEALER" then
                 numHealers = numHealers + 1
             end
@@ -138,7 +162,7 @@ local function AdjustDetailsHeight(instance, maxHeight, isHealingWindow)
 
     local newHeight
     if isHealingWindow then
-        newHeight = baseHeight + (numHealers * heightPerPlayer)
+        newHeight = baseHeight + ((numHealers + 1) * heightPerPlayer)
     else
         newHeight = baseHeight + (numGroupMembers * heightPerPlayer)
     end
@@ -151,7 +175,7 @@ local function AdjustDetailsHeight(instance, maxHeight, isHealingWindow)
 end
 
 local function ResizeAllDetailsWindows()
-    if not C_AddOns.IsAddOnLoaded("Details") then
+    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
         return
     end
 
@@ -162,7 +186,7 @@ end
 
 -- Hide Details when tracker is too tall
 local function ToggleDetailsWindows()
-    if not details1 or not details2 then
+    if not details1 or not details2 or not Perskan.db.profile.reanchorDetailsWindows then
         return
     end
 
@@ -193,7 +217,7 @@ end
 
 -- Function to expand Details windows to max size
 local function ExpandDetailsWindows()
-    if not C_AddOns.IsAddOnLoaded("Details") then
+    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
         return
     end
 
@@ -216,7 +240,7 @@ end
 
 -- Create the Expand/Minimize text
 local function CreateToggleText()
-    if not details2 then
+    if not details2 or not Perskan.db.profile.reanchorDetailsWindows then
         return
     end
 
