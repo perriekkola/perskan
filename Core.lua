@@ -9,6 +9,9 @@ if details then
     details2 = details:GetInstance(2)
 end
 
+local details1Expanded = false
+local details2Expanded = false
+
 -- Adjust amount of action bars according to specialization
 local function AdjustActionBars()
     if InCombatLockdown() then
@@ -57,7 +60,7 @@ local function ReanchorDetailsWindows()
         return
     end
 
-    local detailsWidth = 268
+    local detailsWidth = 260
 
     details1.baseframe:SetWidth(detailsWidth)
     details2.baseframe:SetWidth(detailsWidth)
@@ -131,7 +134,7 @@ local function AdjustDetailsHeight(instance, maxHeight, isHealingWindow)
         return
     end
 
-    local baseHeight = 26
+    local baseHeight = 28
     local heightPerPlayer = 24
 
     local numGroupMembers = IsActiveBattlefieldArena() and 6 or GetNumGroupMembers()
@@ -183,8 +186,13 @@ local function ResizeAllDetailsWindows()
         return
     end
 
-    AdjustDetailsHeight(details1, mainDetailsMaxHeight, true)
-    AdjustDetailsHeight(details2, secondaryDetailsMaxHeight)
+    if not details1Expanded then
+        AdjustDetailsHeight(details1, mainDetailsMaxHeight, true)
+    end
+    if not details2Expanded then
+        AdjustDetailsHeight(details2, secondaryDetailsMaxHeight)
+    end
+
     ReanchorDetailsWindows()
 end
 
@@ -217,18 +225,18 @@ local function ToggleDetailsWindows()
 end
 
 -- Function to expand Details windows to max size
-local function ExpandDetailsWindows()
+local function ExpandDetailsWindow(parentFrame)
     if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
         return
     end
 
-    if details1 then
+    if parentFrame == details1 then
         local pos_table1 = details1:CreatePositionTable()
         pos_table1.h = mainDetailsMaxHeight
         details1:RestorePositionFromPositionTable(pos_table1)
     end
 
-    if details2 then
+    if parentFrame == details2 then
         local pos_table2 = details2:CreatePositionTable()
         pos_table2.h = secondaryDetailsMaxHeight
         details2:RestorePositionFromPositionTable(pos_table2)
@@ -237,49 +245,79 @@ local function ExpandDetailsWindows()
     ReanchorDetailsWindows()
 end
 
--- Create the Expand/Minimize text
-local function CreateToggleText()
-    if not Perskan.db.profile.reanchorDetailsWindows or not details1.baseframe or not details2.baseframe then
+-- Create the Expand/Minimize button
+local function CreateToggleButton(parentFrame, initialState)
+    if not Perskan.db.profile.reanchorDetailsWindows or not parentFrame then
         return
     end
 
-    local textFrame = CreateFrame("Frame", "DetailsToggleTextFrame", details2.baseframe)
-    textFrame:SetFrameStrata("MEDIUM")
-    textFrame:SetSize(200, 20)
-    textFrame:SetPoint("BOTTOM", details2.baseframe, "BOTTOM", 0, -3)
-    textFrame:EnableMouse(true)
+    local button =
+        CreateFrame("Button", "DetailsToggleButton" .. parentFrame.baseframe:GetName(), parentFrame.baseframe)
+    button:SetFrameStrata("MEDIUM")
+    button:SetFrameLevel(parentFrame.baseframe:GetFrameLevel() + 1)
+    button:SetSize(16, 18)
+    button:SetPoint("TOPRIGHT", parentFrame.baseframe, "TOPRIGHT", -8, 26)
+    button:EnableMouse(true)
 
-    local text = textFrame:CreateFontString("DetailsToggleText", "OVERLAY", "GameFontNormal")
-    text:SetAllPoints()
-    text:SetText("Expand")
-    text:SetAlpha(0)
-    text:SetFont(text:GetFont(), 12)
+    local texCoords = {
+        minus = {952 / 1024, 985 / 1024, 59 / 512, 96 / 512},
+        minusPushed = {905 / 1024, 938 / 1024, 122 / 512, 160 / 512},
+        plus = {905 / 1024, 938 / 1024, 161 / 512, 199 / 512},
+        plusPushed = {905 / 1024, 938 / 1024, 202 / 512, 242 / 512},
+        highlight = {943 / 1024, 976 / 1024, 161 / 512, 200 / 512}
+    }
 
-    local function UpdateText()
+    local texture = button:CreateTexture(nil, "BACKGROUND")
+    texture:SetTexture("Interface\\QUESTFRAME\\QuestTracker2x")
+    texture:SetAllPoints(button)
+    texture:SetTexCoord(unpack(texCoords.minus))
+    button:SetNormalTexture(texture)
+
+    local pushedTexture = button:CreateTexture(nil, "ARTWORK")
+    pushedTexture:SetTexture("Interface\\QUESTFRAME\\QuestTracker2x")
+    pushedTexture:SetAllPoints(button)
+    pushedTexture:SetTexCoord(unpack(texCoords.minusPushed))
+    button:SetPushedTexture(pushedTexture)
+
+    local highlightTexture = button:CreateTexture(nil, "HIGHLIGHT")
+    highlightTexture:SetTexture("Interface\\QUESTFRAME\\QuestTracker2x")
+    highlightTexture:SetAllPoints(button)
+    highlightTexture:SetTexCoord(unpack(texCoords.highlight))
+    highlightTexture:SetBlendMode("ADD")
+    button:SetHighlightTexture(highlightTexture)
+
+    local isExpanded = initialState
+
+    local function UpdateButtonTextures()
         if isExpanded then
-            text:SetText("Minimize")
+            texture:SetTexCoord(unpack(texCoords.minus))
+            pushedTexture:SetTexCoord(unpack(texCoords.minusPushed))
         else
-            text:SetText("Expand")
+            texture:SetTexCoord(unpack(texCoords.plus))
+            pushedTexture:SetTexCoord(unpack(texCoords.plusPushed))
         end
     end
 
-    textFrame:SetScript("OnMouseDown", function()
+    button:SetScript("OnClick", function()
         isExpanded = not isExpanded
-        UpdateText()
+        UpdateButtonTextures()
+
+        if parentFrame == details1 then
+            details1Expanded = isExpanded
+        end
+
+        if parentFrame == details2 then
+            details2Expanded = isExpanded
+        end
+
         if isExpanded then
-            ExpandDetailsWindows()
+            ExpandDetailsWindow(parentFrame)
         else
             ResizeAllDetailsWindows()
         end
     end)
 
-    textFrame:SetScript("OnEnter", function()
-        text:SetAlpha(1)
-    end)
-
-    textFrame:SetScript("OnLeave", function()
-        text:SetAlpha(0)
-    end)
+    UpdateButtonTextures()
 end
 
 -- Set CVars according to Perskan's preferences
@@ -311,7 +349,9 @@ function Perskan:OnEnable()
     HighlightStealableAuras()
     ScaleUIFrames()
     ToggleDetailsWindows()
-    CreateToggleText()
+    -- CreateToggleText()
+    CreateToggleButton(details1, details1Expanded)
+    CreateToggleButton(details2, details2Expanded)
 
     self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
