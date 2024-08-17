@@ -135,13 +135,16 @@ local function AdjustDetailsHeight(instance, maxHeight, isHealingWindow)
 
     local numHealers = 0
     if isHealingWindow then
-        if not IsInRaid() then
-            local role = UnitGroupRolesAssigned("player")
+        local specIndex = GetSpecialization()
+        if specIndex then
+            local role = GetSpecializationRole(specIndex)
             if role == "HEALER" then
                 numHealers = numHealers + 1
             end
+        end
 
-            for i = 1, numGroupMembers do
+        if not IsInRaid() then
+            for i = 1, numGroupMembers - 1 do
                 local role = UnitGroupRolesAssigned("party" .. i)
                 if role == "HEALER" then
                     numHealers = numHealers + 1
@@ -205,8 +208,8 @@ local function ToggleDetailsWindows()
         else
             details1:ShowWindow()
             details2:ShowWindow()
-            ReanchorDetailsWindows()
             ResizeAllDetailsWindows()
+            ReanchorDetailsWindows()
         end
     end)
 end
@@ -217,14 +220,12 @@ local function ExpandDetailsWindows()
         return
     end
 
-    -- Expand details1
     if details1 then
         local pos_table1 = details1:CreatePositionTable()
         pos_table1.h = mainDetailsMaxHeight
         details1:RestorePositionFromPositionTable(pos_table1)
     end
 
-    -- Expand details2
     if details2 then
         local pos_table2 = details2:CreatePositionTable()
         pos_table2.h = secondaryDetailsMaxHeight
@@ -297,7 +298,7 @@ function Perskan:OnEnable()
     ToggleDetailsWindows()
     CreateToggleText()
 
-    self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", AdjustActionBars)
+    self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
 
     -- ObjectiveTrackerFrame events
@@ -310,14 +311,21 @@ function Perskan:OnEnable()
     self:RegisterEvent("QUEST_WATCH_LIST_CHANGED", ToggleDetailsWindows)
     self:RegisterEvent("CONTENT_TRACKING_UPDATE", ToggleDetailsWindows)
 
-    -- Register events for role changes
+    -- Register events for role changes and group changes
     self:RegisterEvent("GROUP_ROSTER_UPDATE", ToggleDetailsWindows)
     self:RegisterEvent("PLAYER_ROLES_ASSIGNED", ToggleDetailsWindows)
+    self:RegisterEvent("GROUP_LEFT", ToggleDetailsWindows)
+    self:RegisterEvent("GROUP_JOINED", ToggleDetailsWindows)
 end
 
 function Perskan:PLAYER_ENTERING_WORLD()
     InitializeCVars(self)
     AdjustActionBars()
+end
+
+function Perskan:ACTIVE_TALENT_GROUP_CHANGED()
+    AdjustActionBars()
+    ResizeAllDetailsWindows()
 end
 
 SettingsPanel:HookScript("OnShow", function()
