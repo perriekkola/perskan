@@ -53,11 +53,12 @@ end
 
 -- Reanchor Details and set width to Perskan defaults
 local function ReanchorDetailsWindows()
-    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
+    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows or not details1.baseframe or
+        not details2.baseframe then
         return
     end
 
-    local detailsWidth = 270
+    local detailsWidth = 268
 
     details1.baseframe:SetWidth(detailsWidth)
     details2.baseframe:SetWidth(detailsWidth)
@@ -99,15 +100,11 @@ local function ReanchorDetailsWindows()
         x = 1
     end
 
-    if details1 then
-        details1.baseframe:ClearAllPoints()
-        details1.baseframe:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", x, -50)
-    end
+    details1.baseframe:ClearAllPoints()
+    details1.baseframe:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", x, -50)
 
-    if details2 then
-        details2.baseframe:ClearAllPoints()
-        details2.baseframe:SetPoint("TOPLEFT", details1.baseframe, "BOTTOMLEFT", 0, -20)
-    end
+    details2.baseframe:ClearAllPoints()
+    details2.baseframe:SetPoint("TOPLEFT", details1.baseframe, "BOTTOMLEFT", 0, -20)
 end
 
 ObjectiveTrackerFrame.Header.MinimizeButton:HookScript("OnClick", ReanchorDetailsWindows)
@@ -126,11 +123,7 @@ end
 
 -- Resize Details windows to fit group size
 local function AdjustDetailsHeight(instance, maxHeight, isHealingWindow)
-    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
-        return
-    end
-
-    if not instance then
+    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows or not instance then
         return
     end
 
@@ -142,27 +135,31 @@ local function AdjustDetailsHeight(instance, maxHeight, isHealingWindow)
 
     local numHealers = 0
     if isHealingWindow then
-        local numHealers = 0
-        local numGroupMembers = GetNumGroupMembers()
-
-        for i = 1, numGroupMembers - 1 do
-            local role = UnitGroupRolesAssigned("party" .. i)
+        if not IsInRaid() then
+            local role = UnitGroupRolesAssigned("player")
             if role == "HEALER" then
                 numHealers = numHealers + 1
             end
-        end
 
-        for i = 1, numGroupMembers do
-            local role = UnitGroupRolesAssigned("raid" .. i)
-            if role == "HEALER" then
-                numHealers = numHealers + 1
+            for i = 1, numGroupMembers do
+                local role = UnitGroupRolesAssigned("party" .. i)
+                if role == "HEALER" then
+                    numHealers = numHealers + 1
+                end
+            end
+        else
+            for i = 1, numGroupMembers do
+                local role = UnitGroupRolesAssigned("raid" .. i)
+                if role == "HEALER" then
+                    numHealers = numHealers + 1
+                end
             end
         end
     end
 
     local newHeight
     if isHealingWindow then
-        newHeight = baseHeight + ((numHealers + 1) * heightPerPlayer)
+        newHeight = baseHeight + (numHealers * heightPerPlayer)
     else
         newHeight = baseHeight + (numGroupMembers * heightPerPlayer)
     end
@@ -186,7 +183,7 @@ end
 
 -- Hide Details when tracker is too tall
 local function ToggleDetailsWindows()
-    if not details1 or not details2 or not Perskan.db.profile.reanchorDetailsWindows then
+    if not Perskan.db.profile.reanchorDetailsWindows then
         return
     end
 
@@ -202,16 +199,15 @@ local function ToggleDetailsWindows()
 
         local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
 
-        if trackerHeight > 310 then
+        if trackerHeight > 350 then
             details1:HideWindow()
             details2:HideWindow()
         else
             details1:ShowWindow()
             details2:ShowWindow()
+            ReanchorDetailsWindows()
+            ResizeAllDetailsWindows()
         end
-
-        ReanchorDetailsWindows()
-        ResizeAllDetailsWindows()
     end)
 end
 
@@ -240,7 +236,7 @@ end
 
 -- Create the Expand/Minimize text
 local function CreateToggleText()
-    if not details2 or not Perskan.db.profile.reanchorDetailsWindows then
+    if not Perskan.db.profile.reanchorDetailsWindows or not details1.baseframe or not details2.baseframe then
         return
     end
 
@@ -305,9 +301,18 @@ function Perskan:OnEnable()
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
 
     -- ObjectiveTrackerFrame events
+    self:RegisterEvent("SCENARIO_UPDATE", ToggleDetailsWindows)
+    self:RegisterEvent("SCENARIO_CRITERIA_UPDATE", ToggleDetailsWindows)
+    self:RegisterEvent("CHALLENGE_MODE_START", ToggleDetailsWindows)
+    self:RegisterEvent("CHALLENGE_MODE_COMPLETED", ToggleDetailsWindows)
+    self:RegisterEvent("CHALLENGE_MODE_RESET", ToggleDetailsWindows)
     self:RegisterEvent("QUEST_WATCH_UPDATE", ToggleDetailsWindows)
     self:RegisterEvent("QUEST_WATCH_LIST_CHANGED", ToggleDetailsWindows)
     self:RegisterEvent("CONTENT_TRACKING_UPDATE", ToggleDetailsWindows)
+
+    -- Register events for role changes
+    self:RegisterEvent("GROUP_ROSTER_UPDATE", ToggleDetailsWindows)
+    self:RegisterEvent("PLAYER_ROLES_ASSIGNED", ToggleDetailsWindows)
 end
 
 function Perskan:PLAYER_ENTERING_WORLD()
