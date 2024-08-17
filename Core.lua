@@ -99,8 +99,6 @@ local function ReanchorDetailsWindows()
         x = 1
     end
 
-    print(anchor:GetName(), x)
-
     if details1 then
         details1.baseframe:ClearAllPoints()
         details1.baseframe:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", x, -50)
@@ -113,16 +111,18 @@ local function ReanchorDetailsWindows()
 end
 
 ObjectiveTrackerFrame.Header.MinimizeButton:HookScript("OnClick", ReanchorDetailsWindows)
-ObjectiveTrackerFrame:HookScript("OnShow", ReanchorDetailsWindows)
-ObjectiveTrackerFrame:HookScript("OnHide", ReanchorDetailsWindows)
-VehicleSeatIndicator:HookScript("OnShow", ReanchorDetailsWindows)
-VehicleSeatIndicator:HookScript("OnHide", ReanchorDetailsWindows)
-DurabilityFrame:HookScript("OnShow", ReanchorDetailsWindows)
-DurabilityFrame:HookScript("OnHide", ReanchorDetailsWindows)
-Boss1TargetFrame:HookScript("OnShow", ReanchorDetailsWindows)
-Boss1TargetFrame:HookScript("OnHide", ReanchorDetailsWindows)
-ArenaEnemyMatchFrame:HookScript("OnShow", ReanchorDetailsWindows)
-ArenaEnemyMatchFrame:HookScript("OnHide", ReanchorDetailsWindows)
+
+local framesToHook = {ObjectiveTrackerFrame, VehicleSeatIndicator, DurabilityFrame, Boss1TargetFrame,
+                      ArenaEnemyMatchFrame}
+
+local function HookFrameEvents(frame)
+    frame:HookScript("OnShow", ReanchorDetailsWindows)
+    frame:HookScript("OnHide", ReanchorDetailsWindows)
+end
+
+for _, frame in ipairs(framesToHook) do
+    HookFrameEvents(frame)
+end
 
 -- Resize Details windows to fit group size
 local function AdjustDetailsHeight(instance, maxHeight, isHealingWindow)
