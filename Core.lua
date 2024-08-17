@@ -1,6 +1,7 @@
 local details = _G.Details
 local details1, details2
 
+local baseHeight = 28
 local mainDetailsMaxHeight = 80
 local secondaryDetailsMaxHeight = 134
 
@@ -128,81 +129,12 @@ for _, frame in ipairs(framesToHook) do
     HookFrameEvents(frame)
 end
 
--- Resize Details windows to fit group size
-local function AdjustDetailsHeight(instance, maxHeight, isHealingWindow)
-    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows or not instance then
-        return
-    end
-
-    local baseHeight = 28
-    local heightPerPlayer = 24
-
-    local numGroupMembers = IsActiveBattlefieldArena() and 6 or GetNumGroupMembers()
-    numGroupMembers = math.max(numGroupMembers, 1)
-
-    local numHealers = 0
-    if isHealingWindow then
-        local specIndex = GetSpecialization()
-        if specIndex then
-            local role = GetSpecializationRole(specIndex)
-            if role == "HEALER" then
-                numHealers = numHealers + 1
-            end
-        end
-
-        if not IsInRaid() then
-            for i = 1, numGroupMembers - 1 do
-                local role = UnitGroupRolesAssigned("party" .. i)
-                if role == "HEALER" then
-                    numHealers = numHealers + 1
-                end
-            end
-        else
-            for i = 1, numGroupMembers do
-                local role = UnitGroupRolesAssigned("raid" .. i)
-                if role == "HEALER" then
-                    numHealers = numHealers + 1
-                end
-            end
-        end
-    end
-
-    local newHeight
-    if isHealingWindow then
-        newHeight = baseHeight + (numHealers * heightPerPlayer)
-    else
-        newHeight = baseHeight + (numGroupMembers * heightPerPlayer)
-    end
-
-    newHeight = math.min(newHeight, maxHeight)
-
-    local pos_table = instance:CreatePositionTable()
-    pos_table.h = newHeight
-    instance:RestorePositionFromPositionTable(pos_table)
-end
-
-local function ResizeAllDetailsWindows()
-    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
-        return
-    end
-
-    if not details1Expanded then
-        AdjustDetailsHeight(details1, mainDetailsMaxHeight, true)
-    end
-    if not details2Expanded then
-        AdjustDetailsHeight(details2, secondaryDetailsMaxHeight)
-    end
-
-    ReanchorDetailsWindows()
-end
-
 -- Hide Details when tracker is too tall
 local function ToggleDetailsWindows()
     if not Perskan.db.profile.reanchorDetailsWindows then
         return
     end
 
-    ResizeAllDetailsWindows()
     ReanchorDetailsWindows()
 
     C_Timer.After(0.1, function()
@@ -218,7 +150,6 @@ local function ToggleDetailsWindows()
         else
             details1:ShowWindow()
             details2:ShowWindow()
-            ResizeAllDetailsWindows()
             ReanchorDetailsWindows()
         end
     end)
@@ -230,17 +161,29 @@ local function ExpandDetailsWindow(parentFrame)
         return
     end
 
+    local maxHeight
     if parentFrame == details1 then
-        local pos_table1 = details1:CreatePositionTable()
-        pos_table1.h = mainDetailsMaxHeight
-        details1:RestorePositionFromPositionTable(pos_table1)
+        maxHeight = mainDetailsMaxHeight
+    elseif parentFrame == details2 then
+        maxHeight = secondaryDetailsMaxHeight
     end
 
-    if parentFrame == details2 then
-        local pos_table2 = details2:CreatePositionTable()
-        pos_table2.h = secondaryDetailsMaxHeight
-        details2:RestorePositionFromPositionTable(pos_table2)
+    local pos_table = parentFrame:CreatePositionTable()
+    pos_table.h = maxHeight
+    parentFrame:RestorePositionFromPositionTable(pos_table)
+
+    ReanchorDetailsWindows()
+end
+
+-- Function to collapse Details windows to min size
+local function CollapseDetailsWindow(parentFrame)
+    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
+        return
     end
+
+    local pos_table = parentFrame:CreatePositionTable()
+    pos_table.h = baseHeight
+    parentFrame:RestorePositionFromPositionTable(pos_table)
 
     ReanchorDetailsWindows()
 end
@@ -313,7 +256,7 @@ local function CreateToggleButton(parentFrame, initialState)
         if isExpanded then
             ExpandDetailsWindow(parentFrame)
         else
-            ResizeAllDetailsWindows()
+            CollapseDetailsWindow(parentFrame)
         end
     end)
 
@@ -376,11 +319,12 @@ end
 function Perskan:PLAYER_ENTERING_WORLD()
     InitializeCVars(self)
     AdjustActionBars()
+    CollapseDetailsWindow(details1)
+    CollapseDetailsWindow(details2)
 end
 
 function Perskan:ACTIVE_TALENT_GROUP_CHANGED()
     AdjustActionBars()
-    ResizeAllDetailsWindows()
 end
 
 SettingsPanel:HookScript("OnShow", function()
