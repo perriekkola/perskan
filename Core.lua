@@ -12,7 +12,6 @@ end
 -- Adjust amount of action bars according to specialization
 local function AdjustActionBars()
     if InCombatLockdown() then
-        C_Timer.After(1, AdjustActionBars)
         return
     end
 
@@ -292,6 +291,18 @@ local function InitializeCVars(self)
     SetCVar("nameplateOtherBottomInset", profile.nameplateOtherBottomInset)
     SetCVar("nameplateOtherTopInset", profile.nameplateOtherTopInset)
     SetCVar("cameraDistanceMaxZoomFactor", profile.cameraDistanceMaxZoomFactor)
+    SetCVar("autoLootDefault", 1)
+    SetCVar("alwaysShowNameplates", 1)
+    SetCVar("nameplateShowAll", 1)
+    SetCVar("nameplateShowEnemies", 1)
+    SetCVar("nameplateShowFriends", 1)
+    SetCVar("nameplateShowEnemyMinions", 1)
+    SetCVar("nameplateShowFriendlyMinions", 1)
+    SetCVar("raidFramesDisplayAggroHighlight", 0)
+    SetCVar("raidFramesDisplayClassColor", 1)
+    SetCVar("raidOptionDisplayMainTankAndAssist", 0)
+    SetCVar("pvpFramesDisplayClassColor", 1)
+    SetCVar("nameplateShowSelf", 0)
 end
 
 -- Events
@@ -334,7 +345,3 @@ end
 SettingsPanel:HookScript("OnShow", function()
     CreateSpecSliders(AdjustActionBars)
 end)
-
---[[ TO-DO:
-1. Find a better event than PLAYER_LOGIN to make functions run
-2. Handle minimizing all objectives event to reanchor ]]

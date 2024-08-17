@@ -15,7 +15,19 @@ local defaults = {
         encounterBarScale = 0.8,
         highlightStealableAuras = true,
         objectiveTrackerScale = 0.95,
-        reanchorDetailsWindows = true
+        reanchorDetailsWindows = true,
+        autoLootDefault = 1,
+        alwaysShowNameplates = 1,
+        nameplateShowAll = 1,
+        nameplateShowEnemies = 1,
+        nameplateShowFriends = 1,
+        nameplateShowEnemyMinions = 1,
+        nameplateShowFriendlyMinions = 1,
+        raidFramesDisplayAggroHighlight = 0,
+        raidFramesDisplayClassColor = 1,
+        raidOptionDisplayMainTankAndAssist = 0,
+        pvpFramesDisplayClassColor = 1,
+        nameplateShowSelf = 0
     }
 }
 
@@ -135,15 +147,171 @@ options = {
             end,
             order = 7
         },
+        autoLootDefault = {
+            type = "toggle",
+            name = "Auto Loot Default",
+            desc = "Toggle auto loot default.",
+            get = function(info)
+                return Perskan.db.profile.autoLootDefault == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.autoLootDefault = value and 1 or 0
+                SetCVar("autoLootDefault", value and 1 or 0)
+            end,
+            order = 8
+        },
+        alwaysShowNameplates = {
+            type = "toggle",
+            name = "Always Show Nameplates",
+            desc = "Toggle always show nameplates.",
+            get = function(info)
+                return Perskan.db.profile.alwaysShowNameplates == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.alwaysShowNameplates = value and 1 or 0
+                SetCVar("alwaysShowNameplates", value and 1 or 0)
+            end,
+            order = 9
+        },
+        nameplateShowAll = {
+            type = "toggle",
+            name = "Nameplate Show All",
+            desc = "Toggle nameplate show all.",
+            get = function(info)
+                return Perskan.db.profile.nameplateShowAll == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.nameplateShowAll = value and 1 or 0
+                SetCVar("nameplateShowAll", value and 1 or 0)
+            end,
+            order = 10
+        },
+        nameplateShowEnemies = {
+            type = "toggle",
+            name = "Nameplate Show Enemies",
+            desc = "Toggle nameplate show enemies.",
+            get = function(info)
+                return Perskan.db.profile.nameplateShowEnemies == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.nameplateShowEnemies = value and 1 or 0
+                SetCVar("nameplateShowEnemies", value and 1 or 0)
+            end,
+            order = 11
+        },
+        nameplateShowFriends = {
+            type = "toggle",
+            name = "Nameplate Show Friends",
+            desc = "Toggle nameplate show friends.",
+            get = function(info)
+                return Perskan.db.profile.nameplateShowFriends == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.nameplateShowFriends = value and 1 or 0
+                SetCVar("nameplateShowFriends", value and 1 or 0)
+            end,
+            order = 12
+        },
+        nameplateShowEnemyMinions = {
+            type = "toggle",
+            name = "Nameplate Show Enemy Minions",
+            desc = "Toggle nameplate show enemy minions.",
+            get = function(info)
+                return Perskan.db.profile.nameplateShowEnemyMinions == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.nameplateShowEnemyMinions = value and 1 or 0
+                SetCVar("nameplateShowEnemyMinions", value and 1 or 0)
+            end,
+            order = 13
+        },
+        nameplateShowFriendlyMinions = {
+            type = "toggle",
+            name = "Nameplate Show Friendly Minions",
+            desc = "Toggle nameplate show friendly minions.",
+            get = function(info)
+                return Perskan.db.profile.nameplateShowFriendlyMinions == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.nameplateShowFriendlyMinions = value and 1 or 0
+                SetCVar("nameplateShowFriendlyMinions", value and 1 or 0)
+            end,
+            order = 14
+        },
+        raidFramesDisplayAggroHighlight = {
+            type = "toggle",
+            name = "Raid Frames Display Aggro Highlight",
+            desc = "Toggle raid frames display aggro highlight.",
+            get = function(info)
+                return Perskan.db.profile.raidFramesDisplayAggroHighlight == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.raidFramesDisplayAggroHighlight = value and 1 or 0
+                SetCVar("raidFramesDisplayAggroHighlight", value and 1 or 0)
+            end,
+            order = 15
+        },
+        raidFramesDisplayClassColor = {
+            type = "toggle",
+            name = "Raid Frames Display Class Color",
+            desc = "Toggle raid frames display class color.",
+            get = function(info)
+                return Perskan.db.profile.raidFramesDisplayClassColor == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.raidFramesDisplayClassColor = value and 1 or 0
+                SetCVar("raidFramesDisplayClassColor", value and 1 or 0)
+            end,
+            order = 16
+        },
+        raidOptionDisplayMainTankAndAssist = {
+            type = "toggle",
+            name = "Raid Option Display Main Tank And Assist",
+            desc = "Toggle raid option display main tank and assist.",
+            get = function(info)
+                return Perskan.db.profile.raidOptionDisplayMainTankAndAssist == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.raidOptionDisplayMainTankAndAssist = value and 1 or 0
+                SetCVar("raidOptionDisplayMainTankAndAssist", value and 1 or 0)
+            end,
+            order = 17
+        },
+        pvpFramesDisplayClassColor = {
+            type = "toggle",
+            name = "PvP Frames Display Class Color",
+            desc = "Toggle PvP frames display class color.",
+            get = function(info)
+                return Perskan.db.profile.pvpFramesDisplayClassColor == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.pvpFramesDisplayClassColor = value and 1 or 0
+                SetCVar("pvpFramesDisplayClassColor", value and 1 or 0)
+            end,
+            order = 18
+        },
+        nameplateShowSelf = {
+            type = "toggle",
+            name = "Personal Resource Display",
+            desc = "Toggle the personal resource display.",
+            get = function(info)
+                return Perskan.db.profile.nameplateShowSelf == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.nameplateShowSelf = value and 1 or 0
+                SetCVar("nameplateShowSelf", value and 1 or 0)
+            end,
+            order = 19
+        },
         spacer1 = {
             type = "description",
             name = " ",
-            order = 8
+            order = 20
         },
         header2 = {
             type = "header",
             name = "UI scaling",
-            order = 9
+            order = 21
         },
         encounterBarScale = {
             type = "range",
@@ -159,7 +327,7 @@ options = {
                 Perskan.db.profile.encounterBarScale = value
                 EncounterBar:SetScale(value)
             end,
-            order = 10
+            order = 22
         },
         objectiveTrackerScale = {
             type = "range",
@@ -175,17 +343,17 @@ options = {
                 Perskan.db.profile.objectiveTrackerScale = value
                 ObjectiveTrackerFrame:SetScale(value)
             end,
-            order = 11
+            order = 23
         },
         spacer2 = {
             type = "description",
             name = " ",
-            order = 12
+            order = 24
         },
         header3 = {
             type = "header",
             name = "Highlight all stealable auras",
-            order = 13
+            order = 25
         },
         highlightStealableAuras = {
             type = "toggle",
@@ -198,17 +366,17 @@ options = {
                 Perskan.db.profile.highlightStealableAuras = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 14
+            order = 26
         },
         spacer3 = {
             type = "description",
             name = " ",
-            order = 15
+            order = 27
         },
         header4 = {
             type = "header",
             name = "Reanchor Details windows to objective tracker",
-            order = 16
+            order = 28
         },
         reanchorDetailsWindows = {
             type = "toggle",
@@ -221,22 +389,22 @@ options = {
                 Perskan.db.profile.reanchorDetailsWindows = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 17
+            order = 29
         },
         spacer4 = {
             type = "description",
             name = " ",
-            order = 18
+            order = 30
         },
         header5 = {
             type = "header",
             name = "Amount of actionbars per specialization",
-            order = 19
+            order = 31
         },
         spacer5 = {
             type = "description",
             name = " ",
-            order = 20
+            order = 32
         }
     }
 }
