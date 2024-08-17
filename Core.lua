@@ -308,12 +308,6 @@ function Perskan:OnEnable()
     self:RegisterEvent("QUEST_WATCH_UPDATE", ToggleDetailsWindows)
     self:RegisterEvent("QUEST_WATCH_LIST_CHANGED", ToggleDetailsWindows)
     self:RegisterEvent("CONTENT_TRACKING_UPDATE", ToggleDetailsWindows)
-
-    -- Register events for role changes and group changes
-    self:RegisterEvent("GROUP_ROSTER_UPDATE", ToggleDetailsWindows)
-    self:RegisterEvent("PLAYER_ROLES_ASSIGNED", ToggleDetailsWindows)
-    self:RegisterEvent("GROUP_LEFT", ToggleDetailsWindows)
-    self:RegisterEvent("GROUP_JOINED", ToggleDetailsWindows)
 end
 
 function Perskan:PLAYER_ENTERING_WORLD()
