@@ -76,7 +76,9 @@ local function ReanchorDetailsWindows()
     if ObjectiveTrackerFrame:IsVisible() then
         if not QuestObjectiveTracker:IsVisible() and not CampaignQuestObjectiveTracker:IsVisible() and
             not WorldQuestObjectiveTracker:IsVisible() and not AchievementObjectiveTracker:IsVisible() and
-            not AdventureObjectiveTracker:IsVisible() and not ScenarioObjectiveTracker:IsVisible() then
+            not AdventureObjectiveTracker:IsVisible() and not ScenarioObjectiveTracker:IsVisible() and
+            not MonthlyActivitiesObjectiveTracker:IsVisible() and not BonusObjectiveTracker:IsVisible() and
+            not ProfessionsRecipeTracker:IsVisible() then
             anchor = ObjectiveTrackerFrame.Header
             x = 2
         else
@@ -109,8 +111,11 @@ end
 
 ObjectiveTrackerFrame.Header.MinimizeButton:HookScript("OnClick", ReanchorDetailsWindows)
 
-local framesToHook = {ObjectiveTrackerFrame, VehicleSeatIndicator, DurabilityFrame, Boss1TargetFrame,
-                      ArenaEnemyMatchFrame}
+local framesToHook = {ObjectiveTrackerFrame, VehicleSeatIndicator, DurabilityFrame, Boss1TargetFrame}
+
+for i = 1, 5 do
+    table.insert(framesToHook, _G["ArenaEnemyMatchFrame" .. i])
+end
 
 local function HookFrameEvents(frame)
     frame:HookScript("OnShow", ReanchorDetailsWindows)
@@ -190,10 +195,8 @@ local function ToggleDetailsWindows()
         return
     end
 
-    if not ObjectiveTrackerFrame:IsVisible() then
-        local trackerHeight = ObjectiveTrackerFrame.NineSlice.Center:GetHeight()
-        return
-    end
+    ResizeAllDetailsWindows()
+    ReanchorDetailsWindows()
 
     C_Timer.After(0.1, function()
         if not ObjectiveTrackerFrame:IsVisible() then
