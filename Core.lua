@@ -300,7 +300,6 @@ function Perskan:OnEnable()
 
     -- ObjectiveTrackerFrame events
     self:RegisterEvent("SCENARIO_UPDATE", ToggleDetailsWindows)
-    self:RegisterEvent("SCENARIO_CRITERIA_UPDATE", ToggleDetailsWindows)
     self:RegisterEvent("CHALLENGE_MODE_START", ToggleDetailsWindows)
     self:RegisterEvent("CHALLENGE_MODE_COMPLETED", ToggleDetailsWindows)
     self:RegisterEvent("CHALLENGE_MODE_RESET", ToggleDetailsWindows)
