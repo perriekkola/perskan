@@ -27,7 +27,8 @@ local defaults = {
         raidFramesDisplayClassColor = 1,
         raidOptionDisplayMainTankAndAssist = 0,
         pvpFramesDisplayClassColor = 1,
-        nameplateShowSelf = 0
+        nameplateShowSelf = 1,
+        nameplateHideHealthAndPower = 1
     }
 }
 
@@ -303,15 +304,28 @@ options = {
             end,
             order = 19
         },
+        nameplateHideHealthAndPower = {
+            type = "toggle",
+            name = "Hide Health and Power",
+            desc = "Toggle hiding health and power on nameplates.",
+            get = function(info)
+                return Perskan.db.profile.nameplateHideHealthAndPower == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.nameplateHideHealthAndPower = value and 1 or 0
+                SetCVar("nameplateHideHealthAndPower", value and 1 or 0)
+            end,
+            order = 20
+        },
         spacer1 = {
             type = "description",
             name = " ",
-            order = 20
+            order = 21
         },
         header2 = {
             type = "header",
             name = "UI scaling",
-            order = 21
+            order = 22
         },
         encounterBarScale = {
             type = "range",
@@ -327,7 +341,7 @@ options = {
                 Perskan.db.profile.encounterBarScale = value
                 EncounterBar:SetScale(value)
             end,
-            order = 22
+            order = 23
         },
         objectiveTrackerScale = {
             type = "range",
@@ -343,17 +357,17 @@ options = {
                 Perskan.db.profile.objectiveTrackerScale = value
                 ObjectiveTrackerFrame:SetScale(value)
             end,
-            order = 23
+            order = 24
         },
         spacer2 = {
             type = "description",
             name = " ",
-            order = 24
+            order = 25
         },
         header3 = {
             type = "header",
             name = "Highlight all stealable auras",
-            order = 25
+            order = 26
         },
         highlightStealableAuras = {
             type = "toggle",
@@ -366,17 +380,17 @@ options = {
                 Perskan.db.profile.highlightStealableAuras = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 26
+            order = 27
         },
         spacer3 = {
             type = "description",
             name = " ",
-            order = 27
+            order = 28
         },
         header4 = {
             type = "header",
             name = "Reanchor Details windows to objective tracker",
-            order = 28
+            order = 29
         },
         reanchorDetailsWindows = {
             type = "toggle",
@@ -389,22 +403,22 @@ options = {
                 Perskan.db.profile.reanchorDetailsWindows = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 29
+            order = 30
         },
         spacer4 = {
             type = "description",
             name = " ",
-            order = 30
+            order = 31
         },
         header5 = {
             type = "header",
             name = "Amount of actionbars per specialization",
-            order = 31
+            order = 32
         },
         spacer5 = {
             type = "description",
             name = " ",
-            order = 32
+            order = 33
         }
     }
 }
