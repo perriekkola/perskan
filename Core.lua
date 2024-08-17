@@ -292,7 +292,6 @@ function Perskan:OnEnable()
     HighlightStealableAuras()
     ScaleUIFrames()
     ToggleDetailsWindows()
-    -- CreateToggleText()
     CreateToggleButton(details1, details1Expanded)
     CreateToggleButton(details2, details2Expanded)
 
