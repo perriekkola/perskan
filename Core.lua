@@ -61,7 +61,7 @@ local function ReanchorDetailsWindows()
         return
     end
 
-    local detailsWidth = 260
+    local detailsWidth = 244
 
     details1.baseframe:SetWidth(detailsWidth)
     details2.baseframe:SetWidth(detailsWidth)
@@ -83,26 +83,26 @@ local function ReanchorDetailsWindows()
             not MonthlyActivitiesObjectiveTracker:IsVisible() and not BonusObjectiveTracker:IsVisible() and
             not ProfessionsRecipeTracker:IsVisible() then
             anchor = ObjectiveTrackerFrame.Header
-            x = 2
+            x = -13
         else
             anchor = ObjectiveTrackerFrame.NineSlice.Center
-            x = 18
+            x = -4
         end
     elseif DurabilityFrame:IsVisible() then
         anchor = DurabilityFrame
-        x = 4
+        x = -12
     elseif Boss1TargetFrame:IsVisible() then
         anchor = BossTargetFrameContainer
-        x = 4
+        x = -12
     elseif VehicleSeatIndicator:IsVisible() then
         anchor = VehicleSeatIndicator
-        x = 4
+        x = -12
     elseif highestArenaFrame then
         anchor = highestArenaFrame
-        x = 20
+        x = 2
     else
         anchor = MinimapCompassTexture
-        x = 1
+        x = -17
     end
 
     details1.baseframe:ClearAllPoints()
@@ -155,6 +155,21 @@ local function ToggleDetailsWindows()
     end)
 end
 
+-- Add a texture behind Details titles
+local function CreateTitleTexture(instance)
+    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
+        return
+    end
+
+    local textureWidth = instance.baseframe:GetWidth() + 24
+    local titleTexture = instance.baseframe:CreateTexture(nil, "BACKGROUND")
+    local texCoords = {18 / 1024, 580 / 1024, 250 / 512, 318 / 512}
+    titleTexture:SetTexture("Interface\\QUESTFRAME\\QuestTracker2x")
+    titleTexture:SetSize(textureWidth, 32)
+    titleTexture:SetPoint("TOPLEFT", instance.baseframe, "TOPLEFT", 0, 32)
+    titleTexture:SetTexCoord(unpack(texCoords))
+end
+
 -- Function to expand Details windows to max size
 local function ExpandDetailsWindow(parentFrame)
     if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
@@ -199,7 +214,7 @@ local function CreateToggleButton(parentFrame, initialState)
     button:SetFrameStrata("MEDIUM")
     button:SetFrameLevel(parentFrame.baseframe:GetFrameLevel() + 1)
     button:SetSize(16, 18)
-    button:SetPoint("TOPRIGHT", parentFrame.baseframe, "TOPRIGHT", -8, 26)
+    button:SetPoint("TOPRIGHT", parentFrame.baseframe, "TOPRIGHT", 10, 26)
     button:EnableMouse(true)
 
     local texCoords = {
@@ -276,7 +291,6 @@ local function InitializeCVars(self)
     SetCVar("alwaysShowNameplates", profile.alwaysShowNameplates)
     SetCVar("nameplateShowAll", profile.nameplateShowAll)
     SetCVar("nameplateShowEnemies", profile.nameplateShowEnemies)
-    SetCVar("nameplateShowFriends", profile.nameplateShowFriends)
     SetCVar("nameplateShowEnemyMinions", profile.nameplateShowEnemyMinions)
     SetCVar("nameplateShowFriendlyMinions", profile.nameplateShowFriendlyMinions)
     SetCVar("raidFramesDisplayAggroHighlight", profile.raidFramesDisplayAggroHighlight)
@@ -311,6 +325,8 @@ end
 function Perskan:PLAYER_ENTERING_WORLD()
     InitializeCVars(self)
     AdjustActionBars()
+    CreateTitleTexture(details1)
+    CreateTitleTexture(details2)
     CollapseDetailsWindow(details1)
     CollapseDetailsWindow(details2)
 end

@@ -20,7 +20,6 @@ local defaults = {
         alwaysShowNameplates = 1,
         nameplateShowAll = 1,
         nameplateShowEnemies = 1,
-        nameplateShowFriends = 1,
         nameplateShowEnemyMinions = 1,
         nameplateShowFriendlyMinions = 1,
         raidFramesDisplayAggroHighlight = 0,
@@ -200,19 +199,6 @@ options = {
             end,
             order = 11
         },
-        nameplateShowFriends = {
-            type = "toggle",
-            name = "Nameplate Show Friends",
-            desc = "Toggle nameplate show friends.",
-            get = function(info)
-                return Perskan.db.profile.nameplateShowFriends == 1
-            end,
-            set = function(info, value)
-                Perskan.db.profile.nameplateShowFriends = value and 1 or 0
-                SetCVar("nameplateShowFriends", value and 1 or 0)
-            end,
-            order = 12
-        },
         nameplateShowEnemyMinions = {
             type = "toggle",
             name = "Nameplate Show Enemy Minions",
@@ -224,7 +210,7 @@ options = {
                 Perskan.db.profile.nameplateShowEnemyMinions = value and 1 or 0
                 SetCVar("nameplateShowEnemyMinions", value and 1 or 0)
             end,
-            order = 13
+            order = 12
         },
         nameplateShowFriendlyMinions = {
             type = "toggle",
@@ -237,7 +223,7 @@ options = {
                 Perskan.db.profile.nameplateShowFriendlyMinions = value and 1 or 0
                 SetCVar("nameplateShowFriendlyMinions", value and 1 or 0)
             end,
-            order = 14
+            order = 13
         },
         raidFramesDisplayAggroHighlight = {
             type = "toggle",
@@ -250,7 +236,7 @@ options = {
                 Perskan.db.profile.raidFramesDisplayAggroHighlight = value and 1 or 0
                 SetCVar("raidFramesDisplayAggroHighlight", value and 1 or 0)
             end,
-            order = 15
+            order = 14
         },
         raidFramesDisplayClassColor = {
             type = "toggle",
@@ -263,7 +249,7 @@ options = {
                 Perskan.db.profile.raidFramesDisplayClassColor = value and 1 or 0
                 SetCVar("raidFramesDisplayClassColor", value and 1 or 0)
             end,
-            order = 16
+            order = 15
         },
         raidOptionDisplayMainTankAndAssist = {
             type = "toggle",
@@ -276,7 +262,7 @@ options = {
                 Perskan.db.profile.raidOptionDisplayMainTankAndAssist = value and 1 or 0
                 SetCVar("raidOptionDisplayMainTankAndAssist", value and 1 or 0)
             end,
-            order = 17
+            order = 16
         },
         pvpFramesDisplayClassColor = {
             type = "toggle",
@@ -289,7 +275,7 @@ options = {
                 Perskan.db.profile.pvpFramesDisplayClassColor = value and 1 or 0
                 SetCVar("pvpFramesDisplayClassColor", value and 1 or 0)
             end,
-            order = 18
+            order = 17
         },
         nameplateShowSelf = {
             type = "toggle",
@@ -302,7 +288,7 @@ options = {
                 Perskan.db.profile.nameplateShowSelf = value and 1 or 0
                 SetCVar("nameplateShowSelf", value and 1 or 0)
             end,
-            order = 19
+            order = 18
         },
         nameplateHideHealthAndPower = {
             type = "toggle",
@@ -315,17 +301,17 @@ options = {
                 Perskan.db.profile.nameplateHideHealthAndPower = value and 1 or 0
                 SetCVar("nameplateHideHealthAndPower", value and 1 or 0)
             end,
-            order = 20
+            order = 19
         },
         spacer1 = {
             type = "description",
             name = " ",
-            order = 21
+            order = 20
         },
         header2 = {
             type = "header",
             name = "UI scaling",
-            order = 22
+            order = 21
         },
         encounterBarScale = {
             type = "range",
@@ -341,7 +327,7 @@ options = {
                 Perskan.db.profile.encounterBarScale = value
                 EncounterBar:SetScale(value)
             end,
-            order = 23
+            order = 22
         },
         objectiveTrackerScale = {
             type = "range",
@@ -357,17 +343,17 @@ options = {
                 Perskan.db.profile.objectiveTrackerScale = value
                 ObjectiveTrackerFrame:SetScale(value)
             end,
-            order = 24
+            order = 23
         },
         spacer2 = {
             type = "description",
             name = " ",
-            order = 25
+            order = 24
         },
         header3 = {
             type = "header",
             name = "Highlight all stealable auras",
-            order = 26
+            order = 25
         },
         highlightStealableAuras = {
             type = "toggle",
@@ -380,17 +366,17 @@ options = {
                 Perskan.db.profile.highlightStealableAuras = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 27
+            order = 26
         },
         spacer3 = {
             type = "description",
             name = " ",
-            order = 28
+            order = 27
         },
         header4 = {
             type = "header",
             name = "Reanchor Details windows to objective tracker",
-            order = 29
+            order = 28
         },
         reanchorDetailsWindows = {
             type = "toggle",
@@ -403,22 +389,22 @@ options = {
                 Perskan.db.profile.reanchorDetailsWindows = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 30
+            order = 29
         },
         spacer4 = {
             type = "description",
             name = " ",
-            order = 31
+            order = 30
         },
         header5 = {
             type = "header",
             name = "Amount of actionbars per specialization",
-            order = 32
+            order = 31
         },
         spacer5 = {
             type = "description",
             name = " ",
-            order = 33
+            order = 32
         }
     }
 }
