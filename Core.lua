@@ -167,6 +167,7 @@ local function CreateTitleTexture(instance)
     titleTexture:SetTexture("Interface\\QUESTFRAME\\QuestTracker2x")
     titleTexture:SetSize(textureWidth, 32)
     titleTexture:SetPoint("TOPLEFT", instance.baseframe, "TOPLEFT", 0, 32)
+    titleTexture:SetBlendMode("BLEND")
     titleTexture:SetTexCoord(unpack(texCoords))
 end
 
