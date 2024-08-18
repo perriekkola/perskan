@@ -129,6 +129,48 @@ for _, frame in ipairs(framesToHook) do
     HookFrameEvents(frame)
 end
 
+-- Add a texture behind Details titles
+local function CreateTitleTexture(instance)
+    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
+        return
+    end
+
+    if instance.baseframe.titleTexture then
+        return
+    end
+
+    local textureWidth = instance.baseframe:GetWidth() + 24
+    local titleTexture = instance.baseframe:CreateTexture(nil, "BACKGROUND")
+    local texCoords = {18 / 1024, 580 / 1024, 250 / 512, 318 / 512}
+    titleTexture:SetTexture("Interface\\QUESTFRAME\\QuestTracker2x")
+    titleTexture:SetSize(textureWidth, 32)
+    titleTexture:SetPoint("TOPLEFT", instance.baseframe, "TOPLEFT", 0, 32)
+    titleTexture:SetBlendMode("BLEND")
+    titleTexture:SetTexCoord(unpack(texCoords))
+
+    instance.baseframe.titleTexture = titleTexture
+end
+
+-- Function to expand Details windows to max size
+local function ExpandDetailsWindow(parentFrame)
+    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
+        return
+    end
+
+    local maxHeight
+    if parentFrame == details1 then
+        maxHeight = mainDetailsMaxHeight
+    elseif parentFrame == details2 then
+        maxHeight = secondaryDetailsMaxHeight
+    end
+
+    local pos_table = parentFrame:CreatePositionTable()
+    pos_table.h = maxHeight
+    parentFrame:RestorePositionFromPositionTable(pos_table)
+
+    ReanchorDetailsWindows()
+end
+
 -- Hide Details when tracker is too tall
 local function ToggleDetailsWindows()
     if not Perskan.db.profile.reanchorDetailsWindows then
@@ -153,42 +195,6 @@ local function ToggleDetailsWindows()
             ReanchorDetailsWindows()
         end
     end)
-end
-
--- Add a texture behind Details titles
-local function CreateTitleTexture(instance)
-    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
-        return
-    end
-
-    local textureWidth = instance.baseframe:GetWidth() + 24
-    local titleTexture = instance.baseframe:CreateTexture(nil, "BACKGROUND")
-    local texCoords = {18 / 1024, 580 / 1024, 250 / 512, 318 / 512}
-    titleTexture:SetTexture("Interface\\QUESTFRAME\\QuestTracker2x")
-    titleTexture:SetSize(textureWidth, 32)
-    titleTexture:SetPoint("TOPLEFT", instance.baseframe, "TOPLEFT", 0, 32)
-    titleTexture:SetBlendMode("BLEND")
-    titleTexture:SetTexCoord(unpack(texCoords))
-end
-
--- Function to expand Details windows to max size
-local function ExpandDetailsWindow(parentFrame)
-    if not C_AddOns.IsAddOnLoaded("Details") or not Perskan.db.profile.reanchorDetailsWindows then
-        return
-    end
-
-    local maxHeight
-    if parentFrame == details1 then
-        maxHeight = mainDetailsMaxHeight
-    elseif parentFrame == details2 then
-        maxHeight = secondaryDetailsMaxHeight
-    end
-
-    local pos_table = parentFrame:CreatePositionTable()
-    pos_table.h = maxHeight
-    parentFrame:RestorePositionFromPositionTable(pos_table)
-
-    ReanchorDetailsWindows()
 end
 
 -- Function to collapse Details windows to min size
