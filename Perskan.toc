@@ -1,7 +1,7 @@
 ## Title: Perskan's Pack
 ## Notes: Lua snippets altering the default UI
 ## Author: Per Riekkola
-## Interface: 110000
+## Interface: 110002
 ## Version: 1.0
 
 ## SavedVariables: PerskanDB

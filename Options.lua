@@ -329,31 +329,15 @@ options = {
             end,
             order = 22
         },
-        objectiveTrackerScale = {
-            type = "range",
-            name = "Objective Tracker Scale",
-            desc = "Adjust the scale of the objective tracker.",
-            min = 0.5,
-            max = 2.0,
-            step = 0.05,
-            get = function(info)
-                return Perskan.db.profile.objectiveTrackerScale or 1.0
-            end,
-            set = function(info, value)
-                Perskan.db.profile.objectiveTrackerScale = value
-                ObjectiveTrackerFrame:SetScale(value)
-            end,
-            order = 23
-        },
         spacer2 = {
             type = "description",
             name = " ",
-            order = 24
+            order = 23
         },
         header3 = {
             type = "header",
             name = "Highlight all stealable auras",
-            order = 25
+            order = 24
         },
         highlightStealableAuras = {
             type = "toggle",
@@ -366,45 +350,22 @@ options = {
                 Perskan.db.profile.highlightStealableAuras = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 26
+            order = 25
         },
         spacer3 = {
             type = "description",
             name = " ",
-            order = 27
-        },
-        header4 = {
-            type = "header",
-            name = "Reanchor Details windows to objective tracker",
-            order = 28
-        },
-        reanchorDetailsWindows = {
-            type = "toggle",
-            name = "Reanchor Details Windows",
-            desc = "Reanchor Details windows to objective tracker if they exist.",
-            get = function(info)
-                return Perskan.db.profile.reanchorDetailsWindows or false
-            end,
-            set = function(info, value)
-                Perskan.db.profile.reanchorDetailsWindows = value
-                StaticPopup_Show("RELOAD_UI")
-            end,
-            order = 29
-        },
-        spacer4 = {
-            type = "description",
-            name = " ",
-            order = 30
+            order = 26
         },
         header5 = {
             type = "header",
             name = "Amount of actionbars per specialization",
-            order = 31
+            order = 27
         },
         spacer5 = {
             type = "description",
             name = " ",
-            order = 32
+            order = 28
         }
     }
 }
