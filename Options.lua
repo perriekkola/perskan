@@ -12,6 +12,7 @@ local defaults = {
         nameplateOtherBottomInset = 0.1,
         nameplateOtherTopInset = 0.09,
         cameraDistanceMaxZoomFactor = 2.5,
+        nameplatePersonalShowAlways = 0,
         encounterBarScale = 0.8,
         highlightStealableAuras = true,
         objectiveTrackerScale = 0.95,
@@ -300,6 +301,19 @@ options = {
             set = function(info, value)
                 Perskan.db.profile.nameplateHideHealthAndPower = value and 1 or 0
                 SetCVar("nameplateHideHealthAndPower", value and 1 or 0)
+            end,
+            order = 19
+        },
+        nameplatePersonalShowAlways = {
+            type = "toggle",
+            name = "Nameplate Personal Show Always",
+            desc = "Toggle nameplate personal show always.",
+            get = function(info)
+                return Perskan.db.profile.nameplatePersonalShowAlways == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.nameplatePersonalShowAlways = value and 1 or 0
+                SetCVar("nameplatePersonalShowAlways", value and 1 or 0)
             end,
             order = 19
         },

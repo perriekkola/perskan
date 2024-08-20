@@ -59,6 +59,7 @@ local function InitializeCVars(self)
     SetCVar("pvpFramesDisplayClassColor", profile.pvpFramesDisplayClassColor)
     SetCVar("nameplateShowSelf", profile.nameplateShowSelf)
     SetCVar("nameplateHideHealthAndPower", profile.nameplateHideHealthAndPower)
+    SetCVar("NameplatePersonalShowAlways", profile.nameplatePersonalShowAlways)
 end
 
 -- Events
