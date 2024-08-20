@@ -313,7 +313,7 @@ options = {
             end,
             set = function(info, value)
                 Perskan.db.profile.nameplatePersonalShowAlways = value and 1 or 0
-                SetCVar("nameplatePersonalShowAlways", value and 1 or 0)
+                SetCVar("NameplatePersonalShowAlways", value and 1 or 0)
             end,
             order = 19
         },
