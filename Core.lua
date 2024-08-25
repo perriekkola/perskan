@@ -73,6 +73,7 @@ end
 
 function Perskan:PLAYER_ENTERING_WORLD()
     InitializeCVars(self)
+    AdjustActionBars()
 end
 
 function Perskan:ACTIVE_TALENT_GROUP_CHANGED()
