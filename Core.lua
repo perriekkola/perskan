@@ -77,7 +77,6 @@ end
 
 function Perskan:ACTIVE_TALENT_GROUP_CHANGED()
     AdjustActionBars()
-    print("ACTIVE_TALENT_GROUP_CHANGED")
 end
 
 SettingsPanel:HookScript("OnShow", function()
