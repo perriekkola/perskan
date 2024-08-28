@@ -1,17 +1,16 @@
 -- Adjust amount of action bars according to specialization
 local function AdjustActionBars()
-    if InCombatLockdown() then
-        return
-    end
-
     local id, name = GetSpecializationInfo(GetSpecialization())
 
     local numActionBars = Perskan.db.profile[name] or 3
 
-    for i = 2, 3 do
-        local actionBarSetting = "PROXY_SHOW_ACTIONBAR_" .. i
-        Settings.SetValue(actionBarSetting, i <= numActionBars)
-    end
+    local bottomLeftState = numActionBars > 1
+    local bottomRightState = numActionBars > 2
+    local sideRightState = false
+    local sideRight2State = false
+
+    SetActionBarToggles(bottomLeftState, bottomRightState, sideRightState, sideRight2State)
+    ActionBarController_UpdateAll() -- Update action bars
 end
 
 -- Scale various UI frames
