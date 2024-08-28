@@ -80,7 +80,6 @@ function Perskan:OnEnable()
 end
 
 function Perskan:PLAYER_ENTERING_WORLD()
-    print("PLAYER_ENTERING_WORLD")
     InitializeCVars(self)
     AdjustActionBars()
 end
@@ -88,7 +87,6 @@ end
 function Perskan:ACTIVE_TALENT_GROUP_CHANGED()
     local currentTime = GetTime()
     if currentTime - lastTalentGroupChangeTime > debounceDelay then
-        print("ACTIVE_TALENT_GROUP_CHANGED")
         AdjustActionBars()
         lastTalentGroupChangeTime = currentTime
     end
