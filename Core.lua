@@ -10,7 +10,8 @@ local function AdjustActionBars()
     local sideRight2State = false
 
     SetActionBarToggles(bottomLeftState, bottomRightState, sideRightState, sideRight2State)
-    ActionBarController_UpdateAll() -- Update action bars
+    ActionBarController_UpdateAll()
+    Perskan:Print("Actionbars adjusted to " .. numActionBars)
 end
 
 -- Scale various UI frames
