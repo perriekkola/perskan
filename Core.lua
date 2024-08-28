@@ -8,14 +8,10 @@ local function AdjustActionBars()
 
     local numActionBars = Perskan.db.profile[name] or 3
 
-    local bottomLeftState = numActionBars > 1
-    local bottomRightState = numActionBars > 2
-    local sideRightState = false
-    local sideRight2State = false
-
-    SetActionBarToggles(bottomLeftState, bottomRightState, sideRightState, sideRight2State)
-    ActionBarController_UpdateAll()
-    Perskan:Print("Actionbars adjusted to " .. numActionBars)
+    for i = 2, 3 do
+        local actionBarSetting = "PROXY_SHOW_ACTIONBAR_" .. i
+        Settings.SetValue(actionBarSetting, i <= numActionBars)
+    end
 end
 
 -- Scale various UI frames
