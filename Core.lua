@@ -1,5 +1,9 @@
 -- Adjust amount of action bars according to specialization
 local function AdjustActionBars()
+    if InCombatLockdown() then
+        return
+    end
+
     local id, name = GetSpecializationInfo(GetSpecialization())
 
     local numActionBars = Perskan.db.profile[name] or 3
@@ -62,6 +66,10 @@ local function InitializeCVars(self)
     SetCVar("NameplatePersonalShowAlways", profile.nameplatePersonalShowAlways)
 end
 
+-- Variable to track the last time the event handler was executed
+local lastTalentGroupChangeTime = 0
+local debounceDelay = 1 -- 1 second debounce delay
+
 -- Events
 function Perskan:OnEnable()
     HighlightStealableAuras()
@@ -72,12 +80,18 @@ function Perskan:OnEnable()
 end
 
 function Perskan:PLAYER_ENTERING_WORLD()
+    print("PLAYER_ENTERING_WORLD")
     InitializeCVars(self)
     AdjustActionBars()
 end
 
 function Perskan:ACTIVE_TALENT_GROUP_CHANGED()
-    AdjustActionBars()
+    local currentTime = GetTime()
+    if currentTime - lastTalentGroupChangeTime > debounceDelay then
+        print("ACTIVE_TALENT_GROUP_CHANGED")
+        AdjustActionBars()
+        lastTalentGroupChangeTime = currentTime
+    end
 end
 
 SettingsPanel:HookScript("OnShow", function()
