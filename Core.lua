@@ -1,19 +1,3 @@
--- Adjust amount of action bars according to specialization
-local function AdjustActionBars()
-    if InCombatLockdown() then
-        return
-    end
-
-    local id, name = GetSpecializationInfo(GetSpecialization())
-
-    local numActionBars = Perskan.db.profile[name] or 3
-
-    for i = 2, 3 do
-        local actionBarSetting = "PROXY_SHOW_ACTIONBAR_" .. i
-        Settings.SetValue(actionBarSetting, i <= numActionBars)
-    end
-end
-
 -- Scale various UI frames
 local function ScaleUIFrames()
     EncounterBar:SetScale(Perskan.db.profile.encounterBarScale or 0.8)
@@ -71,23 +55,9 @@ function Perskan:OnEnable()
     HighlightStealableAuras()
     ScaleUIFrames()
 
-    self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
 end
 
 function Perskan:PLAYER_ENTERING_WORLD()
     InitializeCVars(self)
-    AdjustActionBars()
 end
-
-function Perskan:ACTIVE_TALENT_GROUP_CHANGED()
-    local currentTime = GetTime()
-    if currentTime - lastTalentGroupChangeTime > debounceDelay then
-        AdjustActionBars()
-        lastTalentGroupChangeTime = currentTime
-    end
-end
-
-SettingsPanel:HookScript("OnShow", function()
-    CreateSpecSliders(AdjustActionBars)
-end)
