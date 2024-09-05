@@ -6,7 +6,7 @@ end
 -- Highlight stealable auras
 local function HighlightStealableAuras()
     local function UpdateAuras(self)
-        for buff in self.auraPools:EnumerateActive() do
+        for buff in self.auraPools:GetPool("TargetBuffFrameTemplate"):EnumerateActive() do
             -- local buffSize = buff:GetHeight()
             local buffSize = 21
             local data = C_UnitAuras.GetAuraDataByAuraInstanceID(buff.unit, buff.auraInstanceID)
