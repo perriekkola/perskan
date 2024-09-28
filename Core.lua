@@ -23,6 +23,9 @@ local function HighlightStealableAuras()
     end
 end
 
+-- Move minimap
+Minimap:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -7, -38)
+
 -- Set CVars according to Perskan's preferences
 local function InitializeCVars(self)
     local profile = self.db.profile
