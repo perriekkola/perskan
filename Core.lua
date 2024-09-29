@@ -29,6 +29,44 @@ Minimap:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -7, -38)
 -- Hide quick join toast button
 QuickJoinToastButton:Hide()
 
+-- Function to hide HotKey and BPHotKey elements for all ActionButtons
+local function HideActionButtonHotKeys()
+    local function HideHotKeys(button)
+        if button.TextOverlayContainer then
+            button.TextOverlayContainer:Hide()
+        end
+    end
+
+    for i = 1, 12 do
+        local actionButton = _G["ActionButton" .. i]
+        if actionButton then
+            HideHotKeys(actionButton)
+        end
+    end
+
+    for i = 1, 12 do
+        local multiBarBottomLeftButton = _G["MultiBarBottomLeftButton" .. i]
+        if multiBarBottomLeftButton then
+            HideHotKeys(multiBarBottomLeftButton)
+        end
+
+        local multiBarBottomRightButton = _G["MultiBarBottomRightButton" .. i]
+        if multiBarBottomRightButton then
+            HideHotKeys(multiBarBottomRightButton)
+        end
+
+        local multiBarRightButton = _G["MultiBarRightButton" .. i]
+        if multiBarRightButton then
+            HideHotKeys(multiBarRightButton)
+        end
+
+        local multiBarLeftButton = _G["MultiBarLeftButton" .. i]
+        if multiBarLeftButton then
+            HideHotKeys(multiBarLeftButton)
+        end
+    end
+end
+
 -- Set CVars according to Perskan's preferences
 local function InitializeCVars(self)
     local profile = self.db.profile
@@ -61,6 +99,7 @@ local debounceDelay = 1 -- 1 second debounce delay
 function Perskan:OnEnable()
     HighlightStealableAuras()
     ScaleUIFrames()
+    HideActionButtonHotKeys()
 
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
 end
