@@ -28,7 +28,10 @@ local defaults = {
         raidOptionDisplayMainTankAndAssist = 0,
         pvpFramesDisplayClassColor = 1,
         nameplateShowSelf = 1,
-        nameplateHideHealthAndPower = 1
+        nameplateHideHealthAndPower = 1,
+        moveMinimapUp = false,
+        hideHotkeys = false,
+        hideSocialButton = false
     }
 }
 
@@ -324,7 +327,7 @@ options = {
         },
         header2 = {
             type = "header",
-            name = "UI scaling",
+            name = "UI modifciations",
             order = 21
         },
         encounterBarScale = {
@@ -343,15 +346,54 @@ options = {
             end,
             order = 22
         },
+        moveMinimapUp = {
+            type = "toggle",
+            name = "Move Minimap Up",
+            desc = "Move the Minimap slightly upwards.",
+            get = function(info)
+                return Perskan.db.profile.moveMinimapUp
+            end,
+            set = function(info, value)
+                Perskan.db.profile.moveMinimapUp = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 23
+        },
+        hideHotkeys = {
+            type = "toggle",
+            name = "Hide Hotkeys",
+            desc = "Hide hotkeys on action buttons.",
+            get = function(info)
+                return Perskan.db.profile.hideHotkeys
+            end,
+            set = function(info, value)
+                Perskan.db.profile.hideHotkeys = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 24
+        },
+        hideSocialButton = {
+            type = "toggle",
+            name = "Hide Social Button",
+            desc = "Hide the social button.",
+            get = function(info)
+                return Perskan.db.profile.hideSocialButton
+            end,
+            set = function(info, value)
+                Perskan.db.profile.hideSocialButton = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 25
+        },
         spacer2 = {
             type = "description",
             name = " ",
-            order = 23
+            order = 26
         },
         header3 = {
             type = "header",
             name = "Highlight all stealable auras",
-            order = 24
+            order = 27
         },
         highlightStealableAuras = {
             type = "toggle",
@@ -364,7 +406,7 @@ options = {
                 Perskan.db.profile.highlightStealableAuras = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 25
+            order = 28
         }
     }
 }

@@ -1,6 +1,17 @@
--- Scale various UI frames
-local function ScaleUIFrames()
+-- Modify various UI frames
+local function ModifyUI()
+    -- Scale EncounterBar
     EncounterBar:SetScale(Perskan.db.profile.encounterBarScale or 0.8)
+
+    -- Move minimap
+    if Perskan.db.profile.moveMinimapUp then
+        Minimap:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -7, -35)
+    end
+
+    -- Hide quick join toast button
+    if Perskan.db.profile.hideSocialButton then
+        QuickJoinToastButton:Hide()
+    end
 end
 
 -- Highlight stealable auras
@@ -23,14 +34,12 @@ local function HighlightStealableAuras()
     end
 end
 
--- Move minimap
-Minimap:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -7, -38)
-
--- Hide quick join toast button
-QuickJoinToastButton:Hide()
-
 -- Function to hide HotKey and BPHotKey elements for all ActionButtons
 local function HideActionButtonHotKeys()
+    if not Perskan.db.profile.hideHotkeys then
+        return
+    end
+
     local function HideHotKeys(button)
         if button.TextOverlayContainer then
             button.TextOverlayContainer:Hide()
@@ -98,7 +107,7 @@ local debounceDelay = 1 -- 1 second debounce delay
 -- Events
 function Perskan:OnEnable()
     HighlightStealableAuras()
-    ScaleUIFrames()
+    ModifyUI()
     HideActionButtonHotKeys()
 
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
