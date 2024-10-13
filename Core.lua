@@ -41,8 +41,19 @@ local function HideActionButtonHotKeys()
     end
 
     local function HideHotKeys(button)
-        if button.TextOverlayContainer then
-            button.TextOverlayContainer:Hide()
+        if button.HotKey then
+            button.HotKey:Hide()
+            button.HotKey:SetAlpha(0)
+            hooksecurefunc(button.HotKey, "Show", function(self)
+                self:Hide()
+            end)
+        end
+        if button.BPHotKey then
+            button.BPHotKey:Hide()
+            button.BPHotKey:SetAlpha(0)
+            hooksecurefunc(button.BPHotKey, "Show", function(self)
+                self:Hide()
+            end)
         end
     end
 
