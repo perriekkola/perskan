@@ -31,7 +31,8 @@ local defaults = {
         nameplateHideHealthAndPower = 1,
         moveMinimapUp = false,
         hideHotkeys = false,
-        hideSocialButton = false
+        hideSocialButton = false,
+        hideBagsBar = false
     }
 }
 
@@ -385,15 +386,28 @@ options = {
             end,
             order = 25
         },
+        hideBagsBar = {
+            type = "toggle",
+            name = "Hide Bags Bar",
+            desc = "Hide the bags bar.",
+            get = function(info)
+                return Perskan.db.profile.hideBagsBar
+            end,
+            set = function(info, value)
+                Perskan.db.profile.hideBagsBar = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 26
+        },
         spacer2 = {
             type = "description",
             name = " ",
-            order = 26
+            order = 27
         },
         header3 = {
             type = "header",
             name = "Highlight all stealable auras",
-            order = 27
+            order = 28
         },
         highlightStealableAuras = {
             type = "toggle",
@@ -406,7 +420,7 @@ options = {
                 Perskan.db.profile.highlightStealableAuras = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 28
+            order = 29
         }
     }
 }

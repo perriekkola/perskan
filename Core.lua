@@ -87,6 +87,13 @@ local function HideActionButtonHotKeys()
     end
 end
 
+-- Function to hide the BagsBar
+local function HideBagsBar()
+    if Perskan.db.profile.hideBagsBar then
+        BagsBar:Hide()
+    end
+end
+
 -- Set CVars according to Perskan's preferences
 local function InitializeCVars(self)
     local profile = self.db.profile
@@ -120,6 +127,7 @@ function Perskan:OnEnable()
     HighlightStealableAuras()
     ModifyUI()
     HideActionButtonHotKeys()
+    HideBagsBar()
 
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
 end
