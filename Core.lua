@@ -116,6 +116,7 @@ local function InitializeCVars(self)
     SetCVar("nameplateShowSelf", profile.nameplateShowSelf)
     SetCVar("nameplateHideHealthAndPower", profile.nameplateHideHealthAndPower)
     SetCVar("NameplatePersonalShowAlways", profile.nameplatePersonalShowAlways)
+    C_NamePlate.SetNamePlateFriendlyClickThrough(true)
 end
 
 -- Variable to track the last time the event handler was executed
