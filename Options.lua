@@ -362,6 +362,22 @@ options = {
             end,
             order = 22
         },
+        xpBarScale = {
+            type = "range",
+            name = "XP Bar Scale",
+            desc = "Adjust the scale of the XP bar.",
+            min = 0.5,
+            max = 2.0,
+            step = 0.1,
+            get = function(info)
+                return Perskan.db.profile.xpBarScale or 0.8
+            end,
+            set = function(info, value)
+                Perskan.db.profile.xpBarScale = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 22
+        },
         moveMinimapUp = {
             type = "toggle",
             name = "Move Minimap Up",

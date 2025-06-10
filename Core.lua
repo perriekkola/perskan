@@ -18,6 +18,27 @@ local function ModifyUI()
             TalkingHeadFrame:SetScale(Perskan.db.profile.talkingHeadScale)
         end)
     end
+
+    if Perskan.db.profile.xpBarScale then
+        -- Create a frame to handle the StatusTrackingBarManager scaling
+        local scaleFrame = CreateFrame("Frame")
+        scaleFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+        scaleFrame:RegisterEvent("PLAYER_LOGIN")
+        scaleFrame:RegisterEvent("ADDON_LOADED")
+        
+        scaleFrame:SetScript("OnEvent", function(self, event, ...)
+            if StatusTrackingBarManager then
+                -- Set scale and hook OnShow to maintain scale
+                StatusTrackingBarManager:SetScale(Perskan.db.profile.xpBarScale)
+                if not self.hooked then
+                    hooksecurefunc(StatusTrackingBarManager, "OnShow", function()
+                        StatusTrackingBarManager:SetScale(Perskan.db.profile.xpBarScale)
+                    end)
+                    self.hooked = true
+                end
+            end
+        end)
+    end
 end
 
 -- Highlight stealable auras
