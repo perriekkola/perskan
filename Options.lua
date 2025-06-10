@@ -347,6 +347,21 @@ options = {
             end,
             order = 22
         },
+        talkingHeadScale = {
+            type = "range",
+            name = "Talking Head Scale",
+            desc = "Adjust the scale of the talking head.",
+            min = 0.5,
+            max = 2.0,
+            step = 0.1,
+            get = function(info)
+                return Perskan.db.profile.talkingHeadScale or 0.8
+            end,
+            set = function(info, value)
+                Perskan.db.profile.talkingHeadScale = value
+            end,
+            order = 22
+        },
         moveMinimapUp = {
             type = "toggle",
             name = "Move Minimap Up",

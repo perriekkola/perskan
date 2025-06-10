@@ -12,6 +12,12 @@ local function ModifyUI()
     if Perskan.db.profile.hideSocialButton then
         QuickJoinToastButton:Hide()
     end
+
+    if Perskan.db.profile.talkingHeadScale then
+        hooksecurefunc(TalkingHeadFrame, "PlayCurrent", function()
+            TalkingHeadFrame:SetScale(Perskan.db.profile.talkingHeadScale)
+        end)
+    end
 end
 
 -- Highlight stealable auras
