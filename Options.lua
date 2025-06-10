@@ -14,9 +14,12 @@ local defaults = {
         cameraDistanceMaxZoomFactor = 2.5,
         nameplatePersonalShowAlways = 0,
         encounterBarScale = 0.8,
+        talkingHeadScale = 0.8,
+        xpBarScale = 0.9,
         highlightStealableAuras = true,
         objectiveTrackerScale = 0.95,
         reanchorDetailsWindows = true,
+        addChatSizes = true,
         autoLootDefault = 1,
         alwaysShowNameplates = 1,
         nameplateShowAll = 1,
@@ -151,6 +154,19 @@ options = {
                 SetCVar("cameraDistanceMaxZoomFactor", value)
             end,
             order = 7
+        },
+        addChatSizes = {
+            type = "toggle",
+            name = "Add Chat Sizes",
+            desc = "Toggle adding chat sizes.",
+            get = function(info)
+                return Perskan.db.profile.addChatSizes
+            end,
+            set = function(info, value)
+                Perskan.db.profile.addChatSizes = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 8
         },
         autoLootDefault = {
             type = "toggle",

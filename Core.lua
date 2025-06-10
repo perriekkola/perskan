@@ -39,6 +39,29 @@ local function ModifyUI()
             end
         end)
     end
+
+    if Perskan.db.profile.addChatSizes then
+        CHAT_FONT_HEIGHTS = {
+            [1] = 7,
+            [2] = 8,
+            [3] = 9,
+            [4] = 10,
+            [5] = 11,
+            [6] = 12,
+            [7] = 13,
+            [8] = 14,
+            [9] = 15,
+            [10] = 16,
+            [11] = 17,
+            [12] = 18,
+            [13] = 19,
+            [14] = 20,
+            [15] = 21,
+            [16] = 22,
+            [17] = 23,
+            [18] = 24
+         };	
+    end
 end
 
 -- Highlight stealable auras
