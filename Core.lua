@@ -31,13 +31,34 @@ local function ModifyUI()
                 -- Set scale and hook OnShow to maintain scale
                 StatusTrackingBarManager:SetScale(Perskan.db.profile.xpBarScale)
                 if not self.hooked then
-                    hooksecurefunc(StatusTrackingBarManager, "OnShow", function()
+                    hooksecurefunc(StatusTrackingBarManager, "SetScale", function()
                         StatusTrackingBarManager:SetScale(Perskan.db.profile.xpBarScale)
                     end)
                     self.hooked = true
                 end
             end
         end)
+    end
+
+    if Perskan.db.profile.extraActionButtonScale then
+       -- Create a frame to handle the StatusTrackingBarManager scaling
+       local scaleFrame = CreateFrame("Frame")
+       scaleFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+       scaleFrame:RegisterEvent("PLAYER_LOGIN")
+       scaleFrame:RegisterEvent("ADDON_LOADED")
+       
+       scaleFrame:SetScript("OnEvent", function(self, event, ...)
+           if ExtraAbilityContainer then
+               -- Set scale and hook OnShow to maintain scale
+               ExtraAbilityContainer:SetScale(Perskan.db.profile.extraActionButtonScale)
+               if not self.hooked then
+                   hooksecurefunc(ExtraAbilityContainer, "SetScale", function()
+                       ExtraAbilityContainer:SetScale(Perskan.db.profile.extraActionButtonScale)
+                   end)
+                   self.hooked = true
+               end
+           end
+       end)
     end
 
     if Perskan.db.profile.addChatSizes then
