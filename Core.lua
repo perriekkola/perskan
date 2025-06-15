@@ -19,6 +19,35 @@ local function ModifyUI()
         end)
     end
 
+    if Perskan.db.profile.moveLfgButton then
+        local dummy = function() end
+        QueueStatusButton:ClearAllPoints()
+
+        QueueStatusButton:SetPoint("CENTER", LFDMicroButton, "CENTER", 0, 0)
+        QueueStatusButton.ClearAllPoints = dummy
+        QueueStatusButton.SetPoint = dummy
+
+        local scale = MicroMenu:GetScale()
+        QueueStatusButton:SetScale(scale * 0.55)
+        QueueStatusButton:SetFrameStrata("HIGH")
+        
+        -- Disable LFDMicroButton when QueueStatusButtonIcon is visible
+        QueueStatusButton:HookScript("OnShow", function()
+            LFDMicroButton:EnableMouse(false)
+        end)
+        
+        QueueStatusButton:HookScript("OnHide", function()
+            LFDMicroButton:EnableMouse(true) 
+        end)
+
+        -- Add click handlers to open LFD queue frame
+        QueueStatusButton:HookScript("OnClick", function(self, button)
+            if button == "LeftButton" then
+                PVEFrame_ToggleFrame("GroupFinderFrame", LFDParentFrame)
+            end
+        end)
+    end
+
     if Perskan.db.profile.xpBarScale then
         -- Create a frame to handle the StatusTrackingBarManager scaling
         local scaleFrame = CreateFrame("Frame")
