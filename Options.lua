@@ -14,9 +14,13 @@ local defaults = {
         cameraDistanceMaxZoomFactor = 2.5,
         nameplatePersonalShowAlways = 0,
         encounterBarScale = 0.8,
+        talkingHeadScale = 0.8,
+        xpBarScale = 0.9,
+        extraActionButtonScale = 0.8,
         highlightStealableAuras = true,
         objectiveTrackerScale = 0.95,
         reanchorDetailsWindows = true,
+        addChatSizes = true,
         autoLootDefault = 1,
         alwaysShowNameplates = 1,
         nameplateShowAll = 1,
@@ -32,7 +36,8 @@ local defaults = {
         moveMinimapUp = false,
         hideHotkeys = false,
         hideSocialButton = false,
-        hideBagsBar = false
+        hideBagsBar = false,
+        moveLfgButton = false,
     }
 }
 
@@ -151,6 +156,19 @@ options = {
                 SetCVar("cameraDistanceMaxZoomFactor", value)
             end,
             order = 7
+        },
+        addChatSizes = {
+            type = "toggle",
+            name = "Add Chat Sizes",
+            desc = "Toggle adding chat sizes.",
+            get = function(info)
+                return Perskan.db.profile.addChatSizes
+            end,
+            set = function(info, value)
+                Perskan.db.profile.addChatSizes = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 8
         },
         autoLootDefault = {
             type = "toggle",
@@ -347,6 +365,53 @@ options = {
             end,
             order = 22
         },
+        talkingHeadScale = {
+            type = "range",
+            name = "Talking Head Scale",
+            desc = "Adjust the scale of the talking head.",
+            min = 0.5,
+            max = 2.0,
+            step = 0.1,
+            get = function(info)
+                return Perskan.db.profile.talkingHeadScale or 0.8
+            end,
+            set = function(info, value)
+                Perskan.db.profile.talkingHeadScale = value
+            end,
+            order = 22
+        },
+        xpBarScale = {
+            type = "range",
+            name = "XP Bar Scale",
+            desc = "Adjust the scale of the XP bar.",
+            min = 0.5,
+            max = 2.0,
+            step = 0.1,
+            get = function(info)
+                return Perskan.db.profile.xpBarScale or 0.8
+            end,
+            set = function(info, value)
+                Perskan.db.profile.xpBarScale = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 22
+        },
+        extraActionButtonScale = {
+            type = "range",
+            name = "Extra Action Button Scale",
+            desc = "Adjust the scale of the extra action button.",
+            min = 0.5,
+            max = 2.0,
+            step = 0.1,
+            get = function(info)
+                return Perskan.db.profile.extraActionButtonScale or 0.8
+            end,
+            set = function(info, value)
+                Perskan.db.profile.extraActionButtonScale = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 22
+        },
         moveMinimapUp = {
             type = "toggle",
             name = "Move Minimap Up",
@@ -398,6 +463,19 @@ options = {
                 StaticPopup_Show("RELOAD_UI")
             end,
             order = 26
+        },
+        moveLfgButton = {
+            type = "toggle",
+            name = "Move LFG Button",
+            desc = "Move the LFG button.",
+            get = function(info)
+                return Perskan.db.profile.moveLfgButton
+            end,
+            set = function(info, value)
+                Perskan.db.profile.moveLfgButton = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 27
         },
         spacer2 = {
             type = "description",

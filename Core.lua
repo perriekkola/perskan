@@ -12,6 +12,110 @@ local function ModifyUI()
     if Perskan.db.profile.hideSocialButton then
         QuickJoinToastButton:Hide()
     end
+
+    if Perskan.db.profile.talkingHeadScale then
+        hooksecurefunc(TalkingHeadFrame, "PlayCurrent", function()
+            TalkingHeadFrame:SetScale(Perskan.db.profile.talkingHeadScale)
+        end)
+    end
+
+    if Perskan.db.profile.moveLfgButton then
+        local dummy = function() end
+        QueueStatusButton:ClearAllPoints()
+
+        QueueStatusButton:SetPoint("CENTER", LFDMicroButton, "CENTER", 0, 0)
+        QueueStatusButton.ClearAllPoints = dummy
+        QueueStatusButton.SetPoint = dummy
+
+        local scale = MicroMenu:GetScale()
+        QueueStatusButton:SetScale(scale * 0.55)
+        QueueStatusButton:SetFrameStrata("HIGH")
+        
+        -- Disable LFDMicroButton when QueueStatusButtonIcon is visible
+        QueueStatusButton:HookScript("OnShow", function()
+            LFDMicroButton:EnableMouse(false)
+        end)
+        
+        QueueStatusButton:HookScript("OnHide", function()
+            LFDMicroButton:EnableMouse(true) 
+        end)
+
+        -- Add click handlers to open LFD queue frame
+        QueueStatusButton:HookScript("OnClick", function(self, button)
+            if button == "LeftButton" then
+                PVEFrame_ToggleFrame("GroupFinderFrame", LFDParentFrame)
+            end
+        end)
+    end
+
+    if Perskan.db.profile.xpBarScale then
+        -- Create a frame to handle the StatusTrackingBarManager scaling
+        local scaleFrame = CreateFrame("Frame")
+        scaleFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+        scaleFrame:RegisterEvent("PLAYER_LOGIN")
+        scaleFrame:RegisterEvent("ADDON_LOADED")
+        
+        scaleFrame:SetScript("OnEvent", function(self, event, ...)
+            if StatusTrackingBarManager then
+                -- Set scale and hook OnShow to maintain scale
+                StatusTrackingBarManager:SetScale(Perskan.db.profile.xpBarScale)
+                if not self.hooked then
+                    hooksecurefunc(StatusTrackingBarManager, "SetScale", function(frame, scale)
+                        if scale ~= Perskan.db.profile.xpBarScale then
+                            frame:SetScale(Perskan.db.profile.xpBarScale)
+                        end
+                    end)
+                    self.hooked = true
+                end
+            end
+        end)
+    end
+
+    if Perskan.db.profile.extraActionButtonScale then
+       -- Create a frame to handle the StatusTrackingBarManager scaling
+       local scaleFrame = CreateFrame("Frame")
+       scaleFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+       scaleFrame:RegisterEvent("PLAYER_LOGIN")
+       scaleFrame:RegisterEvent("ADDON_LOADED")
+       
+       scaleFrame:SetScript("OnEvent", function(self, event, ...)
+           if ExtraAbilityContainer then
+               -- Set scale and hook OnShow to maintain scale
+               ExtraAbilityContainer:SetScale(Perskan.db.profile.extraActionButtonScale)
+               if not self.hooked then
+                   hooksecurefunc(ExtraAbilityContainer, "SetScale", function(frame, scale)
+                       if scale ~= Perskan.db.profile.extraActionButtonScale then
+                           frame:SetScale(Perskan.db.profile.extraActionButtonScale)
+                       end
+                   end)
+                   self.hooked = true
+               end
+           end
+       end)
+    end
+
+    if Perskan.db.profile.addChatSizes then
+        CHAT_FONT_HEIGHTS = {
+            [1] = 7,
+            [2] = 8,
+            [3] = 9,
+            [4] = 10,
+            [5] = 11,
+            [6] = 12,
+            [7] = 13,
+            [8] = 14,
+            [9] = 15,
+            [10] = 16,
+            [11] = 17,
+            [12] = 18,
+            [13] = 19,
+            [14] = 20,
+            [15] = 21,
+            [16] = 22,
+            [17] = 23,
+            [18] = 24
+         };	
+    end
 end
 
 -- Highlight stealable auras
