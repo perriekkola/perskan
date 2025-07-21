@@ -37,7 +37,6 @@ local defaults = {
         hideHotkeys = false,
         hideSocialButton = false,
         hideBagsBar = false,
-        moveLfgButton = false,
     }
 }
 
@@ -463,19 +462,6 @@ options = {
                 StaticPopup_Show("RELOAD_UI")
             end,
             order = 26
-        },
-        moveLfgButton = {
-            type = "toggle",
-            name = "Move LFG Button",
-            desc = "Move the LFG button.",
-            get = function(info)
-                return Perskan.db.profile.moveLfgButton
-            end,
-            set = function(info, value)
-                Perskan.db.profile.moveLfgButton = value
-                StaticPopup_Show("RELOAD_UI")
-            end,
-            order = 27
         },
         spacer2 = {
             type = "description",
