@@ -31,8 +31,10 @@ local function ModifyUI()
                 -- Set scale and hook OnShow to maintain scale
                 StatusTrackingBarManager:SetScale(Perskan.db.profile.xpBarScale)
                 if not self.hooked then
-                    hooksecurefunc(StatusTrackingBarManager, "SetScale", function()
-                        StatusTrackingBarManager:SetScale(Perskan.db.profile.xpBarScale)
+                    hooksecurefunc(StatusTrackingBarManager, "SetScale", function(frame, scale)
+                        if scale ~= Perskan.db.profile.xpBarScale then
+                            frame:SetScale(Perskan.db.profile.xpBarScale)
+                        end
                     end)
                     self.hooked = true
                 end
@@ -52,8 +54,10 @@ local function ModifyUI()
                -- Set scale and hook OnShow to maintain scale
                ExtraAbilityContainer:SetScale(Perskan.db.profile.extraActionButtonScale)
                if not self.hooked then
-                   hooksecurefunc(ExtraAbilityContainer, "SetScale", function()
-                       ExtraAbilityContainer:SetScale(Perskan.db.profile.extraActionButtonScale)
+                   hooksecurefunc(ExtraAbilityContainer, "SetScale", function(frame, scale)
+                       if scale ~= Perskan.db.profile.extraActionButtonScale then
+                           frame:SetScale(Perskan.db.profile.extraActionButtonScale)
+                       end
                    end)
                    self.hooked = true
                end
