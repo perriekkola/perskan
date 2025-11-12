@@ -17,7 +17,6 @@ local defaults = {
         talkingHeadScale = 0.8,
         xpBarScale = 0.9,
         extraActionButtonScale = 0.8,
-        highlightStealableAuras = true,
         objectiveTrackerScale = 0.95,
         reanchorDetailsWindows = true,
         addChatSizes = true,
@@ -462,29 +461,6 @@ options = {
                 StaticPopup_Show("RELOAD_UI")
             end,
             order = 26
-        },
-        spacer2 = {
-            type = "description",
-            name = " ",
-            order = 27
-        },
-        header3 = {
-            type = "header",
-            name = "Highlight all stealable auras",
-            order = 28
-        },
-        highlightStealableAuras = {
-            type = "toggle",
-            name = "Highlight Stealable Auras",
-            desc = "Toggle highlighting of stealable auras on the target frame.",
-            get = function(info)
-                return Perskan.db.profile.highlightStealableAuras or false
-            end,
-            set = function(info, value)
-                Perskan.db.profile.highlightStealableAuras = value
-                StaticPopup_Show("RELOAD_UI")
-            end,
-            order = 29
         }
     }
 }

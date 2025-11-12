@@ -89,26 +89,6 @@ local function ModifyUI()
     end
 end
 
--- Highlight stealable auras
-local function HighlightStealableAuras()
-    local function UpdateAuras(self)
-        for buff in self.auraPools:GetPool("TargetBuffFrameTemplate"):EnumerateActive() do
-            -- local buffSize = buff:GetHeight()
-            local buffSize = 21
-            local data = C_UnitAuras.GetAuraDataByAuraInstanceID(buff.unit, buff.auraInstanceID)
-            buff.Stealable:SetShown(data.isStealable or data.dispelName == "Magic")
-            local stealableSize = buffSize + 4
-            buff.Stealable:SetSize(stealableSize, stealableSize)
-            buff.Stealable:SetPoint("CENTER", buff, "CENTER")
-        end
-    end
-
-    if Perskan.db.profile.highlightStealableAuras then
-        hooksecurefunc(TargetFrame, "UpdateAuras", UpdateAuras)
-        hooksecurefunc(FocusFrame, "UpdateAuras", UpdateAuras)
-    end
-end
-
 -- Function to hide HotKey and BPHotKey elements for all ActionButtons
 local function HideActionButtonHotKeys()
     if not Perskan.db.profile.hideHotkeys then
@@ -191,7 +171,6 @@ local function InitializeCVars(self)
     SetCVar("nameplateShowSelf", profile.nameplateShowSelf)
     SetCVar("nameplateHideHealthAndPower", profile.nameplateHideHealthAndPower)
     SetCVar("NameplatePersonalShowAlways", profile.nameplatePersonalShowAlways)
-    C_NamePlate.SetNamePlateFriendlyClickThrough(true)
 end
 
 -- Variable to track the last time the event handler was executed
@@ -200,7 +179,6 @@ local debounceDelay = 1 -- 1 second debounce delay
 
 -- Events
 function Perskan:OnEnable()
-    HighlightStealableAuras()
     ModifyUI()
     HideActionButtonHotKeys()
     HideBagsBar()
