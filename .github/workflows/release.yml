@@ -1,0 +1,50 @@
+name: Release WoW Addon
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package addon zip
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ADDON_NAME="Perskan"
+          VERSION="${GITHUB_REF_NAME}"
+          ZIP_NAME="${ADDON_NAME}-${VERSION}.zip"
+
+          # Build staging folder that becomes the top-level folder in the zip
+          mkdir -p "dist/${ADDON_NAME}"
+
+          # Copy repo contents into dist/Perskan, excluding things you don't want in the addon zip
+          rsync -av --delete \
+            --exclude ".git/" \
+            --exclude ".github/" \
+            --exclude ".gitignore" \
+            --exclude "README*" \
+            --exclude "LICENSE*" \
+            --exclude "*.psd" --exclude "*.xcf" \
+            --exclude "*.zip" \
+            ./ "dist/${ADDON_NAME}/"
+
+          # Zip the top-level folder (Perskan/)
+          (cd dist && zip -r "../${ZIP_NAME}" "${ADDON_NAME}")
+
+          echo "ZIP_NAME=${ZIP_NAME}" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release + upload asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ZIP_NAME }}
+          generate_release_notes: true
