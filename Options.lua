@@ -37,6 +37,7 @@ local defaults = {
         hideSocialButton = false,
         hideBagsBar = false,
         sortBuffBarsUpward = true,
+        anchorBuffBarsToWidgetFrame = true,
     }
 }
 
@@ -475,6 +476,19 @@ options = {
                 StaticPopup_Show("RELOAD_UI")
             end,
             order = 27
+        },
+        anchorBuffBarsToWidgetFrame = {
+            type = "toggle",
+            name = "Anchor Buff Bars to Widget Frame",
+            desc = "Anchor BuffBarCooldownViewer to the top of UIWidgetPowerBarContainerFrame.",
+            get = function(info)
+                return Perskan.db.profile.anchorBuffBarsToWidgetFrame
+            end,
+            set = function(info, value)
+                Perskan.db.profile.anchorBuffBarsToWidgetFrame = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 28
         }
     }
 }

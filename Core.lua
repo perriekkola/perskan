@@ -177,55 +177,108 @@ end
 local lastTalentGroupChangeTime = 0
 local debounceDelay = 1 -- 1 second debounce delay
 
+-- Shared state for BuffBarCooldownViewer sorting
+local buffBarSortingState = {
+    allContainers = {},
+    containerHeight = nil,
+    containerSpacing = 2,
+    parentFrame = nil,
+    initialized = false,
+}
+
+-- Collect all child containers that have an Icon
+local function CollectBuffBarContainers()
+    wipe(buffBarSortingState.allContainers)
+
+    buffBarSortingState.parentFrame = BuffBarCooldownViewer
+    if not buffBarSortingState.parentFrame then
+        return
+    end
+
+    for _, child in ipairs({buffBarSortingState.parentFrame:GetChildren()}) do
+        if child.Icon then
+            table.insert(buffBarSortingState.allContainers, child)
+            if not buffBarSortingState.containerHeight then
+                buffBarSortingState.containerHeight = child:GetHeight()
+            end
+        end
+    end
+end
+
+-- Reposition visible containers to stack upward
+local function RepositionBuffBarContainers()
+    if not Perskan.db.profile.sortBuffBarsUpward or not buffBarSortingState.parentFrame then
+        return
+    end
+
+    -- Recalculate height if needed
+    if not buffBarSortingState.containerHeight and #buffBarSortingState.allContainers > 0 then
+        buffBarSortingState.containerHeight = buffBarSortingState.allContainers[1]:GetHeight()
+    end
+
+    local visibleIndex = 0
+    for _, container in ipairs(buffBarSortingState.allContainers) do
+        if container:IsVisible() then
+            container:ClearAllPoints()
+            container:SetPoint("BOTTOMLEFT", buffBarSortingState.parentFrame, "BOTTOMLEFT", 0, visibleIndex * (buffBarSortingState.containerHeight + buffBarSortingState.containerSpacing))
+            visibleIndex = visibleIndex + 1
+        end
+    end
+end
+
+-- Function to anchor BuffBarCooldownViewer to UIParentBottomManagedFrameContainer dynamically
+local function AnchorBuffBarsToWidgetFrame()
+    if not Perskan.db.profile.anchorBuffBarsToWidgetFrame then
+        return
+    end
+
+    local function CenterBuffBarAndReposition()
+        if BuffBarCooldownViewer then
+            local _, relativeTo, _, _, yOfs = BuffBarCooldownViewer:GetPoint(1)
+            if relativeTo then
+                BuffBarCooldownViewer:ClearAllPoints()
+                BuffBarCooldownViewer:SetPoint("TOP", relativeTo, "TOP", 0, (yOfs or 0) + 5)
+            end
+        end
+        -- Also reposition the bar containers after layout changes
+        C_Timer.After(0.01, RepositionBuffBarContainers)
+    end
+
+    local setupFrame = CreateFrame("Frame")
+    setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    setupFrame:RegisterEvent("ADDON_LOADED")
+
+    setupFrame:SetScript("OnEvent", function(self, event, ...)
+        if BuffBarCooldownViewer and UIParentBottomManagedFrameContainer then
+            -- Set up BuffBarCooldownViewer as a managed frame
+            BuffBarCooldownViewer:SetParent(UIParentBottomManagedFrameContainer)
+            BuffBarCooldownViewer.layoutIndex = 1 -- Lower than cast bar (2) to be on top
+            BuffBarCooldownViewer.IsInDefaultPosition = function() return true end
+
+            -- Ensure the frame reports its size for layout calculations
+            local height = BuffBarCooldownViewer:GetHeight()
+            if height == 0 then
+                BuffBarCooldownViewer:SetHeight(150) -- Default height if not set
+            end
+
+            -- Add to managed frame container
+            UIParentBottomManagedFrameContainer:AddManagedFrame(BuffBarCooldownViewer)
+
+            -- Hook layout to center horizontally and reposition bars after each update
+            hooksecurefunc(UIParentBottomManagedFrameContainer, "Layout", CenterBuffBarAndReposition)
+
+            -- Trigger layout update and center
+            UIParentBottomManagedFrameContainer:Layout()
+
+            self:UnregisterAllEvents()
+        end
+    end)
+end
+
 -- Function to sort BuffBarCooldownViewer bars upward without gaps
 local function SetupBuffBarSorting()
     if not Perskan.db.profile.sortBuffBarsUpward then
         return
-    end
-
-    local allContainers = {}
-    local containerHeight = nil
-    local containerSpacing = 2 -- Default spacing between containers
-    local parentFrame = nil
-
-    -- Collect all child containers that have an Icon
-    local function CollectContainers()
-        wipe(allContainers)
-
-        parentFrame = BuffBarCooldownViewer
-        if not parentFrame then
-            return
-        end
-
-        for _, child in ipairs({parentFrame:GetChildren()}) do
-            if child.Icon then
-                table.insert(allContainers, child)
-                if not containerHeight then
-                    containerHeight = child:GetHeight()
-                end
-            end
-        end
-    end
-
-    -- Reposition visible containers to stack upward
-    local function RepositionContainers()
-        if not Perskan.db.profile.sortBuffBarsUpward or not parentFrame then
-            return
-        end
-
-        -- Recalculate height if needed
-        if not containerHeight and #allContainers > 0 then
-            containerHeight = allContainers[1]:GetHeight()
-        end
-
-        local visibleIndex = 0
-        for _, container in ipairs(allContainers) do
-            if container:IsVisible() then
-                container:ClearAllPoints()
-                container:SetPoint("BOTTOMLEFT", parentFrame, "BOTTOMLEFT", 0, visibleIndex * (containerHeight + containerSpacing))
-                visibleIndex = visibleIndex + 1
-            end
-        end
     end
 
     -- Setup frame to initialize after BuffBarCooldownViewer loads
@@ -239,17 +292,17 @@ local function SetupBuffBarSorting()
             -- Only reposition when player's auras change
             if arg1 == "player" then
                 -- Small delay to let BuffBarCooldownViewer update first
-                C_Timer.After(0.05, RepositionContainers)
+                C_Timer.After(0.01, RepositionBuffBarContainers)
             end
             return
         end
 
         -- Initial setup on login/load
-        CollectContainers()
+        CollectBuffBarContainers()
 
-        if #allContainers > 0 and not self.hooked then
-            RepositionContainers()
-            self.hooked = true
+        if #buffBarSortingState.allContainers > 0 and not buffBarSortingState.initialized then
+            RepositionBuffBarContainers()
+            buffBarSortingState.initialized = true
         end
     end)
 end
@@ -259,6 +312,7 @@ function Perskan:OnEnable()
     ModifyUI()
     HideActionButtonHotKeys()
     HideBagsBar()
+    AnchorBuffBarsToWidgetFrame()
     SetupBuffBarSorting()
 
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
