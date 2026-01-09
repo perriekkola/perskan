@@ -36,6 +36,7 @@ local defaults = {
         hideHotkeys = false,
         hideSocialButton = false,
         hideBagsBar = false,
+        sortBuffBarsUpward = true,
     }
 }
 
@@ -461,6 +462,19 @@ options = {
                 StaticPopup_Show("RELOAD_UI")
             end,
             order = 26
+        },
+        sortBuffBarsUpward = {
+            type = "toggle",
+            name = "Sort Buff Bars Upward",
+            desc = "Stack BuffBarCooldownViewer bars upward without gaps when cooldowns are inactive.",
+            get = function(info)
+                return Perskan.db.profile.sortBuffBarsUpward
+            end,
+            set = function(info, value)
+                Perskan.db.profile.sortBuffBarsUpward = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 27
         }
     }
 }

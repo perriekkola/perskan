@@ -177,11 +177,89 @@ end
 local lastTalentGroupChangeTime = 0
 local debounceDelay = 1 -- 1 second debounce delay
 
+-- Function to sort BuffBarCooldownViewer bars upward without gaps
+local function SetupBuffBarSorting()
+    if not Perskan.db.profile.sortBuffBarsUpward then
+        return
+    end
+
+    local allContainers = {}
+    local containerHeight = nil
+    local containerSpacing = 2 -- Default spacing between containers
+    local parentFrame = nil
+
+    -- Collect all child containers that have an Icon
+    local function CollectContainers()
+        wipe(allContainers)
+
+        parentFrame = BuffBarCooldownViewer
+        if not parentFrame then
+            return
+        end
+
+        for _, child in ipairs({parentFrame:GetChildren()}) do
+            if child.Icon then
+                table.insert(allContainers, child)
+                if not containerHeight then
+                    containerHeight = child:GetHeight()
+                end
+            end
+        end
+    end
+
+    -- Reposition visible containers to stack upward
+    local function RepositionContainers()
+        if not Perskan.db.profile.sortBuffBarsUpward or not parentFrame then
+            return
+        end
+
+        -- Recalculate height if needed
+        if not containerHeight and #allContainers > 0 then
+            containerHeight = allContainers[1]:GetHeight()
+        end
+
+        local visibleIndex = 0
+        for _, container in ipairs(allContainers) do
+            if container:IsVisible() then
+                container:ClearAllPoints()
+                container:SetPoint("BOTTOMLEFT", parentFrame, "BOTTOMLEFT", 0, visibleIndex * (containerHeight + containerSpacing))
+                visibleIndex = visibleIndex + 1
+            end
+        end
+    end
+
+    -- Setup frame to initialize after BuffBarCooldownViewer loads
+    local setupFrame = CreateFrame("Frame")
+    setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    setupFrame:RegisterEvent("ADDON_LOADED")
+    setupFrame:RegisterEvent("UNIT_AURA")
+
+    setupFrame:SetScript("OnEvent", function(self, event, arg1, ...)
+        if event == "UNIT_AURA" then
+            -- Only reposition when player's auras change
+            if arg1 == "player" then
+                -- Small delay to let BuffBarCooldownViewer update first
+                C_Timer.After(0.05, RepositionContainers)
+            end
+            return
+        end
+
+        -- Initial setup on login/load
+        CollectContainers()
+
+        if #allContainers > 0 and not self.hooked then
+            RepositionContainers()
+            self.hooked = true
+        end
+    end)
+end
+
 -- Events
 function Perskan:OnEnable()
     ModifyUI()
     HideActionButtonHotKeys()
     HideBagsBar()
+    SetupBuffBarSorting()
 
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
 end
