@@ -3,6 +3,7 @@
 ## Author: Per Riekkola
 ## Interface: 110207, 120000
 ## Version: 1.0
+## IconTexture: Interface\Icons\ability_titankeeper_testofconfidence
 
 ## SavedVariables: PerskanDB
 
