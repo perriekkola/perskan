@@ -481,6 +481,9 @@ options = {
                 Perskan.db.profile.auraCooldownNumbersScale = value
                 ShowReloadUIDebounced()
             end,
+            disabled = function()
+                return not Perskan.db.profile.showAuraCooldownNumbers
+            end,
             order = 26
         },
         hideSocialButton = {
@@ -525,7 +528,7 @@ options = {
         anchorBuffBarsToWidgetFrame = {
             type = "toggle",
             name = "Anchor Buff Bars to Widget Frame",
-            desc = "Anchor BuffBarCooldownViewer to the top of UIWidgetPowerBarContainerFrame.",
+            desc = "Anchor BuffBarCooldownViewer above the cast bar. If Extra Quest Button anchoring is also enabled, buff bars will stack above it.",
             get = function(info)
                 return Perskan.db.profile.anchorBuffBarsToWidgetFrame
             end,
@@ -538,7 +541,7 @@ options = {
         anchorExtraQuestButton = {
             type = "toggle",
             name = "Anchor Extra Quest Button",
-            desc = "Anchor ExtraQuestButton to the managed frame container below the cast bar.",
+            desc = "Anchor ExtraQuestButton above the cast bar (between cast bar and buff bars).",
             get = function(info)
                 return Perskan.db.profile.anchorExtraQuestButton
             end,

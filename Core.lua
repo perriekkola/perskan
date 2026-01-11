@@ -342,98 +342,135 @@ local function RepositionBuffBarContainers()
     end
 end
 
--- Function to anchor BuffBarCooldownViewer to UIParentBottomManagedFrameContainer dynamically
-local function AnchorBuffBarsToWidgetFrame()
-    if not Perskan.db.profile.anchorBuffBarsToWidgetFrame then
-        return
+-- Shared function to reposition BuffBarCooldownViewer (called by both anchor functions)
+-- BuffBars anchor above ExtraQuestButton if visible, otherwise above the container
+local function RepositionBuffBarAboveWidget()
+    if not BuffBarCooldownViewer or not UIParentBottomManagedFrameContainer then return end
+    if InCombatLockdown() then return end
+
+    BuffBarCooldownViewer:ClearAllPoints()
+
+    -- Check if ExtraQuestButton exists, is visible, and anchoring is enabled
+    if Perskan.db.profile.anchorExtraQuestButton and ExtraQuestButton and ExtraQuestButton:IsShown() then
+        -- Anchor above ExtraQuestButton
+        BuffBarCooldownViewer:SetPoint("BOTTOM", ExtraQuestButton, "TOP", 0, 15)
+    else
+        -- Anchor above the managed frame container
+        BuffBarCooldownViewer:SetPoint("BOTTOM", UIParentBottomManagedFrameContainer, "TOP", 0, 20)
     end
 
-    local function CenterBuffBarAndReposition()
-        if BuffBarCooldownViewer then
-            local _, relativeTo, _, _, yOfs = BuffBarCooldownViewer:GetPoint(1)
-            if relativeTo then
-                BuffBarCooldownViewer:ClearAllPoints()
-                BuffBarCooldownViewer:SetPoint("TOP", relativeTo, "TOP", 0, (yOfs or 0) + 5)
-            end
-        end
-        -- Also reposition the bar containers after layout changes
+    -- Reposition bar containers if sorting is enabled
+    if Perskan.db.profile.sortBuffBarsUpward then
         C_Timer.After(0.01, RepositionBuffBarContainers)
     end
-
-    local setupFrame = CreateFrame("Frame")
-    setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    setupFrame:RegisterEvent("ADDON_LOADED")
-
-    setupFrame:SetScript("OnEvent", function(self, event, ...)
-        if BuffBarCooldownViewer and UIParentBottomManagedFrameContainer then
-            -- Set up BuffBarCooldownViewer as a managed frame
-            BuffBarCooldownViewer:SetParent(UIParentBottomManagedFrameContainer)
-            BuffBarCooldownViewer.layoutIndex = 1 -- Lower than cast bar (2) to be on top
-            BuffBarCooldownViewer.IsInDefaultPosition = function() return true end
-
-            -- Ensure the frame reports its size for layout calculations
-            local height = BuffBarCooldownViewer:GetHeight()
-            if height == 0 then
-                BuffBarCooldownViewer:SetHeight(150) -- Default height if not set
-            end
-
-            -- Add to managed frame container
-            UIParentBottomManagedFrameContainer:AddManagedFrame(BuffBarCooldownViewer)
-
-            -- Hook layout to center horizontally and reposition bars after each update
-            hooksecurefunc(UIParentBottomManagedFrameContainer, "Layout", CenterBuffBarAndReposition)
-
-            -- Trigger layout update and center
-            UIParentBottomManagedFrameContainer:Layout()
-
-            self:UnregisterAllEvents()
-        end
-    end)
 end
 
--- Function to anchor ExtraQuestButton to UIParentBottomManagedFrameContainer below cast bar
+-- Function to anchor ExtraQuestButton above the widget container
+-- Note: We don't use AddManagedFrame to avoid tainting the container (causes combat errors)
 local function AnchorExtraQuestButton()
     if not Perskan.db.profile.anchorExtraQuestButton then
         return
     end
 
-    local function CenterExtraQuestButton()
-        if ExtraQuestButton then
-            local _, relativeTo, _, _, yOfs = ExtraQuestButton:GetPoint(1)
-            if relativeTo then
-                ExtraQuestButton:ClearAllPoints()
-                ExtraQuestButton:SetPoint("TOP", relativeTo, "TOP", 0, (yOfs or 0) - 15)
-            end
+    local function RepositionExtraQuestButton()
+        if not ExtraQuestButton or not UIParentBottomManagedFrameContainer then return end
+        if InCombatLockdown() then return end
+
+        -- Position above the managed frame container
+        ExtraQuestButton:ClearAllPoints()
+        ExtraQuestButton:SetPoint("BOTTOM", UIParentBottomManagedFrameContainer, "TOP", 0, 20)
+
+        -- Also reposition buff bars since they depend on ExtraQuestButton visibility
+        if Perskan.db.profile.anchorBuffBarsToWidgetFrame then
+            RepositionBuffBarAboveWidget()
         end
     end
 
     local setupFrame = CreateFrame("Frame")
     setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     setupFrame:RegisterEvent("ADDON_LOADED")
+    setupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
+    local initialized = false
     setupFrame:SetScript("OnEvent", function(self, event, ...)
         if ExtraQuestButton and UIParentBottomManagedFrameContainer then
-            -- Set up ExtraQuestButton as a managed frame
-            ExtraQuestButton:SetParent(UIParentBottomManagedFrameContainer)
-            ExtraQuestButton.layoutIndex = 3 -- Higher than cast bar (2) to be below it
-            ExtraQuestButton.IsInDefaultPosition = function() return true end
+            if not initialized then
+                -- Hook layout to reposition dynamically when container changes
+                hooksecurefunc(UIParentBottomManagedFrameContainer, "Layout", function()
+                    if not InCombatLockdown() then
+                        RepositionExtraQuestButton()
+                    end
+                end)
 
-            -- Ensure the frame reports its size for layout calculations
-            local height = ExtraQuestButton:GetHeight()
-            if height == 0 then
-                ExtraQuestButton:SetHeight(50) -- Default height if not set
+                -- Hook ExtraQuestButton show/hide to update buff bar position
+                ExtraQuestButton:HookScript("OnShow", function()
+                    if not InCombatLockdown() and Perskan.db.profile.anchorBuffBarsToWidgetFrame then
+                        RepositionBuffBarAboveWidget()
+                    end
+                end)
+                ExtraQuestButton:HookScript("OnHide", function()
+                    if not InCombatLockdown() and Perskan.db.profile.anchorBuffBarsToWidgetFrame then
+                        RepositionBuffBarAboveWidget()
+                    end
+                end)
+
+                -- Initial position
+                RepositionExtraQuestButton()
+
+                initialized = true
+                self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+                self:UnregisterEvent("ADDON_LOADED")
             end
 
-            -- Add to managed frame container
-            UIParentBottomManagedFrameContainer:AddManagedFrame(ExtraQuestButton)
+            -- Re-anchor after leaving combat
+            if event == "PLAYER_REGEN_ENABLED" then
+                RepositionExtraQuestButton()
+            end
+        end
+    end)
+end
 
-            -- Hook layout to center horizontally after each update
-            hooksecurefunc(UIParentBottomManagedFrameContainer, "Layout", CenterExtraQuestButton)
+-- Function to anchor BuffBarCooldownViewer above the widget (and above ExtraQuestButton if visible)
+-- Note: We don't use AddManagedFrame to avoid tainting the container (causes combat errors)
+local function AnchorBuffBarsToWidgetFrame()
+    if not Perskan.db.profile.anchorBuffBarsToWidgetFrame then
+        return
+    end
 
-            -- Trigger layout update and center
-            UIParentBottomManagedFrameContainer:Layout()
+    local setupFrame = CreateFrame("Frame")
+    setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    setupFrame:RegisterEvent("ADDON_LOADED")
+    setupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
-            self:UnregisterAllEvents()
+    local initialized = false
+    setupFrame:SetScript("OnEvent", function(self, event, ...)
+        if BuffBarCooldownViewer and UIParentBottomManagedFrameContainer then
+            if not initialized then
+                -- Hook layout to reposition dynamically when container changes
+                hooksecurefunc(UIParentBottomManagedFrameContainer, "Layout", function()
+                    if not InCombatLockdown() then
+                        RepositionBuffBarAboveWidget()
+                    end
+                end)
+
+                -- Initial position
+                RepositionBuffBarAboveWidget()
+
+                -- Set up buff bar sorting if enabled
+                if Perskan.db.profile.sortBuffBarsUpward then
+                    CollectBuffBarContainers()
+                    RepositionBuffBarContainers()
+                end
+
+                initialized = true
+                self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+                self:UnregisterEvent("ADDON_LOADED")
+            end
+
+            -- Re-anchor after leaving combat
+            if event == "PLAYER_REGEN_ENABLED" then
+                RepositionBuffBarAboveWidget()
+            end
         end
     end)
 end
