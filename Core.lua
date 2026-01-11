@@ -3,11 +3,6 @@ local function ModifyUI()
     -- Scale EncounterBar
     EncounterBar:SetScale(Perskan.db.profile.encounterBarScale or 0.8)
 
-    -- Move minimap
-    if Perskan.db.profile.moveMinimapUp then
-        Minimap:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -7, -35)
-    end
-
     -- Hide quick join toast button
     if Perskan.db.profile.hideSocialButton then
         QuickJoinToastButton:Hide()
@@ -138,6 +133,52 @@ local function HideActionButtonHotKeys()
         local multiBarLeftButton = _G["MultiBarLeftButton" .. i]
         if multiBarLeftButton then
             HideHotKeys(multiBarLeftButton)
+        end
+    end
+end
+
+-- Function to hide macro text (Name) elements for all ActionButtons
+local function HideActionButtonMacroText()
+    if not Perskan.db.profile.hideMacroText then
+        return
+    end
+
+    local function HideMacroText(button)
+        if button.Name then
+            button.Name:Hide()
+            button.Name:SetAlpha(0)
+            hooksecurefunc(button.Name, "Show", function(self)
+                self:Hide()
+            end)
+        end
+    end
+
+    for i = 1, 12 do
+        local actionButton = _G["ActionButton" .. i]
+        if actionButton then
+            HideMacroText(actionButton)
+        end
+    end
+
+    for i = 1, 12 do
+        local multiBarBottomLeftButton = _G["MultiBarBottomLeftButton" .. i]
+        if multiBarBottomLeftButton then
+            HideMacroText(multiBarBottomLeftButton)
+        end
+
+        local multiBarBottomRightButton = _G["MultiBarBottomRightButton" .. i]
+        if multiBarBottomRightButton then
+            HideMacroText(multiBarBottomRightButton)
+        end
+
+        local multiBarRightButton = _G["MultiBarRightButton" .. i]
+        if multiBarRightButton then
+            HideMacroText(multiBarRightButton)
+        end
+
+        local multiBarLeftButton = _G["MultiBarLeftButton" .. i]
+        if multiBarLeftButton then
+            HideMacroText(multiBarLeftButton)
         end
     end
 end
@@ -311,6 +352,7 @@ end
 function Perskan:OnEnable()
     ModifyUI()
     HideActionButtonHotKeys()
+    HideActionButtonMacroText()
     HideBagsBar()
     AnchorBuffBarsToWidgetFrame()
     SetupBuffBarSorting()

@@ -13,11 +13,11 @@ local defaults = {
         nameplateOtherTopInset = 0.09,
         cameraDistanceMaxZoomFactor = 2.5,
         nameplatePersonalShowAlways = 0,
-        encounterBarScale = 0.8,
-        talkingHeadScale = 0.8,
-        xpBarScale = 0.9,
-        extraActionButtonScale = 0.8,
-        objectiveTrackerScale = 0.95,
+        encounterBarScale = 1,
+        talkingHeadScale = 1,
+        xpBarScale = 1,
+        extraActionButtonScale = 1,
+        objectiveTrackerScale = 1,
         reanchorDetailsWindows = true,
         addChatSizes = true,
         autoLootDefault = 1,
@@ -32,8 +32,8 @@ local defaults = {
         pvpFramesDisplayClassColor = 1,
         nameplateShowSelf = 1,
         nameplateHideHealthAndPower = 1,
-        moveMinimapUp = false,
         hideHotkeys = false,
+        hideMacroText = false,
         hideSocialButton = false,
         hideBagsBar = false,
         sortBuffBarsUpward = true,
@@ -412,19 +412,6 @@ options = {
             end,
             order = 22
         },
-        moveMinimapUp = {
-            type = "toggle",
-            name = "Move Minimap Up",
-            desc = "Move the Minimap slightly upwards.",
-            get = function(info)
-                return Perskan.db.profile.moveMinimapUp
-            end,
-            set = function(info, value)
-                Perskan.db.profile.moveMinimapUp = value
-                StaticPopup_Show("RELOAD_UI")
-            end,
-            order = 23
-        },
         hideHotkeys = {
             type = "toggle",
             name = "Hide Hotkeys",
@@ -434,6 +421,19 @@ options = {
             end,
             set = function(info, value)
                 Perskan.db.profile.hideHotkeys = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 23
+        },
+        hideMacroText = {
+            type = "toggle",
+            name = "Hide Macro Text",
+            desc = "Hide macro names on action buttons.",
+            get = function(info)
+                return Perskan.db.profile.hideMacroText
+            end,
+            set = function(info, value)
+                Perskan.db.profile.hideMacroText = value
                 StaticPopup_Show("RELOAD_UI")
             end,
             order = 24
