@@ -40,7 +40,7 @@ local defaults = {
         sortBuffBarsUpward = true,
         anchorBuffBarsToWidgetFrame = true,
         anchorExtraQuestButton = false,
-        testMinimapWidget = false,
+        moveDamageMeterBelowMinimap = false,
     }
 }
 
@@ -547,15 +547,15 @@ options = {
             end,
             order = 29
         },
-        testMinimapWidget = {
+        moveDamageMeterBelowMinimap = {
             type = "toggle",
-            name = "Test Minimap Widget Box",
-            desc = "Show a test black box in UIParentRightManagedFrameContainer (managed positioning with objective trackers).",
+            name = "Move Damage Meter Below Minimap",
+            desc = "Move the default damage meter to the right-side widget area (below durability frame).",
             get = function(info)
-                return Perskan.db.profile.testMinimapWidget
+                return Perskan.db.profile.moveDamageMeterBelowMinimap
             end,
             set = function(info, value)
-                Perskan.db.profile.testMinimapWidget = value
+                Perskan.db.profile.moveDamageMeterBelowMinimap = value
                 StaticPopup_Show("RELOAD_UI")
             end,
             order = 30

@@ -438,9 +438,9 @@ local function AnchorExtraQuestButton()
     end)
 end
 
--- Test function to create a black box anchored to UIParentRightManagedFrameContainer
-local function SetupTestMinimapWidget()
-    if not Perskan.db.profile.testMinimapWidget then
+-- Move existing DamageMeter frame to UIParentRightManagedFrameContainer
+local function MoveDamageMeterBelowMinimap()
+    if not Perskan.db.profile.moveDamageMeterBelowMinimap then
         return
     end
 
@@ -449,33 +449,31 @@ local function SetupTestMinimapWidget()
     setupFrame:RegisterEvent("ADDON_LOADED")
 
     setupFrame:SetScript("OnEvent", function(self, event, ...)
-        if UIParentRightManagedFrameContainer then
-            -- Create a test black box
-            local testBox = CreateFrame("Frame", "PerskanTestMinimapBox", UIParent, "BackdropTemplate")
-            testBox:SetSize(150, 50)
-            testBox:SetBackdrop({
-                bgFile = "Interface\\Buttons\\WHITE8x8",
-                edgeFile = "Interface\\Buttons\\WHITE8x8",
-                edgeSize = 1,
-            })
-            testBox:SetBackdropColor(0, 0, 0, 0.8)
-            testBox:SetBackdropBorderColor(1, 1, 1, 1)
+        if UIParentRightManagedFrameContainer and DamageMeter then
+            -- Set up DamageMeter as managed frame in UIParentRightManagedFrameContainer
+            DamageMeter:SetParent(UIParentRightManagedFrameContainer)
+            DamageMeter.layoutIndex = 10 -- Right below DurabilityFrame (9)
+            DamageMeter.IsInDefaultPosition = function() return true end
 
-            -- Add text label
-            local text = testBox:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            text:SetPoint("CENTER")
-            text:SetText("Test Box")
-
-            -- Set up as managed frame in UIParentRightManagedFrameContainer
-            testBox:SetParent(UIParentRightManagedFrameContainer)
-            testBox.layoutIndex = 10 -- Right below DurabilityFrame (9)
-            testBox.IsInDefaultPosition = function() return true end
+            -- Force width
+            DamageMeter:SetWidth(280)
 
             -- Add to managed frame container
-            UIParentRightManagedFrameContainer:AddManagedFrame(testBox)
+            UIParentRightManagedFrameContainer:AddManagedFrame(DamageMeter)
             UIParentRightManagedFrameContainer:Layout()
 
-            print("PerskanTestBox: Added to UIParentRightManagedFrameContainer with layoutIndex 10")
+            -- Reposition to right side with -20px offset after layout
+            local function RepositionDamageMeter()
+                if DamageMeter and DamageMeter:IsShown() then
+                    local point, relativeTo, relativePoint, xOfs, yOfs = DamageMeter:GetPoint(1)
+                    if point and yOfs then
+                        DamageMeter:ClearAllPoints()
+                        DamageMeter:SetPoint("TOPRIGHT", UIParentRightManagedFrameContainer, "TOPRIGHT", 0, yOfs)
+                    end
+                end
+            end
+            hooksecurefunc(UIParentRightManagedFrameContainer, "Layout", RepositionDamageMeter)
+            RepositionDamageMeter()
 
             self:UnregisterAllEvents()
         end
@@ -523,7 +521,7 @@ function Perskan:OnEnable()
     SetupAuraCooldownNumbers()
     AnchorBuffBarsToWidgetFrame()
     AnchorExtraQuestButton()
-    SetupTestMinimapWidget()
+    MoveDamageMeterBelowMinimap()
     SetupBuffBarSorting()
 
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
