@@ -391,6 +391,53 @@ local function AnchorBuffBarsToWidgetFrame()
     end)
 end
 
+-- Function to anchor ExtraQuestButton to UIParentBottomManagedFrameContainer below cast bar
+local function AnchorExtraQuestButton()
+    if not Perskan.db.profile.anchorExtraQuestButton then
+        return
+    end
+
+    local function CenterExtraQuestButton()
+        if ExtraQuestButton then
+            local _, relativeTo, _, _, yOfs = ExtraQuestButton:GetPoint(1)
+            if relativeTo then
+                ExtraQuestButton:ClearAllPoints()
+                ExtraQuestButton:SetPoint("TOP", relativeTo, "TOP", 0, (yOfs or 0) - 15)
+            end
+        end
+    end
+
+    local setupFrame = CreateFrame("Frame")
+    setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    setupFrame:RegisterEvent("ADDON_LOADED")
+
+    setupFrame:SetScript("OnEvent", function(self, event, ...)
+        if ExtraQuestButton and UIParentBottomManagedFrameContainer then
+            -- Set up ExtraQuestButton as a managed frame
+            ExtraQuestButton:SetParent(UIParentBottomManagedFrameContainer)
+            ExtraQuestButton.layoutIndex = 3 -- Higher than cast bar (2) to be below it
+            ExtraQuestButton.IsInDefaultPosition = function() return true end
+
+            -- Ensure the frame reports its size for layout calculations
+            local height = ExtraQuestButton:GetHeight()
+            if height == 0 then
+                ExtraQuestButton:SetHeight(50) -- Default height if not set
+            end
+
+            -- Add to managed frame container
+            UIParentBottomManagedFrameContainer:AddManagedFrame(ExtraQuestButton)
+
+            -- Hook layout to center horizontally after each update
+            hooksecurefunc(UIParentBottomManagedFrameContainer, "Layout", CenterExtraQuestButton)
+
+            -- Trigger layout update and center
+            UIParentBottomManagedFrameContainer:Layout()
+
+            self:UnregisterAllEvents()
+        end
+    end)
+end
+
 -- Function to sort BuffBarCooldownViewer bars upward without gaps
 local function SetupBuffBarSorting()
     if not Perskan.db.profile.sortBuffBarsUpward then
@@ -431,6 +478,7 @@ function Perskan:OnEnable()
     HideBagsBar()
     SetupAuraCooldownNumbers()
     AnchorBuffBarsToWidgetFrame()
+    AnchorExtraQuestButton()
     SetupBuffBarSorting()
 
     self:RegisterEvent("PLAYER_ENTERING_WORLD")

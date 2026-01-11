@@ -39,6 +39,7 @@ local defaults = {
         hideBagsBar = false,
         sortBuffBarsUpward = true,
         anchorBuffBarsToWidgetFrame = true,
+        anchorExtraQuestButton = false,
     }
 }
 
@@ -54,6 +55,18 @@ StaticPopupDialogs["RELOAD_UI"] = {
     hideOnEscape = true,
     preferredIndex = 3
 }
+
+-- Debounced reload popup for sliders (waits until user stops dragging)
+local reloadTimer = nil
+local function ShowReloadUIDebounced()
+    if reloadTimer then
+        reloadTimer:Cancel()
+    end
+    reloadTimer = C_Timer.NewTimer(0.5, function()
+        StaticPopup_Show("RELOAD_UI")
+        reloadTimer = nil
+    end)
+end
 
 options = {
     name = addonName,
@@ -393,7 +406,7 @@ options = {
             end,
             set = function(info, value)
                 Perskan.db.profile.xpBarScale = value
-                StaticPopup_Show("RELOAD_UI")
+                ShowReloadUIDebounced()
             end,
             order = 22
         },
@@ -409,7 +422,7 @@ options = {
             end,
             set = function(info, value)
                 Perskan.db.profile.extraActionButtonScale = value
-                StaticPopup_Show("RELOAD_UI")
+                ShowReloadUIDebounced()
             end,
             order = 22
         },
@@ -464,7 +477,7 @@ options = {
             end,
             set = function(info, value)
                 Perskan.db.profile.auraCooldownNumbersScale = value
-                StaticPopup_Show("RELOAD_UI")
+                ShowReloadUIDebounced()
             end,
             order = 26
         },
@@ -519,6 +532,19 @@ options = {
                 StaticPopup_Show("RELOAD_UI")
             end,
             order = 28
+        },
+        anchorExtraQuestButton = {
+            type = "toggle",
+            name = "Anchor Extra Quest Button",
+            desc = "Anchor ExtraQuestButton to the managed frame container below the cast bar.",
+            get = function(info)
+                return Perskan.db.profile.anchorExtraQuestButton
+            end,
+            set = function(info, value)
+                Perskan.db.profile.anchorExtraQuestButton = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 29
         }
     }
 }
