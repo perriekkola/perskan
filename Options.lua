@@ -41,6 +41,7 @@ local defaults = {
         anchorBuffBarsToWidgetFrame = true,
         anchorExtraQuestButton = false,
         moveDamageMeterBelowMinimap = false,
+        damageMeterWidth = 280,
     }
 }
 
@@ -559,6 +560,27 @@ options = {
                 StaticPopup_Show("RELOAD_UI")
             end,
             order = 30
+        },
+        damageMeterWidth = {
+            type = "range",
+            name = "Damage Meter Width",
+            desc = "Set the width of all damage meter frames.",
+            min = 100,
+            max = 400,
+            step = 10,
+            get = function(info)
+                return Perskan.db.profile.damageMeterWidth
+            end,
+            set = function(info, value)
+                Perskan.db.profile.damageMeterWidth = value
+                if Perskan.ArrangeDamageMeters then
+                    Perskan.ArrangeDamageMeters()
+                end
+            end,
+            disabled = function()
+                return not Perskan.db.profile.moveDamageMeterBelowMinimap
+            end,
+            order = 31
         }
     }
 }
@@ -576,5 +598,6 @@ function Perskan:OnInitialize()
 end
 
 function Perskan:SlashCommand(msg)
-    Settings.OpenToCategory(addonName)
+    -- Open AceConfigDialog directly instead of using Settings API
+    ACD:Open(addonName .. "_Options")
 end
