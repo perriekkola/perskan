@@ -40,6 +40,7 @@ local defaults = {
         sortBuffBarsUpward = true,
         anchorBuffBarsToWidgetFrame = true,
         anchorExtraQuestButton = false,
+        testMinimapWidget = false,
     }
 }
 
@@ -545,6 +546,19 @@ options = {
                 StaticPopup_Show("RELOAD_UI")
             end,
             order = 29
+        },
+        testMinimapWidget = {
+            type = "toggle",
+            name = "Test Minimap Widget Box",
+            desc = "Show a test black box in UIParentRightManagedFrameContainer (managed positioning with objective trackers).",
+            get = function(info)
+                return Perskan.db.profile.testMinimapWidget
+            end,
+            set = function(info, value)
+                Perskan.db.profile.testMinimapWidget = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 30
         }
     }
 }

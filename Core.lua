@@ -438,6 +438,50 @@ local function AnchorExtraQuestButton()
     end)
 end
 
+-- Test function to create a black box anchored to UIParentRightManagedFrameContainer
+local function SetupTestMinimapWidget()
+    if not Perskan.db.profile.testMinimapWidget then
+        return
+    end
+
+    local setupFrame = CreateFrame("Frame")
+    setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    setupFrame:RegisterEvent("ADDON_LOADED")
+
+    setupFrame:SetScript("OnEvent", function(self, event, ...)
+        if UIParentRightManagedFrameContainer then
+            -- Create a test black box
+            local testBox = CreateFrame("Frame", "PerskanTestMinimapBox", UIParent, "BackdropTemplate")
+            testBox:SetSize(150, 50)
+            testBox:SetBackdrop({
+                bgFile = "Interface\\Buttons\\WHITE8x8",
+                edgeFile = "Interface\\Buttons\\WHITE8x8",
+                edgeSize = 1,
+            })
+            testBox:SetBackdropColor(0, 0, 0, 0.8)
+            testBox:SetBackdropBorderColor(1, 1, 1, 1)
+
+            -- Add text label
+            local text = testBox:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            text:SetPoint("CENTER")
+            text:SetText("Test Box")
+
+            -- Set up as managed frame in UIParentRightManagedFrameContainer
+            testBox:SetParent(UIParentRightManagedFrameContainer)
+            testBox.layoutIndex = 10 -- Right below DurabilityFrame (9)
+            testBox.IsInDefaultPosition = function() return true end
+
+            -- Add to managed frame container
+            UIParentRightManagedFrameContainer:AddManagedFrame(testBox)
+            UIParentRightManagedFrameContainer:Layout()
+
+            print("PerskanTestBox: Added to UIParentRightManagedFrameContainer with layoutIndex 10")
+
+            self:UnregisterAllEvents()
+        end
+    end)
+end
+
 -- Function to sort BuffBarCooldownViewer bars upward without gaps
 local function SetupBuffBarSorting()
     if not Perskan.db.profile.sortBuffBarsUpward then
@@ -479,6 +523,7 @@ function Perskan:OnEnable()
     SetupAuraCooldownNumbers()
     AnchorBuffBarsToWidgetFrame()
     AnchorExtraQuestButton()
+    SetupTestMinimapWidget()
     SetupBuffBarSorting()
 
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
