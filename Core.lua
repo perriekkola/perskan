@@ -190,6 +190,81 @@ local function HideBagsBar()
     end
 end
 
+-- Function to force show cooldown numbers on aura icons
+local function SetupAuraCooldownNumbers()
+    if not Perskan.db.profile.showAuraCooldownNumbers then
+        return
+    end
+
+    local function EnableCooldownNumbers(frame)
+        if frame and frame.Cooldown then
+            frame.Cooldown:SetHideCountdownNumbers(false)
+
+            -- Apply scale to the cooldown text
+            local scale = Perskan.db.profile.auraCooldownNumbersScale or 0.75
+            for _, region in pairs({frame.Cooldown:GetRegions()}) do
+                if region:GetObjectType() == "FontString" then
+                    local font, _, flags = region:GetFont()
+                    if font then
+                        region:SetFont(font, 12 * scale, flags)
+                    end
+                end
+            end
+        end
+    end
+
+    local function ProcessUnitFrameAuras(unitFrame)
+        if not unitFrame then return end
+
+        -- Modern WoW uses auraPools
+        if unitFrame.auraPools then
+            for auraFrame in unitFrame.auraPools:EnumerateActive() do
+                EnableCooldownNumbers(auraFrame)
+            end
+        end
+
+        -- Also check children directly for frames with Cooldown
+        for _, child in ipairs({unitFrame:GetChildren()}) do
+            if child.Cooldown then
+                EnableCooldownNumbers(child)
+            end
+        end
+    end
+
+    local function ProcessAllUnitFrames()
+        -- Process main unit frames
+        ProcessUnitFrameAuras(TargetFrame)
+        ProcessUnitFrameAuras(FocusFrame)
+        ProcessUnitFrameAuras(PlayerFrame)
+
+        -- Boss frames
+        for i = 1, 8 do
+            ProcessUnitFrameAuras(_G["Boss" .. i .. "TargetFrame"])
+        end
+
+        -- Party frames
+        for i = 1, 4 do
+            ProcessUnitFrameAuras(_G["PartyMemberFrame" .. i])
+        end
+    end
+
+    local setupFrame = CreateFrame("Frame")
+    setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    setupFrame:RegisterEvent("UNIT_AURA")
+    setupFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+    setupFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
+
+    setupFrame:SetScript("OnEvent", function(self, event, ...)
+        -- Delay processing to ensure frames are ready
+        C_Timer.After(0.1, ProcessAllUnitFrames)
+    end)
+
+    -- Also run periodically for the first few seconds to catch late-loading frames
+    C_Timer.After(1, ProcessAllUnitFrames)
+    C_Timer.After(2, ProcessAllUnitFrames)
+    C_Timer.After(3, ProcessAllUnitFrames)
+end
+
 -- Set CVars according to Perskan's preferences
 local function InitializeCVars(self)
     local profile = self.db.profile
@@ -354,6 +429,7 @@ function Perskan:OnEnable()
     HideActionButtonHotKeys()
     HideActionButtonMacroText()
     HideBagsBar()
+    SetupAuraCooldownNumbers()
     AnchorBuffBarsToWidgetFrame()
     SetupBuffBarSorting()
 

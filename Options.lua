@@ -17,7 +17,6 @@ local defaults = {
         talkingHeadScale = 1,
         xpBarScale = 1,
         extraActionButtonScale = 1,
-        objectiveTrackerScale = 1,
         reanchorDetailsWindows = true,
         addChatSizes = true,
         autoLootDefault = 1,
@@ -34,6 +33,8 @@ local defaults = {
         nameplateHideHealthAndPower = 1,
         hideHotkeys = false,
         hideMacroText = false,
+        showAuraCooldownNumbers = false,
+        auraCooldownNumbersScale = 0.75,
         hideSocialButton = false,
         hideBagsBar = false,
         sortBuffBarsUpward = true,
@@ -437,6 +438,35 @@ options = {
                 StaticPopup_Show("RELOAD_UI")
             end,
             order = 24
+        },
+        showAuraCooldownNumbers = {
+            type = "toggle",
+            name = "Show Aura Cooldown Numbers",
+            desc = "Force show cooldown numbers on buff/debuff icons on unit frames.",
+            get = function(info)
+                return Perskan.db.profile.showAuraCooldownNumbers
+            end,
+            set = function(info, value)
+                Perskan.db.profile.showAuraCooldownNumbers = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 25
+        },
+        auraCooldownNumbersScale = {
+            type = "range",
+            name = "Aura Cooldown Numbers Scale",
+            desc = "Adjust the size of cooldown numbers on buff/debuff icons.",
+            min = 0.3,
+            max = 1.5,
+            step = 0.1,
+            get = function(info)
+                return Perskan.db.profile.auraCooldownNumbersScale or 0.75
+            end,
+            set = function(info, value)
+                Perskan.db.profile.auraCooldownNumbersScale = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 26
         },
         hideSocialButton = {
             type = "toggle",
