@@ -35,6 +35,8 @@ local defaults = {
         hideMacroText = false,
         showAuraCooldownNumbers = false,
         auraCooldownNumbersScale = 0.75,
+        targetFocusBuffSize = 20,
+        targetFocusDebuffSize = 20,
         hideSocialButton = false,
         hideBagsBar = false,
         sortBuffBarsUpward = true,
@@ -355,15 +357,16 @@ options = {
             end,
             order = 19
         },
+        -- Frame Scaling
         spacer1 = {
             type = "description",
             name = " ",
-            order = 20
+            order = 100
         },
-        header2 = {
+        headerFrameScaling = {
             type = "header",
-            name = "UI modifciations",
-            order = 21
+            name = "Frame Scaling",
+            order = 101
         },
         encounterBarScale = {
             type = "range",
@@ -379,7 +382,7 @@ options = {
                 Perskan.db.profile.encounterBarScale = value
                 EncounterBar:SetScale(value)
             end,
-            order = 22
+            order = 102
         },
         talkingHeadScale = {
             type = "range",
@@ -394,7 +397,7 @@ options = {
             set = function(info, value)
                 Perskan.db.profile.talkingHeadScale = value
             end,
-            order = 22
+            order = 103
         },
         xpBarScale = {
             type = "range",
@@ -410,7 +413,7 @@ options = {
                 Perskan.db.profile.xpBarScale = value
                 ShowReloadUIDebounced()
             end,
-            order = 22
+            order = 104
         },
         extraActionButtonScale = {
             type = "range",
@@ -426,7 +429,19 @@ options = {
                 Perskan.db.profile.extraActionButtonScale = value
                 ShowReloadUIDebounced()
             end,
-            order = 22
+            order = 105
+        },
+
+        -- Action Bars
+        spacer2 = {
+            type = "description",
+            name = " ",
+            order = 200
+        },
+        headerActionBars = {
+            type = "header",
+            name = "Action Bars",
+            order = 201
         },
         hideHotkeys = {
             type = "toggle",
@@ -439,7 +454,7 @@ options = {
                 Perskan.db.profile.hideHotkeys = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 23
+            order = 202
         },
         hideMacroText = {
             type = "toggle",
@@ -452,7 +467,51 @@ options = {
                 Perskan.db.profile.hideMacroText = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 24
+            order = 203
+        },
+
+        -- Unit Frame Auras
+        spacer3 = {
+            type = "description",
+            name = " ",
+            order = 300
+        },
+        headerUnitFrameAuras = {
+            type = "header",
+            name = "Unit Frame Auras",
+            order = 301
+        },
+        targetFocusBuffSize = {
+            type = "range",
+            name = "Target/Focus Buff Size",
+            desc = "Adjust the size of buff icons on target and focus frames.",
+            min = 10,
+            max = 40,
+            step = 1,
+            get = function(info)
+                return Perskan.db.profile.targetFocusBuffSize or 20
+            end,
+            set = function(info, value)
+                Perskan.db.profile.targetFocusBuffSize = value
+                ShowReloadUIDebounced()
+            end,
+            order = 302
+        },
+        targetFocusDebuffSize = {
+            type = "range",
+            name = "Target/Focus Debuff Size",
+            desc = "Adjust the size of debuff icons on target and focus frames.",
+            min = 10,
+            max = 40,
+            step = 1,
+            get = function(info)
+                return Perskan.db.profile.targetFocusDebuffSize or 20
+            end,
+            set = function(info, value)
+                Perskan.db.profile.targetFocusDebuffSize = value
+                ShowReloadUIDebounced()
+            end,
+            order = 303
         },
         showAuraCooldownNumbers = {
             type = "toggle",
@@ -465,7 +524,7 @@ options = {
                 Perskan.db.profile.showAuraCooldownNumbers = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 25
+            order = 304
         },
         auraCooldownNumbersScale = {
             type = "range",
@@ -484,7 +543,19 @@ options = {
             disabled = function()
                 return not Perskan.db.profile.showAuraCooldownNumbers
             end,
-            order = 26
+            order = 305
+        },
+
+        -- Hide UI Elements
+        spacer4 = {
+            type = "description",
+            name = " ",
+            order = 400
+        },
+        headerHideElements = {
+            type = "header",
+            name = "Hide UI Elements",
+            order = 401
         },
         hideSocialButton = {
             type = "toggle",
@@ -497,7 +568,7 @@ options = {
                 Perskan.db.profile.hideSocialButton = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 25
+            order = 402
         },
         hideBagsBar = {
             type = "toggle",
@@ -510,24 +581,23 @@ options = {
                 Perskan.db.profile.hideBagsBar = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 26
+            order = 403
         },
-        sortBuffBarsUpward = {
-            type = "toggle",
-            name = "Sort Buff Bars Upward",
-            desc = "Stack BuffBarCooldownViewer bars upward without gaps when cooldowns are inactive.",
-            get = function(info)
-                return Perskan.db.profile.sortBuffBarsUpward
-            end,
-            set = function(info, value)
-                Perskan.db.profile.sortBuffBarsUpward = value
-                StaticPopup_Show("RELOAD_UI")
-            end,
-            order = 27
+
+        -- BuffBarCooldownViewer
+        spacer5 = {
+            type = "description",
+            name = " ",
+            order = 500
+        },
+        headerBuffBar = {
+            type = "header",
+            name = "Tracked Bars",
+            order = 501
         },
         anchorBuffBarsToWidgetFrame = {
             type = "toggle",
-            name = "Anchor Buff Bars to Widget Frame",
+            name = "Anchor to Cast Bar",
             desc = "Anchor BuffBarCooldownViewer above the cast bar. If Extra Quest Button anchoring is also enabled, buff bars will stack above it.",
             get = function(info)
                 return Perskan.db.profile.anchorBuffBarsToWidgetFrame
@@ -536,11 +606,41 @@ options = {
                 Perskan.db.profile.anchorBuffBarsToWidgetFrame = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 28
+            order = 502
+        },
+        sortBuffBarsUpward = {
+            type = "toggle",
+            name = "Sort Bars Upward",
+            desc = "Stack BuffBarCooldownViewer bars upward without gaps when cooldowns are inactive.",
+            get = function(info)
+                return Perskan.db.profile.sortBuffBarsUpward
+            end,
+            set = function(info, value)
+                Perskan.db.profile.sortBuffBarsUpward = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 503
+        },
+        -- Extra Quest Button (only shown if addon is loaded)
+        spacer6 = {
+            type = "description",
+            name = " ",
+            order = 550,
+            hidden = function()
+                return not C_AddOns.IsAddOnLoaded("ExtraQuestButton")
+            end
+        },
+        headerExtraQuestButton = {
+            type = "header",
+            name = "Extra Quest Button",
+            order = 551,
+            hidden = function()
+                return not C_AddOns.IsAddOnLoaded("ExtraQuestButton")
+            end
         },
         anchorExtraQuestButton = {
             type = "toggle",
-            name = "Anchor Extra Quest Button",
+            name = "Anchor Above Cast Bar",
             desc = "Anchor ExtraQuestButton above the cast bar (between cast bar and buff bars).",
             get = function(info)
                 return Perskan.db.profile.anchorExtraQuestButton
@@ -549,11 +649,26 @@ options = {
                 Perskan.db.profile.anchorExtraQuestButton = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 29
+            order = 552,
+            hidden = function()
+                return not C_AddOns.IsAddOnLoaded("ExtraQuestButton")
+            end
+        },
+
+        -- Damage Meter
+        spacer7 = {
+            type = "description",
+            name = " ",
+            order = 600
+        },
+        headerDamageMeter = {
+            type = "header",
+            name = "Damage Meter",
+            order = 601
         },
         moveDamageMeterBelowMinimap = {
             type = "toggle",
-            name = "Move Damage Meter Below Minimap",
+            name = "Move Below Minimap",
             desc = "Move the default damage meter to the right-side widget area (below durability frame).",
             get = function(info)
                 return Perskan.db.profile.moveDamageMeterBelowMinimap
@@ -562,11 +677,11 @@ options = {
                 Perskan.db.profile.moveDamageMeterBelowMinimap = value
                 StaticPopup_Show("RELOAD_UI")
             end,
-            order = 30
+            order = 602
         },
         damageMeterWidth = {
             type = "range",
-            name = "Damage Meter Width",
+            name = "Width",
             desc = "Set the width of all damage meter frames.",
             min = 100,
             max = 400,
@@ -583,7 +698,7 @@ options = {
             disabled = function()
                 return not Perskan.db.profile.moveDamageMeterBelowMinimap
             end,
-            order = 31
+            order = 603
         }
     }
 }

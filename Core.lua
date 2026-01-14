@@ -265,6 +265,53 @@ local function SetupAuraCooldownNumbers()
     C_Timer.After(3, ProcessAllUnitFrames)
 end
 
+-- Function to resize buff/debuff icons on target and focus frames
+local function SetupTargetFocusAuraSize()
+    local function ProcessUnitFrameAuras(unitFrame)
+        if not unitFrame then return end
+
+        local buffSize = Perskan.db.profile.targetFocusBuffSize or 20
+        local debuffSize = Perskan.db.profile.targetFocusDebuffSize or 20
+
+        -- Process BuffFrame children
+        if unitFrame.BuffFrame then
+            for _, child in ipairs({unitFrame.BuffFrame:GetChildren()}) do
+                if child then
+                    child:SetSize(buffSize, buffSize)
+                end
+            end
+        end
+
+        -- Process DebuffFrame children
+        if unitFrame.DebuffFrame then
+            for _, child in ipairs({unitFrame.DebuffFrame:GetChildren()}) do
+                if child then
+                    child:SetSize(debuffSize, debuffSize)
+                end
+            end
+        end
+    end
+
+    local function ProcessTargetAndFocusFrames()
+        ProcessUnitFrameAuras(TargetFrame)
+        ProcessUnitFrameAuras(FocusFrame)
+    end
+
+    local setupFrame = CreateFrame("Frame")
+    setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    setupFrame:RegisterEvent("UNIT_AURA")
+    setupFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+    setupFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
+
+    setupFrame:SetScript("OnEvent", function(self, event, unit)
+        -- Only process for target/focus aura changes
+        if event == "UNIT_AURA" and unit ~= "target" and unit ~= "focus" then
+            return
+        end
+        ProcessTargetAndFocusFrames()
+    end)
+end
+
 -- Set CVars according to Perskan's preferences
 local function InitializeCVars(self)
     local profile = self.db.profile
@@ -361,7 +408,7 @@ local function RepositionBuffBarAboveWidget()
 
     -- Reposition bar containers if sorting is enabled
     if Perskan.db.profile.sortBuffBarsUpward then
-        C_Timer.After(0.01, RepositionBuffBarContainers)
+        RepositionBuffBarContainers()
     end
 end
 
@@ -667,8 +714,7 @@ local function SetupBuffBarSorting()
         if event == "UNIT_AURA" then
             -- Only reposition when player's auras change
             if arg1 == "player" then
-                -- Small delay to let BuffBarCooldownViewer update first
-                C_Timer.After(0.01, RepositionBuffBarContainers)
+                RepositionBuffBarContainers()
             end
             return
         end
@@ -690,6 +736,7 @@ function Perskan:OnEnable()
     HideActionButtonMacroText()
     HideBagsBar()
     SetupAuraCooldownNumbers()
+    SetupTargetFocusAuraSize()
     AnchorBuffBarsToWidgetFrame()
     AnchorExtraQuestButton()
     MoveDamageMeterBelowMinimap()
