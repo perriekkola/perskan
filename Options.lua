@@ -42,8 +42,6 @@ local defaults = {
         sortBuffBarsUpward = true,
         anchorBuffBarsToWidgetFrame = true,
         anchorExtraQuestButton = false,
-        moveDamageMeterBelowMinimap = false,
-        damageMeterWidth = 280,
     }
 }
 
@@ -657,51 +655,6 @@ options = {
             end
         },
 
-        -- Damage Meter
-        spacer7 = {
-            type = "description",
-            name = " ",
-            order = 600
-        },
-        headerDamageMeter = {
-            type = "header",
-            name = "Damage Meter",
-            order = 601
-        },
-        moveDamageMeterBelowMinimap = {
-            type = "toggle",
-            name = "Move Below Minimap",
-            desc = "Move the default damage meter to the right-side widget area (below durability frame).",
-            get = function(info)
-                return Perskan.db.profile.moveDamageMeterBelowMinimap
-            end,
-            set = function(info, value)
-                Perskan.db.profile.moveDamageMeterBelowMinimap = value
-                StaticPopup_Show("RELOAD_UI")
-            end,
-            order = 602
-        },
-        damageMeterWidth = {
-            type = "range",
-            name = "Width",
-            desc = "Set the width of all damage meter frames.",
-            min = 100,
-            max = 400,
-            step = 10,
-            get = function(info)
-                return Perskan.db.profile.damageMeterWidth
-            end,
-            set = function(info, value)
-                Perskan.db.profile.damageMeterWidth = value
-                if Perskan.ArrangeDamageMeters then
-                    Perskan.ArrangeDamageMeters()
-                end
-            end,
-            disabled = function()
-                return not Perskan.db.profile.moveDamageMeterBelowMinimap
-            end,
-            order = 603
-        }
     }
 }
 
