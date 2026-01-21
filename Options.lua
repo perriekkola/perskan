@@ -11,6 +11,7 @@ local defaults = {
         cameraPivot = false,
         nameplateOtherBottomInset = 0.1,
         nameplateOtherTopInset = 0.09,
+        nameplateWidth = 240,
         cameraDistanceMaxZoomFactor = 2.5,
         nameplatePersonalShowAlways = 0,
         encounterBarScale = 1,
@@ -157,6 +158,24 @@ options = {
                 SetCVar("nameplateOtherTopInset", value)
             end,
             order = 6
+        },
+        nameplateWidth = {
+            type = "range",
+            name = "Nameplate Width",
+            desc = "Adjust the width of nameplates.",
+            min = 120,
+            max = 400,
+            step = 5,
+            get = function(info)
+                return Perskan.db.profile.nameplateWidth
+            end,
+            set = function(info, value)
+                Perskan.db.profile.nameplateWidth = value
+                if not InCombatLockdown() then
+                    C_NamePlate.SetNamePlateSize(value, 45)
+                end
+            end,
+            order = 7
         },
         cameraDistanceMaxZoomFactor = {
             type = "range",
