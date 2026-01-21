@@ -309,6 +309,11 @@ local function InitializeCVars(self)
     SetCVar("nameplateOtherBottomInset", profile.nameplateOtherBottomInset)
     SetCVar("nameplateOtherTopInset", profile.nameplateOtherTopInset)
     SetCVar("cameraDistanceMaxZoomFactor", profile.cameraDistanceMaxZoomFactor)
+
+    -- Set nameplate width using the API
+    if profile.nameplateWidth then
+        C_NamePlate.SetNamePlateSize(profile.nameplateWidth, 45)
+    end
     SetCVar("autoLootDefault", profile.autoLootDefault)
     SetCVar("alwaysShowNameplates", profile.alwaysShowNameplates)
     SetCVar("nameplateShowAll", profile.nameplateShowAll)
