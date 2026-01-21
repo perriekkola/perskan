@@ -35,8 +35,7 @@ local defaults = {
         hideMacroText = false,
         showAuraCooldownNumbers = false,
         auraCooldownNumbersScale = 0.75,
-        targetFocusBuffSize = 20,
-        targetFocusDebuffSize = 20,
+        targetFocusAuraSize = 20,
         hideSocialButton = false,
         hideBagsBar = false,
         sortBuffBarsUpward = true,
@@ -481,37 +480,21 @@ options = {
             name = "Unit Frame Auras",
             order = 301
         },
-        targetFocusBuffSize = {
+        targetFocusAuraSize = {
             type = "range",
-            name = "Target/Focus Buff Size",
-            desc = "Adjust the size of buff icons on target and focus frames.",
+            name = "Target/Focus Aura Size",
+            desc = "Adjust the size of buff and debuff icons on target and focus frames.",
             min = 10,
             max = 40,
             step = 1,
             get = function(info)
-                return Perskan.db.profile.targetFocusBuffSize or 20
+                return Perskan.db.profile.targetFocusAuraSize or 20
             end,
             set = function(info, value)
-                Perskan.db.profile.targetFocusBuffSize = value
+                Perskan.db.profile.targetFocusAuraSize = value
                 ShowReloadUIDebounced()
             end,
             order = 302
-        },
-        targetFocusDebuffSize = {
-            type = "range",
-            name = "Target/Focus Debuff Size",
-            desc = "Adjust the size of debuff icons on target and focus frames.",
-            min = 10,
-            max = 40,
-            step = 1,
-            get = function(info)
-                return Perskan.db.profile.targetFocusDebuffSize or 20
-            end,
-            set = function(info, value)
-                Perskan.db.profile.targetFocusDebuffSize = value
-                ShowReloadUIDebounced()
-            end,
-            order = 303
         },
         showAuraCooldownNumbers = {
             type = "toggle",

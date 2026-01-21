@@ -270,24 +270,12 @@ local function SetupTargetFocusAuraSize()
     local function ProcessUnitFrameAuras(unitFrame)
         if not unitFrame then return end
 
-        local buffSize = Perskan.db.profile.targetFocusBuffSize or 20
-        local debuffSize = Perskan.db.profile.targetFocusDebuffSize or 20
+        local size = Perskan.db.profile.targetFocusAuraSize or 20
 
-        -- Process BuffFrame children
-        if unitFrame.BuffFrame then
-            for _, child in ipairs({unitFrame.BuffFrame:GetChildren()}) do
-                if child then
-                    child:SetSize(buffSize, buffSize)
-                end
-            end
-        end
-
-        -- Process DebuffFrame children
-        if unitFrame.DebuffFrame then
-            for _, child in ipairs({unitFrame.DebuffFrame:GetChildren()}) do
-                if child then
-                    child:SetSize(debuffSize, debuffSize)
-                end
+        -- Modern WoW uses auraPools for all auras
+        if unitFrame.auraPools then
+            for auraFrame in unitFrame.auraPools:EnumerateActive() do
+                auraFrame:SetSize(size, size)
             end
         end
     end
