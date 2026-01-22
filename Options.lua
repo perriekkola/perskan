@@ -32,7 +32,6 @@ local defaults = {
         pvpFramesDisplayClassColor = 1,
         nameplateShowSelf = 1,
         nameplateHideHealthAndPower = 1,
-        hideFriendlyNameplates = false,
         hideHotkeys = false,
         hideMacroText = false,
         showAuraCooldownNumbers = false,
@@ -173,19 +172,6 @@ options = {
                 if not InCombatLockdown() then
                     C_NamePlate.SetNamePlateSize(value, 45)
                 end
-            end,
-            order = 7
-        },
-        hideFriendlyNameplates = {
-            type = "toggle",
-            name = "Hide Friendly Nameplate Bars",
-            desc = "Hide the health bar, name, and cast bar on friendly unit nameplates.",
-            get = function(info)
-                return Perskan.db.profile.hideFriendlyNameplates
-            end,
-            set = function(info, value)
-                Perskan.db.profile.hideFriendlyNameplates = value
-                StaticPopup_Show("RELOAD_UI")
             end,
             order = 7
         },

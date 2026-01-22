@@ -300,118 +300,6 @@ local function SetupTargetFocusAuraSize()
     end)
 end
 
--- Hide health bar and name on friendly nameplates
-local function SetupHideFriendlyNameplates()
-    if not Perskan.db.profile.hideFriendlyNameplates then
-        return
-    end
-
-    local function UpdateNameplateVisibility(unitFrame, unit)
-        if not unitFrame or not unit then return end
-
-        -- Only apply to nameplates, not raid frames
-        if not string.match(unit, "^nameplate") then return end
-
-        local isFriendly = UnitIsFriend("player", unit)
-
-        if isFriendly then
-            -- Hide the health bar container
-            if unitFrame.HealthBarsContainer then
-                unitFrame.HealthBarsContainer:SetAlpha(0)
-            end
-            -- Hide the name
-            if unitFrame.name then
-                unitFrame.name:SetAlpha(0)
-            end
-            -- Hide the cast bar
-            if unitFrame.castBar then
-                unitFrame.castBar:SetAlpha(0)
-            end
-        else
-            -- Show for non-friendly units
-            if unitFrame.HealthBarsContainer then
-                unitFrame.HealthBarsContainer:SetAlpha(1)
-            end
-            if unitFrame.name then
-                unitFrame.name:SetAlpha(1)
-            end
-            if unitFrame.castBar then
-                unitFrame.castBar:SetAlpha(1)
-            end
-        end
-    end
-
-    -- Hook into nameplate added event
-    local function OnNamePlateAdded(_, unit)
-        local nameplate = C_NamePlate.GetNamePlateForUnit(unit)
-        if nameplate and nameplate.UnitFrame then
-            UpdateNameplateVisibility(nameplate.UnitFrame, unit)
-        end
-    end
-
-    -- Hook multiple update functions to maintain visibility
-    hooksecurefunc("CompactUnitFrame_UpdateName", function(frame)
-        if frame and frame.unit then
-            UpdateNameplateVisibility(frame, frame.unit)
-        end
-    end)
-
-    hooksecurefunc("CompactUnitFrame_UpdateHealthColor", function(frame)
-        if frame and frame.unit then
-            UpdateNameplateVisibility(frame, frame.unit)
-        end
-    end)
-
-    hooksecurefunc("CompactUnitFrame_UpdateHealth", function(frame)
-        if frame and frame.unit then
-            UpdateNameplateVisibility(frame, frame.unit)
-        end
-    end)
-
-    hooksecurefunc("CompactUnitFrame_UpdateStatusText", function(frame)
-        if frame and frame.unit then
-            UpdateNameplateVisibility(frame, frame.unit)
-        end
-    end)
-
-    -- Hook into cast bar events
-    local function HookCastBar(unitFrame)
-        if unitFrame.castBar and not unitFrame.castBar.perskanHooked then
-            unitFrame.castBar.perskanHooked = true
-            unitFrame.castBar.perskanUnitFrame = unitFrame
-
-            -- Use OnUpdate to continuously hide for friendly units while casting
-            unitFrame.castBar:HookScript("OnUpdate", function(self)
-                local frame = self.perskanUnitFrame
-                if frame and frame.unit and string.match(frame.unit, "^nameplate") and UnitIsFriend("player", frame.unit) then
-                    if self:GetAlpha() > 0 then
-                        self:SetAlpha(0)
-                    end
-                end
-            end)
-        end
-    end
-
-    -- Register for nameplate events
-    local eventFrame = CreateFrame("Frame")
-    eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
-    eventFrame:SetScript("OnEvent", function(_, _, unit)
-        local nameplate = C_NamePlate.GetNamePlateForUnit(unit)
-        if nameplate and nameplate.UnitFrame then
-            HookCastBar(nameplate.UnitFrame)
-            UpdateNameplateVisibility(nameplate.UnitFrame, unit)
-        end
-    end)
-
-    -- Update existing nameplates
-    for _, nameplate in pairs(C_NamePlate.GetNamePlates()) do
-        if nameplate.UnitFrame and nameplate.UnitFrame.unit then
-            HookCastBar(nameplate.UnitFrame)
-            UpdateNameplateVisibility(nameplate.UnitFrame, nameplate.UnitFrame.unit)
-        end
-    end
-end
-
 -- Set CVars according to Perskan's preferences
 local function InitializeCVars(self)
     local profile = self.db.profile
@@ -666,7 +554,6 @@ function Perskan:OnEnable()
     HideBagsBar()
     SetupAuraCooldownNumbers()
     SetupTargetFocusAuraSize()
-    SetupHideFriendlyNameplates()
     AnchorBuffBarsToWidgetFrame()
     AnchorExtraQuestButton()
     SetupBuffBarSorting()
