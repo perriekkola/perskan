@@ -309,6 +309,9 @@ local function SetupHideFriendlyNameplates()
     local function UpdateNameplateVisibility(unitFrame, unit)
         if not unitFrame or not unit then return end
 
+        -- Only apply to nameplates, not raid frames
+        if not string.match(unit, "^nameplate") then return end
+
         local isFriendly = UnitIsFriend("player", unit)
 
         if isFriendly then
@@ -380,7 +383,7 @@ local function SetupHideFriendlyNameplates()
             -- Use OnUpdate to continuously hide for friendly units while casting
             unitFrame.castBar:HookScript("OnUpdate", function(self)
                 local frame = self.perskanUnitFrame
-                if frame and frame.unit and UnitIsFriend("player", frame.unit) then
+                if frame and frame.unit and string.match(frame.unit, "^nameplate") and UnitIsFriend("player", frame.unit) then
                     if self:GetAlpha() > 0 then
                         self:SetAlpha(0)
                     end
