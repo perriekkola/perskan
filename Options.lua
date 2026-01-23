@@ -42,6 +42,10 @@ local defaults = {
         sortBuffBarsUpward = true,
         anchorBuffBarsToWidgetFrame = true,
         anchorExtraQuestButton = false,
+        damageMeterWidth = 200,
+        damageMeterHeight = 200,
+        damageMeterScale = 1.0,
+        damageMeterAnchorToMicroMenu = false,
     }
 }
 
@@ -653,6 +657,87 @@ options = {
             hidden = function()
                 return not C_AddOns.IsAddOnLoaded("ExtraQuestButton")
             end
+        },
+
+        -- Damage Meter
+        spacer7 = {
+            type = "description",
+            name = " ",
+            order = 600
+        },
+        headerDamageMeter = {
+            type = "header",
+            name = "Damage Meter",
+            order = 601
+        },
+        damageMeterWidth = {
+            type = "range",
+            name = "Width",
+            desc = "Set the width of all DamageMeter session windows.",
+            min = 100,
+            max = 400,
+            step = 5,
+            get = function(info)
+                return Perskan.db.profile.damageMeterWidth
+            end,
+            set = function(info, value)
+                Perskan.db.profile.damageMeterWidth = value
+                if Perskan.ApplyDamageMeterSettings then
+                    Perskan.ApplyDamageMeterSettings()
+                end
+            end,
+            order = 602
+        },
+        damageMeterHeight = {
+            type = "range",
+            name = "Height",
+            desc = "Set the height of all DamageMeter session windows.",
+            min = 50,
+            max = 500,
+            step = 5,
+            get = function(info)
+                return Perskan.db.profile.damageMeterHeight
+            end,
+            set = function(info, value)
+                Perskan.db.profile.damageMeterHeight = value
+                if Perskan.ApplyDamageMeterSettings then
+                    Perskan.ApplyDamageMeterSettings()
+                end
+            end,
+            order = 603
+        },
+        damageMeterScale = {
+            type = "range",
+            name = "Scale",
+            desc = "Set the scale of all DamageMeter session windows.",
+            min = 0.5,
+            max = 2.0,
+            step = 0.05,
+            get = function(info)
+                return Perskan.db.profile.damageMeterScale
+            end,
+            set = function(info, value)
+                Perskan.db.profile.damageMeterScale = value
+                if Perskan.ApplyDamageMeterSettings then
+                    Perskan.ApplyDamageMeterSettings()
+                end
+            end,
+            order = 604
+        },
+        damageMeterAnchorToMicroMenu = {
+            type = "toggle",
+            name = "Anchor to Micro Menu",
+            desc = "Anchor DamageMeter windows to the top right of the Micro Menu. Secondary windows anchor to the left of the primary.",
+            get = function(info)
+                return Perskan.db.profile.damageMeterAnchorToMicroMenu
+            end,
+            set = function(info, value)
+                Perskan.db.profile.damageMeterAnchorToMicroMenu = value
+                if Perskan.ApplyDamageMeterSettings then
+                    Perskan.ApplyDamageMeterSettings()
+                end
+            end,
+            order = 605
         },
 
     }

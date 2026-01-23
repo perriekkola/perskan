@@ -300,6 +300,144 @@ local function SetupTargetFocusAuraSize()
     end)
 end
 
+-- Set width, height and scale of DamageMeter session windows
+local function SetupDamageMeterSize()
+    local hookedWindows = {}
+    local originalSetWidth = {}
+    local originalSetHeight = {}
+    local originalSetScale = {}
+    local hookedDamageMeterParent = false
+    local originalDamageMeterSetWidth = nil
+    local originalDamageMeterSetHeight = nil
+
+    local function GetAllDamageMeterSessionWindows()
+        local windows = {}
+        local i = 1
+        while true do
+            local window = _G["DamageMeterSessionWindow" .. i]
+            if window then
+                table.insert(windows, window)
+                i = i + 1
+            else
+                break
+            end
+        end
+        return windows
+    end
+
+    local function ApplyScaleToWindow(window)
+        local scale = Perskan.db.profile.damageMeterScale
+        local setScaleFunc = originalSetScale[window] or window.SetScale
+        if scale then
+            setScaleFunc(window, scale)
+        end
+    end
+
+    local function ApplyDamageMeterSettings()
+        local width = Perskan.db.profile.damageMeterWidth
+        local height = Perskan.db.profile.damageMeterHeight
+
+        -- Apply width and height to DamageMeter parent frame (controls primary window)
+        -- Primary window has ~43px more padding than secondary windows for width
+        if DamageMeter then
+            if not hookedDamageMeterParent then
+                hookedDamageMeterParent = true
+                originalDamageMeterSetWidth = DamageMeter.SetWidth
+                DamageMeter.SetWidth = function(self, w)
+                    local ourWidth = Perskan.db.profile.damageMeterWidth
+                    originalDamageMeterSetWidth(self, ourWidth and (ourWidth - 43) or w)
+                end
+                originalDamageMeterSetHeight = DamageMeter.SetHeight
+                DamageMeter.SetHeight = function(self, h)
+                    local ourHeight = Perskan.db.profile.damageMeterHeight
+                    originalDamageMeterSetHeight(self, ourHeight and (ourHeight - 10) or h)
+                end
+            end
+            if width then
+                originalDamageMeterSetWidth(DamageMeter, width - 43)
+            end
+            if height then
+                originalDamageMeterSetHeight(DamageMeter, height * 0.8)
+            end
+        end
+
+        -- Apply width, height and scale to all session windows
+        for _, window in ipairs(GetAllDamageMeterSessionWindows()) do
+            -- Apply width directly to all session windows
+            if width then
+                if not originalSetWidth[window] then
+                    originalSetWidth[window] = window.SetWidth
+                    window.SetWidth = function(self, w)
+                        local ourWidth = Perskan.db.profile.damageMeterWidth
+                        originalSetWidth[self](self, ourWidth or w)
+                    end
+                end
+                originalSetWidth[window](window, width)
+            end
+
+            -- Apply height directly to all session windows
+            if height then
+                if not originalSetHeight[window] then
+                    originalSetHeight[window] = window.SetHeight
+                    window.SetHeight = function(self, h)
+                        local ourHeight = Perskan.db.profile.damageMeterHeight
+                        originalSetHeight[self](self, ourHeight or h)
+                    end
+                end
+                originalSetHeight[window](window, height)
+            end
+
+            if not hookedWindows[window] then
+                hookedWindows[window] = true
+
+                originalSetScale[window] = window.SetScale
+                window.SetScale = function(self, s)
+                    local ourScale = Perskan.db.profile.damageMeterScale
+                    originalSetScale[self](self, ourScale or s)
+                end
+
+                window:HookScript("OnShow", function(self)
+                    ApplyScaleToWindow(self)
+                end)
+            end
+
+            ApplyScaleToWindow(window)
+        end
+
+        -- Anchor to MicroMenu if enabled
+        if Perskan.db.profile.damageMeterAnchorToMicroMenu and MicroMenu then
+            -- Anchor primary window (DamageMeter) to top right of MicroMenu
+            if DamageMeter then
+                DamageMeter:ClearAllPoints()
+                DamageMeter:SetPoint("BOTTOMRIGHT", MicroMenu, "TOPRIGHT", 20, 0)
+            end
+
+            -- Anchor secondary windows to the left of the primary
+            local windows = GetAllDamageMeterSessionWindows()
+            for i = 2, #windows do
+                local window = windows[i]
+                local prevWindow = windows[i - 1]
+                window:ClearAllPoints()
+                window:SetPoint("BOTTOMRIGHT", prevWindow, "BOTTOMLEFT", 30, 0)
+            end
+        end
+    end
+
+    Perskan.ApplyDamageMeterSettings = ApplyDamageMeterSettings
+
+    local setupFrame = CreateFrame("Frame")
+    setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    setupFrame:RegisterEvent("ADDON_LOADED")
+
+    local initialized = false
+    setupFrame:SetScript("OnEvent", function(self, event, arg1)
+        if DamageMeterSessionWindow1 and not initialized then
+            initialized = true
+            ApplyDamageMeterSettings()
+        end
+    end)
+end
+
 -- Set CVars according to Perskan's preferences
 local function InitializeCVars(self)
     local profile = self.db.profile
@@ -554,6 +692,7 @@ function Perskan:OnEnable()
     HideBagsBar()
     SetupAuraCooldownNumbers()
     SetupTargetFocusAuraSize()
+    SetupDamageMeterSize()
     AnchorBuffBarsToWidgetFrame()
     AnchorExtraQuestButton()
     SetupBuffBarSorting()
