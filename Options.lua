@@ -46,6 +46,8 @@ local defaults = {
         damageMeterHeight = 200,
         damageMeterScale = 1.0,
         damageMeterAnchorToMicroMenu = false,
+        showRaidFrameAuraCooldowns = false,
+        raidFrameAuraCooldownScale = 0.75,
     }
 }
 
@@ -548,6 +550,38 @@ options = {
                 return not Perskan.db.profile.showAuraCooldownNumbers
             end,
             order = 305
+        },
+        showRaidFrameAuraCooldowns = {
+            type = "toggle",
+            name = "Show Raid Frame Aura Cooldowns",
+            desc = "Show cooldown numbers on buff/debuff icons on raid frames.",
+            get = function(info)
+                return Perskan.db.profile.showRaidFrameAuraCooldowns
+            end,
+            set = function(info, value)
+                Perskan.db.profile.showRaidFrameAuraCooldowns = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 306
+        },
+        raidFrameAuraCooldownScale = {
+            type = "range",
+            name = "Raid Frame Aura Cooldown Scale",
+            desc = "Adjust the size of cooldown numbers on raid frame buff/debuff icons.",
+            min = 0.3,
+            max = 1.5,
+            step = 0.1,
+            get = function(info)
+                return Perskan.db.profile.raidFrameAuraCooldownScale or 0.75
+            end,
+            set = function(info, value)
+                Perskan.db.profile.raidFrameAuraCooldownScale = value
+                ShowReloadUIDebounced()
+            end,
+            disabled = function()
+                return not Perskan.db.profile.showRaidFrameAuraCooldowns
+            end,
+            order = 307
         },
 
         -- Hide UI Elements

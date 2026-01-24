@@ -265,6 +265,140 @@ local function SetupAuraCooldownNumbers()
     C_Timer.After(3, ProcessAllUnitFrames)
 end
 
+-- Function to show cooldown numbers on raid frame auras
+local function SetupRaidFrameAuraCooldowns()
+    if not Perskan.db.profile.showRaidFrameAuraCooldowns then
+        return
+    end
+
+    local function EnableCooldownNumbers(frame, baseSize)
+        if not frame then return end
+        baseSize = baseSize or 12
+
+        -- Try both lowercase and uppercase cooldown property
+        local cooldown = frame.cooldown or frame.Cooldown
+        if cooldown then
+            cooldown:SetHideCountdownNumbers(false)
+
+            -- Apply scale to the cooldown text
+            local scale = Perskan.db.profile.raidFrameAuraCooldownScale or 0.75
+            for _, region in pairs({cooldown:GetRegions()}) do
+                if region:GetObjectType() == "FontString" then
+                    local font, _, flags = region:GetFont()
+                    if font then
+                        region:SetFont(font, baseSize * scale, flags)
+                    end
+                end
+            end
+        end
+    end
+
+    local function ProcessRaidFrameAuras(unitFrame)
+        if not unitFrame then return end
+
+        -- Process buff frames
+        if unitFrame.buffFrames then
+            for _, buffFrame in ipairs(unitFrame.buffFrames) do
+                EnableCooldownNumbers(buffFrame)
+            end
+        end
+
+        -- Process debuff frames
+        if unitFrame.debuffFrames then
+            for _, debuffFrame in ipairs(unitFrame.debuffFrames) do
+                EnableCooldownNumbers(debuffFrame)
+            end
+        end
+
+        -- Process dispellable debuff frames
+        if unitFrame.dispelDebuffFrames then
+            for _, dispelFrame in ipairs(unitFrame.dispelDebuffFrames) do
+                EnableCooldownNumbers(dispelFrame)
+            end
+        end
+    end
+
+    local function ProcessAllRaidFrames()
+        -- Process compact raid frames
+        if CompactRaidFrameContainer then
+            local function ProcessContainer(container)
+                if not container then return end
+                for _, child in ipairs({container:GetChildren()}) do
+                    if child.unit then
+                        ProcessRaidFrameAuras(child)
+                    end
+                    -- Recursively process child containers (for groups)
+                    ProcessContainer(child)
+                end
+            end
+            ProcessContainer(CompactRaidFrameContainer)
+        end
+
+        -- Process compact party frames
+        if CompactPartyFrame then
+            for _, child in ipairs({CompactPartyFrame:GetChildren()}) do
+                if child.unit then
+                    ProcessRaidFrameAuras(child)
+                end
+            end
+        end
+
+        -- Process CompactPartyFrameMember icons (center icons on party frames)
+        for i = 1, 5 do
+            local memberFrame = _G["CompactPartyFrameMember" .. i]
+            if memberFrame then
+                ProcessRaidFrameAuras(memberFrame)
+
+                -- Process center icon and its defensive buff (larger base size 18)
+                local centerIcon = _G["CompactPartyFrameMember" .. i .. "Icon"]
+                if centerIcon then
+                    EnableCooldownNumbers(centerIcon, 18)
+                    -- Try CenterDefensiveBuff property
+                    if centerIcon.CenterDefensiveBuff then
+                        EnableCooldownNumbers(centerIcon.CenterDefensiveBuff, 18)
+                    end
+                end
+
+                -- Try direct cooldown frame (larger base size 18)
+                local memberCooldown = _G["CompactPartyFrameMember" .. i .. "Cooldown"]
+                if memberCooldown then
+                    memberCooldown:SetHideCountdownNumbers(false)
+                    local scale = Perskan.db.profile.raidFrameAuraCooldownScale or 0.75
+                    for _, region in pairs({memberCooldown:GetRegions()}) do
+                        if region:GetObjectType() == "FontString" then
+                            local font, _, flags = region:GetFont()
+                            if font then
+                                region:SetFont(font, 18 * scale, flags)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Process raid member frames directly
+        for i = 1, 40 do
+            local raidFrame = _G["CompactRaidFrame" .. i]
+            if raidFrame then
+                ProcessRaidFrameAuras(raidFrame)
+            end
+        end
+    end
+
+    -- Hook into CompactUnitFrame_UpdateAuras to catch aura updates
+    hooksecurefunc("CompactUnitFrame_UpdateAuras", function(frame)
+        ProcessRaidFrameAuras(frame)
+    end)
+
+    local setupFrame = CreateFrame("Frame")
+    setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    setupFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
+
+    setupFrame:SetScript("OnEvent", function(self, event, ...)
+        ProcessAllRaidFrames()
+    end)
+end
+
 -- Function to resize buff/debuff icons on target and focus frames
 local function SetupTargetFocusAuraSize()
     local function ProcessUnitFrameAuras(unitFrame)
@@ -691,6 +825,7 @@ function Perskan:OnEnable()
     HideActionButtonMacroText()
     HideBagsBar()
     SetupAuraCooldownNumbers()
+    SetupRaidFrameAuraCooldowns()
     SetupTargetFocusAuraSize()
     SetupDamageMeterSize()
     AnchorBuffBarsToWidgetFrame()
