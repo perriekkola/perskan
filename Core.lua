@@ -597,8 +597,7 @@ local function InitializeCVars(self)
     SetCVar("raidOptionDisplayMainTankAndAssist", profile.raidOptionDisplayMainTankAndAssist)
     SetCVar("pvpFramesDisplayClassColor", profile.pvpFramesDisplayClassColor)
     SetCVar("nameplateShowSelf", profile.nameplateShowSelf)
-    SetCVar("nameplateHideHealthAndPower", profile.nameplateHideHealthAndPower)
-    SetCVar("NameplatePersonalShowAlways", profile.nameplatePersonalShowAlways)
+    SetCVar("damageMeterEnabled", profile.enableDamageMeter)
 end
 
 -- Variable to track the last time the event handler was executed

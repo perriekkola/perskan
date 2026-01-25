@@ -6,48 +6,57 @@ local ACD = LibStub("AceConfigDialog-3.0")
 
 local defaults = {
     profile = {
-        soundAmbienceVolume = 0.1,
+        -- Camera
         cameraYawMoveSpeed = 90,
         cameraPivot = false,
+        cameraDistanceMaxZoomFactor = 2.5,
+        -- Nameplates
         nameplateOtherBottomInset = 0.1,
         nameplateOtherTopInset = 0.09,
         nameplateWidth = 240,
-        cameraDistanceMaxZoomFactor = 2.5,
-        nameplatePersonalShowAlways = 0,
-        encounterBarScale = 1,
-        talkingHeadScale = 1,
-        xpBarScale = 1,
-        extraActionButtonScale = 1,
-        reanchorDetailsWindows = true,
-        addChatSizes = true,
-        autoLootDefault = 1,
         alwaysShowNameplates = 1,
         nameplateShowAll = 1,
         nameplateShowEnemies = 1,
         nameplateShowEnemyMinions = 1,
         nameplateShowFriendlyMinions = 1,
+        -- Personal Resource Display
+        nameplateShowSelf = 1,
+        -- Raid Frames
         raidFramesDisplayAggroHighlight = 0,
         raidFramesDisplayClassColor = 1,
         raidOptionDisplayMainTankAndAssist = 0,
         pvpFramesDisplayClassColor = 1,
-        nameplateShowSelf = 1,
-        nameplateHideHealthAndPower = 1,
+        -- Misc
+        soundAmbienceVolume = 0.1,
+        autoLootDefault = 1,
+        addChatSizes = true,
+        enableDamageMeter = 1,
+        -- Frame Scaling
+        encounterBarScale = 1,
+        talkingHeadScale = 1,
+        xpBarScale = 1,
+        extraActionButtonScale = 1,
+        -- Action Bars
         hideHotkeys = false,
         hideMacroText = false,
+        -- Unit Frame Auras
         showAuraCooldownNumbers = false,
         auraCooldownNumbersScale = 0.75,
         targetFocusAuraSize = 20,
+        showRaidFrameAuraCooldowns = false,
+        raidFrameAuraCooldownScale = 0.75,
+        -- Hide UI Elements
         hideSocialButton = false,
         hideBagsBar = false,
+        -- Tracked Bars
         sortBuffBarsUpward = true,
         anchorBuffBarsToWidgetFrame = true,
         anchorExtraQuestButton = false,
+        -- Damage Meter
         damageMeterWidth = 200,
         damageMeterHeight = 200,
         damageMeterScale = 1.0,
         damageMeterAnchorToMicroMenu = false,
-        showRaidFrameAuraCooldowns = false,
-        raidFrameAuraCooldownScale = 0.75,
     }
 }
 
@@ -81,26 +90,11 @@ options = {
     handler = Perskan,
     type = "group",
     args = {
-        header1 = {
+        -- Camera
+        headerCamera = {
             type = "header",
-            name = "CVars",
+            name = "Camera",
             order = 1
-        },
-        soundAmbienceVolume = {
-            type = "range",
-            name = "Sound Ambience Volume",
-            desc = "Adjust the sound ambience volume.",
-            min = 0,
-            max = 1,
-            step = 0.1,
-            get = function(info)
-                return Perskan.db.profile.soundAmbienceVolume
-            end,
-            set = function(info, value)
-                Perskan.db.profile.soundAmbienceVolume = value
-                SetCVar("Sound_AmbienceVolume", value)
-            end,
-            order = 2
         },
         cameraYawMoveSpeed = {
             type = "range",
@@ -116,7 +110,7 @@ options = {
                 Perskan.db.profile.cameraYawMoveSpeed = value
                 SetCVar("cameraYawMoveSpeed", value)
             end,
-            order = 3
+            order = 2
         },
         cameraPivot = {
             type = "toggle",
@@ -129,39 +123,35 @@ options = {
                 Perskan.db.profile.cameraPivot = value
                 SetCVar("cameraPivot", value and 1 or 0)
             end,
+            order = 3
+        },
+        cameraDistanceMaxZoomFactor = {
+            type = "range",
+            name = "Camera Distance Max Zoom Factor",
+            desc = "Adjust the camera distance max zoom factor.",
+            min = 1,
+            max = 2.5,
+            step = 0.1,
+            get = function(info)
+                return Perskan.db.profile.cameraDistanceMaxZoomFactor
+            end,
+            set = function(info, value)
+                Perskan.db.profile.cameraDistanceMaxZoomFactor = value
+                SetCVar("cameraDistanceMaxZoomFactor", value)
+            end,
             order = 4
         },
-        nameplateOtherBottomInset = {
-            type = "range",
-            name = "Nameplate Other Bottom Inset",
-            desc = "Adjust the nameplate other bottom inset.",
-            min = -1,
-            max = 1,
-            step = 0.01,
-            get = function(info)
-                return Perskan.db.profile.nameplateOtherBottomInset
-            end,
-            set = function(info, value)
-                Perskan.db.profile.nameplateOtherBottomInset = value
-                SetCVar("nameplateOtherBottomInset", value)
-            end,
-            order = 5
+
+        -- Nameplates
+        spacerNameplates = {
+            type = "description",
+            name = " ",
+            order = 10
         },
-        nameplateOtherTopInset = {
-            type = "range",
-            name = "Nameplate Other Top Inset",
-            desc = "Adjust the nameplate other top inset.",
-            min = -1,
-            max = 1,
-            step = 0.01,
-            get = function(info)
-                return Perskan.db.profile.nameplateOtherTopInset
-            end,
-            set = function(info, value)
-                Perskan.db.profile.nameplateOtherTopInset = value
-                SetCVar("nameplateOtherTopInset", value)
-            end,
-            order = 6
+        headerNameplates = {
+            type = "header",
+            name = "Nameplates",
+            order = 11
         },
         nameplateWidth = {
             type = "range",
@@ -179,49 +169,39 @@ options = {
                     C_NamePlate.SetNamePlateSize(value, 45)
                 end
             end,
-            order = 7
+            order = 12
         },
-        cameraDistanceMaxZoomFactor = {
+        nameplateOtherBottomInset = {
             type = "range",
-            name = "Camera Distance Max Zoom Factor",
-            desc = "Adjust the camera distance max zoom factor.",
-            min = 1,
-            max = 2.5,
-            step = 0.1,
+            name = "Nameplate Bottom Inset",
+            desc = "Adjust the nameplate bottom inset.",
+            min = -1,
+            max = 1,
+            step = 0.01,
             get = function(info)
-                return Perskan.db.profile.cameraDistanceMaxZoomFactor
+                return Perskan.db.profile.nameplateOtherBottomInset
             end,
             set = function(info, value)
-                Perskan.db.profile.cameraDistanceMaxZoomFactor = value
-                SetCVar("cameraDistanceMaxZoomFactor", value)
+                Perskan.db.profile.nameplateOtherBottomInset = value
+                SetCVar("nameplateOtherBottomInset", value)
             end,
-            order = 7
+            order = 13
         },
-        addChatSizes = {
-            type = "toggle",
-            name = "Add Chat Sizes",
-            desc = "Toggle adding chat sizes.",
+        nameplateOtherTopInset = {
+            type = "range",
+            name = "Nameplate Top Inset",
+            desc = "Adjust the nameplate top inset.",
+            min = -1,
+            max = 1,
+            step = 0.01,
             get = function(info)
-                return Perskan.db.profile.addChatSizes
+                return Perskan.db.profile.nameplateOtherTopInset
             end,
             set = function(info, value)
-                Perskan.db.profile.addChatSizes = value
-                StaticPopup_Show("RELOAD_UI")
+                Perskan.db.profile.nameplateOtherTopInset = value
+                SetCVar("nameplateOtherTopInset", value)
             end,
-            order = 8
-        },
-        autoLootDefault = {
-            type = "toggle",
-            name = "Auto Loot Default",
-            desc = "Toggle auto loot default.",
-            get = function(info)
-                return Perskan.db.profile.autoLootDefault == 1
-            end,
-            set = function(info, value)
-                Perskan.db.profile.autoLootDefault = value and 1 or 0
-                SetCVar("autoLootDefault", value and 1 or 0)
-            end,
-            order = 8
+            order = 14
         },
         alwaysShowNameplates = {
             type = "toggle",
@@ -234,7 +214,7 @@ options = {
                 Perskan.db.profile.alwaysShowNameplates = value and 1 or 0
                 SetCVar("alwaysShowNameplates", value and 1 or 0)
             end,
-            order = 9
+            order = 15
         },
         nameplateShowAll = {
             type = "toggle",
@@ -247,11 +227,11 @@ options = {
                 Perskan.db.profile.nameplateShowAll = value and 1 or 0
                 SetCVar("nameplateShowAll", value and 1 or 0)
             end,
-            order = 10
+            order = 16
         },
         nameplateShowEnemies = {
             type = "toggle",
-            name = "Nameplate Show Enemies",
+            name = "Show Enemy Nameplates",
             desc = "Toggle nameplate show enemies.",
             get = function(info)
                 return Perskan.db.profile.nameplateShowEnemies == 1
@@ -260,11 +240,11 @@ options = {
                 Perskan.db.profile.nameplateShowEnemies = value and 1 or 0
                 SetCVar("nameplateShowEnemies", value and 1 or 0)
             end,
-            order = 11
+            order = 17
         },
         nameplateShowEnemyMinions = {
             type = "toggle",
-            name = "Nameplate Show Enemy Minions",
+            name = "Show Enemy Minion Nameplates",
             desc = "Toggle nameplate show enemy minions.",
             get = function(info)
                 return Perskan.db.profile.nameplateShowEnemyMinions == 1
@@ -273,11 +253,11 @@ options = {
                 Perskan.db.profile.nameplateShowEnemyMinions = value and 1 or 0
                 SetCVar("nameplateShowEnemyMinions", value and 1 or 0)
             end,
-            order = 12
+            order = 18
         },
         nameplateShowFriendlyMinions = {
             type = "toggle",
-            name = "Nameplate Show Friendly Minions",
+            name = "Show Friendly Minion Nameplates",
             desc = "Toggle nameplate show friendly minions.",
             get = function(info)
                 return Perskan.db.profile.nameplateShowFriendlyMinions == 1
@@ -286,11 +266,48 @@ options = {
                 Perskan.db.profile.nameplateShowFriendlyMinions = value and 1 or 0
                 SetCVar("nameplateShowFriendlyMinions", value and 1 or 0)
             end,
-            order = 13
+            order = 19
+        },
+
+        -- Personal Resource Display
+        spacerPersonal = {
+            type = "description",
+            name = " ",
+            order = 20
+        },
+        headerPersonal = {
+            type = "header",
+            name = "Personal Resource Display",
+            order = 21
+        },
+        nameplateShowSelf = {
+            type = "toggle",
+            name = "Show Personal Resource Display",
+            desc = "Toggle the personal resource display.",
+            get = function(info)
+                return Perskan.db.profile.nameplateShowSelf == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.nameplateShowSelf = value and 1 or 0
+                SetCVar("nameplateShowSelf", value and 1 or 0)
+            end,
+            order = 22
+        },
+
+        -- Raid Frames CVars
+        spacerRaidFramesCVars = {
+            type = "description",
+            name = " ",
+            order = 30
+        },
+        headerRaidFramesCVars = {
+            type = "header",
+            name = "Raid Frames CVars",
+            order = 31
         },
         raidFramesDisplayAggroHighlight = {
             type = "toggle",
-            name = "Raid Frames Display Aggro Highlight",
+            name = "Display Aggro Highlight",
             desc = "Toggle raid frames display aggro highlight.",
             get = function(info)
                 return Perskan.db.profile.raidFramesDisplayAggroHighlight == 1
@@ -299,11 +316,11 @@ options = {
                 Perskan.db.profile.raidFramesDisplayAggroHighlight = value and 1 or 0
                 SetCVar("raidFramesDisplayAggroHighlight", value and 1 or 0)
             end,
-            order = 14
+            order = 32
         },
         raidFramesDisplayClassColor = {
             type = "toggle",
-            name = "Raid Frames Display Class Color",
+            name = "Display Class Color",
             desc = "Toggle raid frames display class color.",
             get = function(info)
                 return Perskan.db.profile.raidFramesDisplayClassColor == 1
@@ -312,11 +329,11 @@ options = {
                 Perskan.db.profile.raidFramesDisplayClassColor = value and 1 or 0
                 SetCVar("raidFramesDisplayClassColor", value and 1 or 0)
             end,
-            order = 15
+            order = 33
         },
         raidOptionDisplayMainTankAndAssist = {
             type = "toggle",
-            name = "Raid Option Display Main Tank And Assist",
+            name = "Display Main Tank And Assist",
             desc = "Toggle raid option display main tank and assist.",
             get = function(info)
                 return Perskan.db.profile.raidOptionDisplayMainTankAndAssist == 1
@@ -325,7 +342,7 @@ options = {
                 Perskan.db.profile.raidOptionDisplayMainTankAndAssist = value and 1 or 0
                 SetCVar("raidOptionDisplayMainTankAndAssist", value and 1 or 0)
             end,
-            order = 16
+            order = 34
         },
         pvpFramesDisplayClassColor = {
             type = "toggle",
@@ -338,46 +355,74 @@ options = {
                 Perskan.db.profile.pvpFramesDisplayClassColor = value and 1 or 0
                 SetCVar("pvpFramesDisplayClassColor", value and 1 or 0)
             end,
-            order = 17
+            order = 35
         },
-        nameplateShowSelf = {
-            type = "toggle",
-            name = "Personal Resource Display",
-            desc = "Toggle the personal resource display.",
+
+        -- Misc CVars
+        spacerMisc = {
+            type = "description",
+            name = " ",
+            order = 40
+        },
+        headerMisc = {
+            type = "header",
+            name = "Misc",
+            order = 41
+        },
+        soundAmbienceVolume = {
+            type = "range",
+            name = "Sound Ambience Volume",
+            desc = "Adjust the sound ambience volume.",
+            min = 0,
+            max = 1,
+            step = 0.1,
             get = function(info)
-                return Perskan.db.profile.nameplateShowSelf == 1
+                return Perskan.db.profile.soundAmbienceVolume
             end,
             set = function(info, value)
-                Perskan.db.profile.nameplateShowSelf = value and 1 or 0
-                SetCVar("nameplateShowSelf", value and 1 or 0)
+                Perskan.db.profile.soundAmbienceVolume = value
+                SetCVar("Sound_AmbienceVolume", value)
             end,
-            order = 18
+            order = 42
         },
-        nameplateHideHealthAndPower = {
+        autoLootDefault = {
             type = "toggle",
-            name = "Hide Health and Power",
-            desc = "Toggle hiding health and power on nameplates.",
+            name = "Auto Loot Default",
+            desc = "Toggle auto loot default.",
             get = function(info)
-                return Perskan.db.profile.nameplateHideHealthAndPower == 1
+                return Perskan.db.profile.autoLootDefault == 1
             end,
             set = function(info, value)
-                Perskan.db.profile.nameplateHideHealthAndPower = value and 1 or 0
-                SetCVar("nameplateHideHealthAndPower", value and 1 or 0)
+                Perskan.db.profile.autoLootDefault = value and 1 or 0
+                SetCVar("autoLootDefault", value and 1 or 0)
             end,
-            order = 19
+            order = 43
         },
-        nameplatePersonalShowAlways = {
+        addChatSizes = {
             type = "toggle",
-            name = "Nameplate Personal Show Always",
-            desc = "Toggle nameplate personal show always.",
+            name = "Add Chat Sizes",
+            desc = "Toggle adding chat sizes.",
             get = function(info)
-                return Perskan.db.profile.nameplatePersonalShowAlways == 1
+                return Perskan.db.profile.addChatSizes
             end,
             set = function(info, value)
-                Perskan.db.profile.nameplatePersonalShowAlways = value and 1 or 0
-                SetCVar("NameplatePersonalShowAlways", value and 1 or 0)
+                Perskan.db.profile.addChatSizes = value
+                StaticPopup_Show("RELOAD_UI")
             end,
-            order = 19
+            order = 44
+        },
+        enableDamageMeter = {
+            type = "toggle",
+            name = "Enable Damage Meter",
+            desc = "Toggle the built-in damage/healing meter.",
+            get = function(info)
+                return Perskan.db.profile.enableDamageMeter == 1
+            end,
+            set = function(info, value)
+                Perskan.db.profile.enableDamageMeter = value and 1 or 0
+                SetCVar("damageMeterEnabled", value and 1 or 0)
+            end,
+            order = 45
         },
         -- Frame Scaling
         spacer1 = {
