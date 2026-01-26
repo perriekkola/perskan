@@ -755,7 +755,7 @@ options = {
             desc = "Set the width of all DamageMeter session windows.",
             min = 100,
             max = 400,
-            step = 5,
+            step = 1,
             get = function(info)
                 return Perskan.db.profile.damageMeterWidth
             end,

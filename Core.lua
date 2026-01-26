@@ -488,10 +488,10 @@ local function SetupDamageMeterSize()
                 end
             end
             if width then
-                originalDamageMeterSetWidth(DamageMeter, width - 43)
+                originalDamageMeterSetWidth(DamageMeter, width * Perskan.db.profile.damageMeterScale)
             end
             if height then
-                originalDamageMeterSetHeight(DamageMeter, height * 0.8)
+                originalDamageMeterSetHeight(DamageMeter, height * Perskan.db.profile.damageMeterScale)
             end
         end
 
@@ -552,7 +552,7 @@ local function SetupDamageMeterSize()
                 local window = windows[i]
                 local prevWindow = windows[i - 1]
                 window:ClearAllPoints()
-                window:SetPoint("BOTTOMRIGHT", prevWindow, "BOTTOMLEFT", 30, 0)
+                window:SetPoint("BOTTOMRIGHT", prevWindow, "BOTTOMLEFT", 15, 0)
             end
         end
     end
