@@ -57,8 +57,6 @@ local defaults = {
         damageMeterHeight = 200,
         damageMeterScale = 1.0,
         damageMeterAnchorToMicroMenu = false,
-        damageMeterHideTotals = false,
-        damageMeterFontSize = nil,
     }
 }
 
@@ -819,37 +817,6 @@ options = {
                 end
             end,
             order = 605
-        },
-        damageMeterHideTotals = {
-            type = "toggle",
-            name = "Hide Value Totals",
-            desc = "Hide the parenthesized totals from damage meter values (e.g. show \"80\" instead of \"80 (1205)\"). Requires /reload.",
-            get = function(info)
-                return Perskan.db.profile.damageMeterHideTotals
-            end,
-            set = function(info, value)
-                Perskan.db.profile.damageMeterHideTotals = value
-                StaticPopup_Show("RELOAD_UI")
-            end,
-            order = 606
-        },
-        damageMeterFontSize = {
-            type = "range",
-            name = "Font Size",
-            desc = "Set the font size of damage meter Name and Value texts.",
-            min = 6,
-            max = 24,
-            step = 1,
-            get = function(info)
-                return Perskan.db.profile.damageMeterFontSize or 14
-            end,
-            set = function(info, value)
-                Perskan.db.profile.damageMeterFontSize = value
-                if Perskan.ApplyDamageMeterFontSize then
-                    Perskan.ApplyDamageMeterFontSize()
-                end
-            end,
-            order = 607
         },
 
     }
