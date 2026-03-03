@@ -644,26 +644,12 @@ local function SetupDamageMeterEntryOverrides()
             HookEntry(entry)
         end)
 
-        -- Hook InitEntry to re-apply after each Init→UpdateValue cycle
-        if hideTotals then
-            hooksecurefunc(sessionWindow, "InitEntry", function(self, entry)
-                entry.numberDisplayType = Enum.DamageMeterNumbers.Minimal
-                entry:UpdateValue()
-            end)
-        end
-
         sessionWindow:ForEachEntryFrame(function(entry)
             HookEntry(entry)
-            if hideTotals and entry.UpdateValue then
-                entry:UpdateValue()
-            end
         end)
 
         if sessionWindow.LocalPlayerEntry then
             HookEntry(sessionWindow.LocalPlayerEntry)
-            if hideTotals and sessionWindow.LocalPlayerEntry.UpdateValue then
-                sessionWindow.LocalPlayerEntry:UpdateValue()
-            end
         end
     end
 
