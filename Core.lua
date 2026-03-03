@@ -572,6 +572,118 @@ local function SetupDamageMeterSize()
     end)
 end
 
+-- Damage meter entry overrides: hide totals and adjust font size
+-- Uses the same pattern as Jamage Meter: hook DamageMeter:SetupSessionWindow
+-- and sessionWindow:SetupEntry, apply FontObjects for persistent font changes.
+local function SetupDamageMeterEntryOverrides()
+    local hideTotals = Perskan.db.profile.damageMeterHideTotals
+    local fontSize = Perskan.db.profile.damageMeterFontSize
+
+    if not hideTotals and not fontSize then return end
+
+    -- Create persistent font objects for Name and Value
+    local NameFontObject, ValueFontObject
+    local defaultNameFont, defaultNameFlags, defaultValueFont, defaultValueFlags
+    if fontSize then
+        NameFontObject = CreateFont("PerskanDamageMeterNameFont")
+        ValueFontObject = CreateFont("PerskanDamageMeterValueFont")
+    end
+
+    local function CaptureDefaultFonts(entry)
+        if defaultNameFont then return end
+        local statusBar = entry and entry.StatusBar
+        if not statusBar then return end
+        if statusBar.Name then
+            defaultNameFont, _, defaultNameFlags = statusBar.Name:GetFont()
+        end
+        if statusBar.Value then
+            defaultValueFont, _, defaultValueFlags = statusBar.Value:GetFont()
+        end
+    end
+
+    local function UpdateFontObjects()
+        if not fontSize then return end
+        fontSize = Perskan.db.profile.damageMeterFontSize
+        if not fontSize then return end
+        NameFontObject:SetFont(defaultNameFont or "Fonts\\FRIZQT__.TTF", fontSize, defaultNameFlags or "")
+        ValueFontObject:SetFont(defaultValueFont or "Fonts\\FRIZQT__.TTF", fontSize, defaultValueFlags or "")
+    end
+
+    local hookedEntries = {}
+    local function HookEntry(entry)
+        if hookedEntries[entry] then return end
+        hookedEntries[entry] = true
+
+        if fontSize then
+            CaptureDefaultFonts(entry)
+        end
+
+        if hideTotals then
+            entry.GetNumberDisplayType = function()
+                return Enum.DamageMeterNumbers.Minimal
+            end
+            entry.SetNumberDisplayType = function(self)
+                self.numberDisplayType = Enum.DamageMeterNumbers.Minimal
+                self:UpdateValue()
+            end
+            entry.numberDisplayType = Enum.DamageMeterNumbers.Minimal
+        end
+
+        if fontSize then
+            entry.StatusBar.Name:SetFontObject(NameFontObject)
+            entry.StatusBar.Value:SetFontObject(ValueFontObject)
+        end
+    end
+
+    local hookedSessionWindows = {}
+    local function SetupSessionWindow(sessionWindow)
+        if hookedSessionWindows[sessionWindow] then return end
+        hookedSessionWindows[sessionWindow] = true
+
+        hooksecurefunc(sessionWindow, "SetupEntry", function(self, entry)
+            HookEntry(entry)
+        end)
+
+        -- Hook InitEntry to re-apply after each Init→UpdateValue cycle
+        if hideTotals then
+            hooksecurefunc(sessionWindow, "InitEntry", function(self, entry)
+                entry.numberDisplayType = Enum.DamageMeterNumbers.Minimal
+                entry:UpdateValue()
+            end)
+        end
+
+        sessionWindow:ForEachEntryFrame(function(entry)
+            HookEntry(entry)
+            if hideTotals and entry.UpdateValue then
+                entry:UpdateValue()
+            end
+        end)
+
+        if sessionWindow.LocalPlayerEntry then
+            HookEntry(sessionWindow.LocalPlayerEntry)
+            if hideTotals and sessionWindow.LocalPlayerEntry.UpdateValue then
+                sessionWindow.LocalPlayerEntry:UpdateValue()
+            end
+        end
+    end
+
+    hooksecurefunc(DamageMeter, "SetupSessionWindow", function(self, windowData)
+        SetupSessionWindow(windowData.sessionWindow)
+    end)
+
+    -- Apply to already-existing session windows
+    DamageMeter:ForEachSessionWindow(function(sessionWindow)
+        SetupSessionWindow(sessionWindow)
+    end)
+    if fontSize then
+        UpdateFontObjects()
+    end
+
+    Perskan.ApplyDamageMeterFontSize = function()
+        UpdateFontObjects()
+    end
+end
+
 -- Set CVars according to Perskan's preferences
 local function InitializeCVars(self)
     local profile = self.db.profile
@@ -827,6 +939,7 @@ function Perskan:OnEnable()
     SetupRaidFrameAuraCooldowns()
     SetupTargetFocusAuraSize()
     SetupDamageMeterSize()
+    SetupDamageMeterEntryOverrides()
     AnchorBuffBarsToWidgetFrame()
     AnchorExtraQuestButton()
     SetupBuffBarSorting()
