@@ -56,7 +56,11 @@ local defaults = {
         damageMeterWidth = 200,
         damageMeterHeight = 200,
         damageMeterScale = 1.0,
-        damageMeterAnchorToMicroMenu = false,
+        damageMeterHeights = {},
+        damageMeterSpacing = 0,
+        damageMeterAnchorBottomRight = false,
+        damageMeterAnchorYOffset = 0,
+        damageMeterMultiWindowAnchor = "left",
     }
 }
 
@@ -769,8 +773,8 @@ options = {
         },
         damageMeterHeight = {
             type = "range",
-            name = "Height",
-            desc = "Set the height of all DamageMeter session windows.",
+            name = "Height (Window 1)",
+            desc = "Set the height of the primary DamageMeter window.",
             min = 50,
             max = 500,
             step = 5,
@@ -784,6 +788,52 @@ options = {
                 end
             end,
             order = 603
+        },
+        damageMeterHeight2 = {
+            type = "range",
+            name = "Height (Window 2)",
+            desc = "Set the height of DamageMeter window 2.",
+            min = 50,
+            max = 500,
+            step = 5,
+            hidden = function()
+                return not _G["DamageMeterSessionWindow2"]
+            end,
+            get = function(info)
+                local heights = Perskan.db.profile.damageMeterHeights
+                return (heights and heights[2]) or Perskan.db.profile.damageMeterHeight
+            end,
+            set = function(info, value)
+                Perskan.db.profile.damageMeterHeights = Perskan.db.profile.damageMeterHeights or {}
+                Perskan.db.profile.damageMeterHeights[2] = value
+                if Perskan.ApplyDamageMeterSettings then
+                    Perskan.ApplyDamageMeterSettings()
+                end
+            end,
+            order = 603.1
+        },
+        damageMeterHeight3 = {
+            type = "range",
+            name = "Height (Window 3)",
+            desc = "Set the height of DamageMeter window 3.",
+            min = 50,
+            max = 500,
+            step = 5,
+            hidden = function()
+                return not _G["DamageMeterSessionWindow3"]
+            end,
+            get = function(info)
+                local heights = Perskan.db.profile.damageMeterHeights
+                return (heights and heights[3]) or Perskan.db.profile.damageMeterHeight
+            end,
+            set = function(info, value)
+                Perskan.db.profile.damageMeterHeights = Perskan.db.profile.damageMeterHeights or {}
+                Perskan.db.profile.damageMeterHeights[3] = value
+                if Perskan.ApplyDamageMeterSettings then
+                    Perskan.ApplyDamageMeterSettings()
+                end
+            end,
+            order = 603.2
         },
         damageMeterScale = {
             type = "range",
@@ -803,20 +853,78 @@ options = {
             end,
             order = 604
         },
-        damageMeterAnchorToMicroMenu = {
-            type = "toggle",
-            name = "Anchor to Micro Menu",
-            desc = "Anchor DamageMeter windows to the top right of the Micro Menu. Secondary windows anchor to the left of the primary.",
+        damageMeterSpacing = {
+            type = "range",
+            name = "Window Spacing",
+            desc = "Set the spacing between multiple damage meter windows.",
+            min = 0,
+            max = 50,
+            step = 1,
             get = function(info)
-                return Perskan.db.profile.damageMeterAnchorToMicroMenu
+                return Perskan.db.profile.damageMeterSpacing
             end,
             set = function(info, value)
-                Perskan.db.profile.damageMeterAnchorToMicroMenu = value
+                Perskan.db.profile.damageMeterSpacing = value
+                if Perskan.ApplyDamageMeterSettings then
+                    Perskan.ApplyDamageMeterSettings()
+                end
+            end,
+            order = 604.5
+        },
+        damageMeterAnchorBottomRight = {
+            type = "toggle",
+            name = "Anchor to Bottom Right",
+            desc = "Anchor the primary DamageMeter window to the bottom right of the screen.",
+            get = function(info)
+                return Perskan.db.profile.damageMeterAnchorBottomRight
+            end,
+            set = function(info, value)
+                Perskan.db.profile.damageMeterAnchorBottomRight = value
                 if Perskan.ApplyDamageMeterSettings then
                     Perskan.ApplyDamageMeterSettings()
                 end
             end,
             order = 605
+        },
+        damageMeterAnchorYOffset = {
+            type = "range",
+            name = "Y Offset",
+            desc = "Vertical offset from the bottom of the screen when anchored to bottom right.",
+            min = 0,
+            max = 500,
+            step = 1,
+            hidden = function()
+                return not Perskan.db.profile.damageMeterAnchorBottomRight
+            end,
+            get = function(info)
+                return Perskan.db.profile.damageMeterAnchorYOffset
+            end,
+            set = function(info, value)
+                Perskan.db.profile.damageMeterAnchorYOffset = value
+                if Perskan.ApplyDamageMeterSettings then
+                    Perskan.ApplyDamageMeterSettings()
+                end
+            end,
+            order = 606
+        },
+        damageMeterMultiWindowAnchor = {
+            type = "select",
+            name = "Multiple Windows Position",
+            desc = "Where to attach secondary damage meter windows relative to the primary.",
+            values = {
+                left = "Attach to Left",
+                top = "Attach to Top",
+            },
+            get = function(info)
+                return Perskan.db.profile.damageMeterMultiWindowAnchor
+            end,
+            set = function(info, value)
+                Perskan.db.profile.damageMeterMultiWindowAnchor = value
+                if Perskan.ApplyDamageMeterSettings then
+                    Perskan.ApplyDamageMeterSettings()
+                end
+            end,
+            order = 607
         },
 
     }

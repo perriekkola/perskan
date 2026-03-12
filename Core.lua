@@ -467,9 +467,17 @@ local function SetupDamageMeterSize()
         end
     end
 
+    local function GetHeightForWindow(windowIndex)
+        local heights = Perskan.db.profile.damageMeterHeights
+        if heights and heights[windowIndex] then
+            return heights[windowIndex]
+        end
+        return Perskan.db.profile.damageMeterHeight
+    end
+
     local function ApplyDamageMeterSettings()
         local width = Perskan.db.profile.damageMeterWidth
-        local height = Perskan.db.profile.damageMeterHeight
+        local height = GetHeightForWindow(1)
 
         -- Apply width and height to DamageMeter parent frame (controls primary window)
         -- Primary window has ~43px more padding than secondary windows for width
@@ -483,7 +491,7 @@ local function SetupDamageMeterSize()
                 end
                 originalDamageMeterSetHeight = DamageMeter.SetHeight
                 DamageMeter.SetHeight = function(self, h)
-                    local ourHeight = Perskan.db.profile.damageMeterHeight
+                    local ourHeight = GetHeightForWindow(1)
                     originalDamageMeterSetHeight(self, ourHeight and (ourHeight - 10) or h)
                 end
             end
@@ -496,7 +504,8 @@ local function SetupDamageMeterSize()
         end
 
         -- Apply width, height and scale to all session windows
-        for _, window in ipairs(GetAllDamageMeterSessionWindows()) do
+        local allWindows = GetAllDamageMeterSessionWindows()
+        for windowIndex, window in ipairs(allWindows) do
             -- Apply width directly to all session windows
             if width then
                 if not originalSetWidth[window] then
@@ -509,16 +518,19 @@ local function SetupDamageMeterSize()
                 originalSetWidth[window](window, width)
             end
 
-            -- Apply height directly to all session windows
-            if height then
+            -- Apply per-window height
+            local windowHeight = GetHeightForWindow(windowIndex)
+            if windowHeight then
                 if not originalSetHeight[window] then
                     originalSetHeight[window] = window.SetHeight
+                    -- Store the window index on the frame for the hook to look up
+                    window._perskanWindowIndex = windowIndex
                     window.SetHeight = function(self, h)
-                        local ourHeight = Perskan.db.profile.damageMeterHeight
+                        local ourHeight = GetHeightForWindow(self._perskanWindowIndex or 1)
                         originalSetHeight[self](self, ourHeight or h)
                     end
                 end
-                originalSetHeight[window](window, height)
+                originalSetHeight[window](window, windowHeight)
             end
 
             if not hookedWindows[window] then
@@ -538,21 +550,29 @@ local function SetupDamageMeterSize()
             ApplyScaleToWindow(window)
         end
 
-        -- Anchor to MicroMenu if enabled
-        if Perskan.db.profile.damageMeterAnchorToMicroMenu and MicroMenu then
-            -- Anchor primary window (DamageMeter) to top right of MicroMenu
+        -- Anchor to bottom right if enabled
+        if Perskan.db.profile.damageMeterAnchorBottomRight then
+            local yOffset = Perskan.db.profile.damageMeterAnchorYOffset or 0
             if DamageMeter then
                 DamageMeter:ClearAllPoints()
-                DamageMeter:SetPoint("BOTTOMRIGHT", MicroMenu, "TOPRIGHT", 20, 0)
+                DamageMeter:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, yOffset)
             end
+        end
 
-            -- Anchor secondary windows to the left of the primary
-            local windows = GetAllDamageMeterSessionWindows()
+        -- Position secondary windows relative to the primary
+        local multiAnchor = Perskan.db.profile.damageMeterMultiWindowAnchor
+        local spacing = Perskan.db.profile.damageMeterSpacing or 0
+        local windows = GetAllDamageMeterSessionWindows()
+        if #windows > 1 then
             for i = 2, #windows do
                 local window = windows[i]
                 local prevWindow = windows[i - 1]
                 window:ClearAllPoints()
-                window:SetPoint("BOTTOMRIGHT", prevWindow, "BOTTOMLEFT", 15, 0)
+                if multiAnchor == "top" then
+                    window:SetPoint("BOTTOMRIGHT", prevWindow, "TOPRIGHT", 0, spacing)
+                else
+                    window:SetPoint("BOTTOMRIGHT", prevWindow, "BOTTOMLEFT", -spacing, 0)
+                end
             end
         end
     end
