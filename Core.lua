@@ -634,7 +634,10 @@ local buffBarSortingState = {
     initialized = false,
 }
 
--- Collect all child containers that have an Icon
+-- Forward declaration for use in hooks
+local RepositionBuffBarContainers
+
+-- Collect all child containers that have an Icon and hook their Show/Hide
 local function CollectBuffBarContainers()
     wipe(buffBarSortingState.allContainers)
 
@@ -649,12 +652,23 @@ local function CollectBuffBarContainers()
             if not buffBarSortingState.containerHeight then
                 buffBarSortingState.containerHeight = child:GetHeight()
             end
+
+            -- Hook Show/Hide so bars reanchor immediately when visibility changes
+            if not child._perskanHooked then
+                child._perskanHooked = true
+                child:HookScript("OnShow", function()
+                    RepositionBuffBarContainers()
+                end)
+                child:HookScript("OnHide", function()
+                    RepositionBuffBarContainers()
+                end)
+            end
         end
     end
 end
 
 -- Reposition visible containers to stack upward
-local function RepositionBuffBarContainers()
+RepositionBuffBarContainers = function()
     if not Perskan.db.profile.sortBuffBarsUpward or not buffBarSortingState.parentFrame then
         return
     end
@@ -817,17 +831,8 @@ local function SetupBuffBarSorting()
     local setupFrame = CreateFrame("Frame")
     setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     setupFrame:RegisterEvent("ADDON_LOADED")
-    setupFrame:RegisterEvent("UNIT_AURA")
 
-    setupFrame:SetScript("OnEvent", function(self, event, arg1, ...)
-        if event == "UNIT_AURA" then
-            -- Only reposition when player's auras change
-            if arg1 == "player" then
-                RepositionBuffBarContainers()
-            end
-            return
-        end
-
+    setupFrame:SetScript("OnEvent", function(self, event, ...)
         -- Initial setup on login/load
         CollectBuffBarContainers()
 
