@@ -61,6 +61,9 @@ local defaults = {
         damageMeterAnchorBottomRight = false,
         damageMeterAnchorYOffset = 0,
         damageMeterMultiWindowAnchor = "left",
+        -- Buff Filter
+        enableBuffFilter = false,
+        buffBlacklist = {},
     }
 }
 
@@ -925,6 +928,66 @@ options = {
                 end
             end,
             order = 607
+        },
+
+        -- Buff Filter
+        spacer8 = {
+            type = "description",
+            name = " ",
+            order = 700
+        },
+        headerBuffFilter = {
+            type = "header",
+            name = "Buff Filter",
+            order = 701
+        },
+        enableBuffFilter = {
+            type = "toggle",
+            name = "Enable Buff Filter",
+            desc = "Enable player buff filtering. Shift+Alt+RightClick a buff to add/remove it from the blacklist.",
+            get = function(info)
+                return Perskan.db.profile.enableBuffFilter
+            end,
+            set = function(info, value)
+                Perskan.db.profile.enableBuffFilter = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 702
+        },
+        buffBlacklistDisplay = {
+            type = "description",
+            name = function()
+                local blacklist = Perskan.db.profile.buffBlacklist
+                local names = {}
+                for spellId, spellName in pairs(blacklist) do
+                    table.insert(names, spellName .. " (" .. spellId .. ")")
+                end
+                if #names == 0 then
+                    return "|cff888888Blacklist: None|r"
+                end
+                table.sort(names)
+                return "Blacklist: " .. table.concat(names, ", ")
+            end,
+            order = 703,
+            fontSize = "medium",
+        },
+        clearBuffBlacklist = {
+            type = "execute",
+            name = "Clear Blacklist",
+            desc = "Remove all spells from the buff blacklist.",
+            func = function()
+                wipe(Perskan.db.profile.buffBlacklist)
+                if Perskan.RebuildBuffFilterCache then
+                    Perskan.RebuildBuffFilterCache()
+                end
+                if Perskan.RefreshBuffFilter then
+                    Perskan.RefreshBuffFilter()
+                end
+            end,
+            order = 704,
+            disabled = function()
+                return not Perskan.db.profile.enableBuffFilter
+            end,
         },
 
     }
