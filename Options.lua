@@ -954,22 +954,84 @@ options = {
             end,
             order = 702
         },
-        buffBlacklistDisplay = {
-            type = "description",
+        showBuffBlacklist = {
+            type = "execute",
             name = function()
-                local blacklist = Perskan.db.profile.buffBlacklist
-                local names = {}
-                for spellId, spellName in pairs(blacklist) do
-                    table.insert(names, spellName .. " (" .. spellId .. ")")
-                end
-                if #names == 0 then
-                    return "|cff888888Blacklist: None|r"
-                end
-                table.sort(names)
-                return "Blacklist: " .. table.concat(names, ", ")
+                local count = 0
+                for _ in pairs(Perskan.db.profile.buffBlacklist) do count = count + 1 end
+                local state = Perskan._showBlacklist and "Hide" or "Show"
+                return state .. " Blacklist (" .. count .. ")"
             end,
+            desc = "Toggle visibility of the blacklisted spells list.",
+            func = function() Perskan._showBlacklist = not Perskan._showBlacklist end,
             order = 703,
-            fontSize = "medium",
+        },
+        buffBlacklistList = {
+            type = "multiselect",
+            name = "Uncheck to remove:",
+            values = function()
+                local vals = {}
+                for spellId, spellName in pairs(Perskan.db.profile.buffBlacklist) do
+                    vals[tostring(spellId)] = spellName .. "  |cff888888(" .. spellId .. ")|r"
+                end
+                return vals
+            end,
+            get = function() return true end,
+            set = function(info, key)
+                local id = tonumber(key)
+                if id then
+                    local name = Perskan.db.profile.buffBlacklist[id]
+                    Perskan.db.profile.buffBlacklist[id] = nil
+                    print("|cff00ccffPerskan|r: Removed from blacklist: " .. (name or key))
+                    if Perskan.RebuildBuffFilterCache then
+                        Perskan.RebuildBuffFilterCache()
+                    end
+                    if Perskan.RefreshBuffFilter then
+                        Perskan.RefreshBuffFilter()
+                    end
+                end
+            end,
+            order = 704,
+            hidden = function() return not Perskan._showBlacklist end,
+        },
+        addBuffToBlacklist = {
+            type = "input",
+            name = "Add to Blacklist",
+            desc = "Enter a spell name or spell ID to add to the blacklist.",
+            get = function() return "" end,
+            set = function(info, value)
+                local spellId = tonumber(value)
+                if spellId then
+                    -- Input is a spell ID
+                    local name = C_Spell.GetSpellName(spellId)
+                    if name then
+                        Perskan.db.profile.buffBlacklist[spellId] = name
+                        print("|cff00ccffPerskan|r: Added to blacklist: " .. name .. " (" .. spellId .. ")")
+                    else
+                        print("|cff00ccffPerskan|r: Unknown spell ID: " .. spellId)
+                        return
+                    end
+                else
+                    -- Input is a spell name, look up via C_Spell
+                    local spellInfo = C_Spell.GetSpellInfo(value)
+                    if spellInfo and spellInfo.spellID then
+                        Perskan.db.profile.buffBlacklist[spellInfo.spellID] = spellInfo.name
+                        print("|cff00ccffPerskan|r: Added to blacklist: " .. spellInfo.name .. " (" .. spellInfo.spellID .. ")")
+                    else
+                        print("|cff00ccffPerskan|r: Spell not found: " .. value)
+                    end
+                end
+                if Perskan.RebuildBuffFilterCache then
+                    Perskan.RebuildBuffFilterCache()
+                end
+                if Perskan.RefreshBuffFilter then
+                    Perskan.RefreshBuffFilter()
+                end
+            end,
+            order = 705,
+            disabled = function()
+                return not Perskan.db.profile.enableBuffFilter
+            end,
         },
         clearBuffBlacklist = {
             type = "execute",
@@ -984,7 +1046,7 @@ options = {
                     Perskan.RefreshBuffFilter()
                 end
             end,
-            order = 704,
+            order = 706,
             disabled = function()
                 return not Perskan.db.profile.enableBuffFilter
             end,

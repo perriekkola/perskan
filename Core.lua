@@ -956,6 +956,8 @@ local function SetupBuffFilter()
         for i, info in ipairs(auraInfo) do
             local frame = auraFrames[i]
             if frame and not frame.isAuraAnchor then
+                -- Clear stale cached spellId (frames get recycled for different auras)
+                frame._perskanSpellId = nil
                 -- Get spellId (pcall to handle secret aura data in combat)
                 local spellId = nil
                 if info.auraType == "TempEnchant" then
@@ -1004,7 +1006,9 @@ local function SetupBuffFilter()
                     frame:HookScript("OnMouseUp", function(self, button)
                         if button == "RightButton" and IsShiftKeyDown() and IsAltKeyDown() then
                             local id = self._perskanSpellId
-                            if id then
+                            if not id then
+                                print("|cff00ccffPerskan|r: Cannot identify this buff in combat. Try out of combat.")
+                            elseif id then
                                 local bl = Perskan.db.profile.buffBlacklist
                                 if bl[id] then
                                     bl[id] = nil
