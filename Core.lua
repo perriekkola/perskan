@@ -888,7 +888,9 @@ local function SetupBuffFilter()
 
         btn:SetScript("OnClick", function()
             showFiltered = not showFiltered
-            BuffFrame:UpdateAuraButtons()
+            if not InCombatLockdown() then
+                BuffFrame:UpdateAuraButtons()
+            end
         end)
 
         btn:SetScript("OnEnter", function(self)
