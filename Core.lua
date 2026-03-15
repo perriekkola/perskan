@@ -860,7 +860,6 @@ local function SetupBuffFilter()
 
         local btn = CreateFrame("Button", "PerskanBuffFilterToggle", BuffFrame)
         btn:SetSize(28, 28)
-        btn:SetFrameStrata("HIGH")
         btn:SetFrameLevel(100)
         btn:RegisterForClicks("AnyUp")
 
@@ -1030,6 +1029,7 @@ local function SetupBuffFilter()
                 else
                     frame:Show()
                     frame:SetAlpha(1)
+                    frame:SetFrameStrata("MEDIUM")
                     table.insert(visibleFrames, frame)
                 end
             end
@@ -1079,7 +1079,6 @@ local function SetupBuffFilter()
                 frame:ClearAllPoints()
                 frame:SetPoint("TOP", btn, "BOTTOM", 0, -(idx - 1) * (iconSize + spacing))
                 frame:SetAlpha(0.7)
-                frame:SetFrameStrata("HIGH")
                 frame:Show()
             end
         end
