@@ -15,7 +15,6 @@ local defaults = {
         nameplateOtherTopInset = 0.09,
         nameplateWidth = 240,
         nameplateHealthbarHeight = 10.8,
-        nameplateNameOutline = false,
         alwaysShowNameplates = 1,
         nameplateShowAll = 1,
         nameplateShowEnemies = 1,
@@ -197,23 +196,6 @@ options = {
                 end
             end,
             order = 12.1
-        },
-        nameplateNameOutline = {
-            type = "toggle",
-            name = "Name Outline",
-            desc = "Add a thick outline to nameplate names for better readability.",
-            get = function(info)
-                return Perskan.db.profile.nameplateNameOutline
-            end,
-            set = function(info, value)
-                Perskan.db.profile.nameplateNameOutline = value
-                local fontObjects = { SystemFont_NamePlate, SystemFont_LargeNamePlate, SystemFont_NamePlateFixed, SystemFont_LargeNamePlateFixed }
-                for _, fontObj in ipairs(fontObjects) do
-                    local font, size = fontObj:GetFont()
-                    fontObj:SetFont(font, size, value and "OUTLINE" or "")
-                end
-            end,
-            order = 12.2
         },
         nameplateOtherBottomInset = {
             type = "range",

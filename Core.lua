@@ -843,15 +843,6 @@ local function SetupBuffBarSorting()
     end)
 end
 
--- Nameplate name outline
-local function SetupNameplateNameOutline()
-    if not Perskan.db.profile.nameplateNameOutline then return end
-    local fontObjects = { SystemFont_NamePlate, SystemFont_LargeNamePlate, SystemFont_NamePlateFixed, SystemFont_LargeNamePlateFixed }
-    for _, fontObj in ipairs(fontObjects) do
-        local font, size = fontObj:GetFont()
-        fontObj:SetFont(font, size, "OUTLINE")
-    end
-end
 
 -- Custom nameplate healthbar height
 local function SetupNameplateHealthbarHeight()
@@ -906,7 +897,6 @@ function Perskan:OnEnable()
     AnchorExtraQuestButton()
     SetupBuffBarSorting()
     SetupNameplateHealthbarHeight()
-    SetupNameplateNameOutline()
 
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
 end
