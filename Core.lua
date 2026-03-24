@@ -843,6 +843,55 @@ local function SetupBuffBarSorting()
     end)
 end
 
+-- Nameplate name outline
+local function SetupNameplateNameOutline()
+    if not Perskan.db.profile.nameplateNameOutline then return end
+    local fontObjects = { SystemFont_NamePlate, SystemFont_LargeNamePlate, SystemFont_NamePlateFixed, SystemFont_LargeNamePlateFixed }
+    for _, fontObj in ipairs(fontObjects) do
+        local font, size = fontObj:GetFont()
+        fontObj:SetFont(font, size, "OUTLINE")
+    end
+end
+
+-- Custom nameplate healthbar height
+local function SetupNameplateHealthbarHeight()
+    local function ApplyHeight(frame)
+        if frame:IsForbidden() or not frame.UnitFrame then return end
+        local uf = frame.UnitFrame
+        local container = uf.HealthBarsContainer
+        if not container then return end
+
+        local h = Perskan.db.profile.nameplateHealthbarHeight or 10.8
+        container:SetHeight(h)
+
+        -- Hook SetHeight once per container to re-apply after Blizzard resets it
+        if not container._perskanHeightHooked then
+            container._perskanHeightHooked = true
+            hooksecurefunc(container, "SetHeight", function(self)
+                if self._perskanChanging then return end
+                self._perskanChanging = true
+                self:SetHeight(Perskan.db.profile.nameplateHealthbarHeight or 10.8)
+                self._perskanChanging = false
+            end)
+        end
+    end
+
+    -- Apply to all currently visible nameplates
+    for _, nameplate in pairs(C_NamePlate.GetNamePlates()) do
+        pcall(ApplyHeight, nameplate)
+    end
+
+    -- Apply to new nameplates as they appear
+    local eventFrame = CreateFrame("Frame")
+    eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+    eventFrame:SetScript("OnEvent", function(_, _, unit)
+        local nameplate = C_NamePlate.GetNamePlateForUnit(unit)
+        if nameplate then
+            pcall(ApplyHeight, nameplate)
+        end
+    end)
+end
+
 -- Events
 function Perskan:OnEnable()
     ModifyUI()
@@ -856,6 +905,8 @@ function Perskan:OnEnable()
     AnchorBuffBarsToWidgetFrame()
     AnchorExtraQuestButton()
     SetupBuffBarSorting()
+    SetupNameplateHealthbarHeight()
+    SetupNameplateNameOutline()
 
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
 end
