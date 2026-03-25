@@ -15,6 +15,7 @@ local defaults = {
         nameplateOtherTopInset = 0.09,
         nameplateWidth = 240,
         nameplateHealthbarHeight = 10.8,
+        nameplateNameOutline = false,
         alwaysShowNameplates = 1,
         nameplateShowAll = 1,
         nameplateShowEnemies = 1,
@@ -196,6 +197,19 @@ options = {
                 end
             end,
             order = 12.1
+        },
+        nameplateNameOutline = {
+            type = "toggle",
+            name = "Name Outline",
+            desc = "Add an outline/shadow to nameplate names for better readability. Uses Blizzard's built-in SLUG rendering for a clean look.",
+            get = function(info)
+                return Perskan.db.profile.nameplateNameOutline
+            end,
+            set = function(info, value)
+                Perskan.db.profile.nameplateNameOutline = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 12.2
         },
         nameplateOtherBottomInset = {
             type = "range",

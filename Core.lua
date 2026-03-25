@@ -844,6 +844,59 @@ local function SetupBuffBarSorting()
 end
 
 
+-- Nameplate name outline (adds OUTLINE flag to existing SLUG flags for clean shadow effect)
+local function SetupNameplateNameOutline()
+    if not Perskan.db.profile.nameplateNameOutline then return end
+
+    local function ApplyOutline(nameFS)
+        local font, size, flags = nameFS:GetFont()
+        if not font then return end
+        -- Add OUTLINE to existing flags if not already present
+        if flags and not flags:find("OUTLINE") then
+            nameFS:SetFont(font, size, flags .. ", OUTLINE")
+        elseif not flags then
+            nameFS:SetFont(font, size, "OUTLINE")
+        end
+    end
+
+    local function HookNameplate(frame)
+        if not frame.name or frame._perskanOutlineHooked then return end
+        frame._perskanOutlineHooked = true
+
+        ApplyOutline(frame.name)
+
+        -- Blizzard calls SetFont directly on the fontstring (not SetFontObject)
+        -- Hook SetFont to re-add OUTLINE after Blizzard sets flags without it
+        hooksecurefunc(frame.name, "SetFont", function(self, font, size, flags)
+            if self._perskanChanging then return end
+            if not Perskan.db.profile.nameplateNameOutline then return end
+            if flags and not flags:find("OUTLINE") then
+                self._perskanChanging = true
+                self:SetFont(font, size, flags .. ", OUTLINE")
+                self._perskanChanging = false
+            end
+        end)
+    end
+
+    -- Hook existing nameplates
+    for _, nameplate in pairs(C_NamePlate.GetNamePlates()) do
+        local frame = nameplate.UnitFrame
+        if frame and not frame:IsForbidden() then
+            HookNameplate(frame)
+        end
+    end
+
+    -- Hook new nameplates
+    local eventFrame = CreateFrame("Frame")
+    eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+    eventFrame:SetScript("OnEvent", function(_, _, unit)
+        local nameplate = C_NamePlate.GetNamePlateForUnit(unit)
+        if nameplate and nameplate.UnitFrame and not nameplate.UnitFrame:IsForbidden() then
+            HookNameplate(nameplate.UnitFrame)
+        end
+    end)
+end
+
 -- Custom nameplate healthbar height
 local function SetupNameplateHealthbarHeight()
     local function ApplyHeight(frame)
@@ -897,6 +950,7 @@ function Perskan:OnEnable()
     AnchorExtraQuestButton()
     SetupBuffBarSorting()
     SetupNameplateHealthbarHeight()
+    SetupNameplateNameOutline()
 
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
 end
