@@ -14,6 +14,7 @@ local defaults = {
         nameplateOtherBottomInset = 0.1,
         nameplateOtherTopInset = 0.09,
         nameplateWidth = 240,
+        nameplateClickableHeight = 65,
         nameplateHealthbarHeight = 10.8,
         nameplateNameOutline = false,
         alwaysShowNameplates = 1,
@@ -172,10 +173,32 @@ options = {
             set = function(info, value)
                 Perskan.db.profile.nameplateWidth = value
                 if not InCombatLockdown() then
-                    C_NamePlate.SetNamePlateSize(value, 45)
+                    C_NamePlate.SetNamePlateSize(value, Perskan.db.profile.nameplateClickableHeight)
+                    C_NamePlateManager.SetNamePlateHitTestInsets(Enum.NamePlateType.Enemy, 1, 1, -10, -10)
+                    C_NamePlateManager.SetNamePlateHitTestInsets(Enum.NamePlateType.Friendly, 1, 1, -10, -10)
                 end
             end,
             order = 12
+        },
+        nameplateClickableHeight = {
+            type = "range",
+            name = "Nameplate Clickable Height",
+            desc = "Adjust the clickable height of nameplates.",
+            min = 1,
+            max = 300,
+            step = 1,
+            get = function(info)
+                return Perskan.db.profile.nameplateClickableHeight
+            end,
+            set = function(info, value)
+                Perskan.db.profile.nameplateClickableHeight = value
+                if not InCombatLockdown() then
+                    C_NamePlate.SetNamePlateSize(Perskan.db.profile.nameplateWidth, value)
+                    C_NamePlateManager.SetNamePlateHitTestInsets(Enum.NamePlateType.Enemy, 1, 1, -10, -10)
+                    C_NamePlateManager.SetNamePlateHitTestInsets(Enum.NamePlateType.Friendly, 1, 1, -10, -10)
+                end
+            end,
+            order = 12.05
         },
         nameplateHealthbarHeight = {
             type = "range",
@@ -893,7 +916,7 @@ options = {
             type = "range",
             name = "Window Spacing",
             desc = "Set the spacing between multiple damage meter windows.",
-            min = 0,
+            min = -50,
             max = 50,
             step = 1,
             get = function(info)
