@@ -947,7 +947,9 @@ function Perskan:OnEnable()
     SetupAuraCooldownNumbers()
     SetupRaidFrameAuraCooldowns()
     SetupTargetFocusAuraSize()
-    SetupDamageMeterSize()
+    if self.db.profile.enableDamageMeterCustomization then
+        SetupDamageMeterSize()
+    end
     AnchorBuffBarsToWidgetFrame()
     AnchorExtraQuestButton()
     SetupBuffBarSorting()

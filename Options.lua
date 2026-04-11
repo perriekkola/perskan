@@ -56,6 +56,7 @@ local defaults = {
         anchorBuffBarsToWidgetFrame = true,
         anchorExtraQuestButton = false,
         -- Damage Meter
+        enableDamageMeterCustomization = false,
         damageMeterWidth = 200,
         damageMeterHeight = 200,
         damageMeterScale = 1.0,
@@ -812,6 +813,19 @@ options = {
             name = "Damage Meter",
             order = 601
         },
+        enableDamageMeterCustomization = {
+            type = "toggle",
+            name = "Enable Damage Meter Customization",
+            desc = "Enable custom sizing, scaling, and positioning of the built-in damage meter windows.",
+            get = function(info)
+                return Perskan.db.profile.enableDamageMeterCustomization
+            end,
+            set = function(info, value)
+                Perskan.db.profile.enableDamageMeterCustomization = value
+                StaticPopup_Show("RELOAD_UI")
+            end,
+            order = 601.5
+        },
         damageMeterWidth = {
             type = "range",
             name = "Width",
@@ -819,6 +833,9 @@ options = {
             min = 100,
             max = 400,
             step = 1,
+            hidden = function()
+                return not Perskan.db.profile.enableDamageMeterCustomization
+            end,
             get = function(info)
                 return Perskan.db.profile.damageMeterWidth
             end,
@@ -837,6 +854,9 @@ options = {
             min = 50,
             max = 500,
             step = 5,
+            hidden = function()
+                return not Perskan.db.profile.enableDamageMeterCustomization
+            end,
             get = function(info)
                 return Perskan.db.profile.damageMeterHeight
             end,
@@ -856,7 +876,7 @@ options = {
             max = 500,
             step = 5,
             hidden = function()
-                return not _G["DamageMeterSessionWindow2"]
+                return not Perskan.db.profile.enableDamageMeterCustomization or not _G["DamageMeterSessionWindow2"]
             end,
             get = function(info)
                 local heights = Perskan.db.profile.damageMeterHeights
@@ -879,7 +899,7 @@ options = {
             max = 500,
             step = 5,
             hidden = function()
-                return not _G["DamageMeterSessionWindow3"]
+                return not Perskan.db.profile.enableDamageMeterCustomization or not _G["DamageMeterSessionWindow3"]
             end,
             get = function(info)
                 local heights = Perskan.db.profile.damageMeterHeights
@@ -901,6 +921,9 @@ options = {
             min = 0.5,
             max = 2.0,
             step = 0.05,
+            hidden = function()
+                return not Perskan.db.profile.enableDamageMeterCustomization
+            end,
             get = function(info)
                 return Perskan.db.profile.damageMeterScale
             end,
@@ -919,6 +942,9 @@ options = {
             min = -50,
             max = 50,
             step = 1,
+            hidden = function()
+                return not Perskan.db.profile.enableDamageMeterCustomization
+            end,
             get = function(info)
                 return Perskan.db.profile.damageMeterSpacing
             end,
@@ -934,6 +960,9 @@ options = {
             type = "toggle",
             name = "Anchor to Bottom Right",
             desc = "Anchor the primary DamageMeter window to the bottom right of the screen.",
+            hidden = function()
+                return not Perskan.db.profile.enableDamageMeterCustomization
+            end,
             get = function(info)
                 return Perskan.db.profile.damageMeterAnchorBottomRight
             end,
@@ -953,7 +982,7 @@ options = {
             max = 500,
             step = 1,
             hidden = function()
-                return not Perskan.db.profile.damageMeterAnchorBottomRight
+                return not Perskan.db.profile.enableDamageMeterCustomization or not Perskan.db.profile.damageMeterAnchorBottomRight
             end,
             get = function(info)
                 return Perskan.db.profile.damageMeterAnchorYOffset
@@ -970,6 +999,9 @@ options = {
             type = "select",
             name = "Multiple Windows Position",
             desc = "Where to attach secondary damage meter windows relative to the primary.",
+            hidden = function()
+                return not Perskan.db.profile.enableDamageMeterCustomization
+            end,
             values = {
                 left = "Attach to Left",
                 top = "Attach to Top",
