@@ -690,22 +690,35 @@ RepositionBuffBarContainers = function()
     end
 end
 
+-- Resolve a stable bottom-center anchor frame.
+-- The 12.1 patch removed UIParentBottomManagedFrameContainer, which
+-- this feature used to anchor against; anchor to the player cast bar (the frame
+-- this option is named for) instead, falling back to UIParent.
+local function GetBottomAnchorFrame()
+    return PlayerCastingBarFrame or UIParent
+end
+
 -- Shared function to reposition BuffBarCooldownViewer (called by both anchor functions)
--- BuffBars anchor above ExtraQuestButton if visible, otherwise above the container
+-- BuffBars anchor above ExtraQuestButton if visible, otherwise above the cast bar
 local function RepositionBuffBarAboveWidget()
-    if not BuffBarCooldownViewer or not UIParentBottomManagedFrameContainer then return end
+    if not BuffBarCooldownViewer then return end
     if InCombatLockdown() then return end
 
-    BuffBarCooldownViewer:ClearAllPoints()
-
     -- Check if ExtraQuestButton exists, is visible, and anchoring is enabled
+    local anchor, yOffset
     if Perskan.db.profile.anchorExtraQuestButton and ExtraQuestButton and ExtraQuestButton:IsShown() then
-        -- Anchor above ExtraQuestButton
-        BuffBarCooldownViewer:SetPoint("BOTTOM", ExtraQuestButton, "TOP", 0, 15)
+        anchor, yOffset = ExtraQuestButton, 15
     else
-        -- Anchor above the managed frame container
-        BuffBarCooldownViewer:SetPoint("BOTTOM", UIParentBottomManagedFrameContainer, "TOP", 0, 20)
+        anchor, yOffset = GetBottomAnchorFrame(), 20
     end
+    if not anchor then return end
+
+    -- The cooldown viewer is now an aura-driven Edit Mode system; SetPoint on it
+    -- can raise a forbidden-aspect error under the 12.1 security model, so guard it.
+    pcall(function()
+        BuffBarCooldownViewer:ClearAllPoints()
+        BuffBarCooldownViewer:SetPoint("BOTTOM", anchor, "TOP", 0, yOffset)
+    end)
 
     -- Reposition bar containers if sorting is enabled
     if Perskan.db.profile.sortBuffBarsUpward then
@@ -721,12 +734,15 @@ local function AnchorExtraQuestButton()
     end
 
     local function RepositionExtraQuestButton()
-        if not ExtraQuestButton or not UIParentBottomManagedFrameContainer then return end
+        if not ExtraQuestButton then return end
         if InCombatLockdown() then return end
 
-        -- Position above the managed frame container
+        local anchor = GetBottomAnchorFrame()
+        if not anchor then return end
+
+        -- Position above the cast bar
         ExtraQuestButton:ClearAllPoints()
-        ExtraQuestButton:SetPoint("BOTTOM", UIParentBottomManagedFrameContainer, "TOP", 0, 20)
+        ExtraQuestButton:SetPoint("BOTTOM", anchor, "TOP", 0, 20)
 
         -- Also reposition buff bars since they depend on ExtraQuestButton visibility
         if Perskan.db.profile.anchorBuffBarsToWidgetFrame then
@@ -738,17 +754,21 @@ local function AnchorExtraQuestButton()
     setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     setupFrame:RegisterEvent("ADDON_LOADED")
     setupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    setupFrame:RegisterEvent("EDIT_MODE_LAYOUTS_UPDATED")
 
     local initialized = false
     setupFrame:SetScript("OnEvent", function(self, event, ...)
-        if ExtraQuestButton and UIParentBottomManagedFrameContainer then
+        if ExtraQuestButton then
             if not initialized then
-                -- Hook layout to reposition dynamically when container changes
-                hooksecurefunc(UIParentBottomManagedFrameContainer, "Layout", function()
-                    if not InCombatLockdown() then
-                        RepositionExtraQuestButton()
-                    end
-                end)
+                -- Re-anchor when the cast bar itself moves (e.g. Edit Mode changes)
+                local castBar = GetBottomAnchorFrame()
+                if castBar and castBar ~= UIParent then
+                    hooksecurefunc(castBar, "SetPoint", function()
+                        if not InCombatLockdown() then
+                            RepositionExtraQuestButton()
+                        end
+                    end)
+                end
 
                 -- Hook ExtraQuestButton show/hide to update buff bar position
                 ExtraQuestButton:HookScript("OnShow", function()
@@ -770,8 +790,8 @@ local function AnchorExtraQuestButton()
                 self:UnregisterEvent("ADDON_LOADED")
             end
 
-            -- Re-anchor after leaving combat
-            if event == "PLAYER_REGEN_ENABLED" then
+            -- Re-anchor after leaving combat or when Edit Mode reapplies layouts
+            if event == "PLAYER_REGEN_ENABLED" or event == "EDIT_MODE_LAYOUTS_UPDATED" then
                 RepositionExtraQuestButton()
             end
         end
@@ -789,17 +809,22 @@ local function AnchorBuffBarsToWidgetFrame()
     setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     setupFrame:RegisterEvent("ADDON_LOADED")
     setupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    setupFrame:RegisterEvent("EDIT_MODE_LAYOUTS_UPDATED")
 
     local initialized = false
     setupFrame:SetScript("OnEvent", function(self, event, ...)
-        if BuffBarCooldownViewer and UIParentBottomManagedFrameContainer then
+        if BuffBarCooldownViewer then
             if not initialized then
-                -- Hook layout to reposition dynamically when container changes
-                hooksecurefunc(UIParentBottomManagedFrameContainer, "Layout", function()
-                    if not InCombatLockdown() then
-                        RepositionBuffBarAboveWidget()
-                    end
-                end)
+                -- The viewer is now an Edit Mode system that owns its own position,
+                -- so re-assert our anchor whenever the cast bar re-lays-out.
+                local castBar = GetBottomAnchorFrame()
+                if castBar and castBar ~= UIParent then
+                    hooksecurefunc(castBar, "SetPoint", function()
+                        if not InCombatLockdown() and Perskan.db.profile.anchorBuffBarsToWidgetFrame then
+                            RepositionBuffBarAboveWidget()
+                        end
+                    end)
+                end
 
                 -- Initial position
                 RepositionBuffBarAboveWidget()
@@ -815,8 +840,8 @@ local function AnchorBuffBarsToWidgetFrame()
                 self:UnregisterEvent("ADDON_LOADED")
             end
 
-            -- Re-anchor after leaving combat
-            if event == "PLAYER_REGEN_ENABLED" then
+            -- Re-anchor after leaving combat or when Edit Mode reapplies layouts
+            if event == "PLAYER_REGEN_ENABLED" or event == "EDIT_MODE_LAYOUTS_UPDATED" then
                 RepositionBuffBarAboveWidget()
             end
         end
