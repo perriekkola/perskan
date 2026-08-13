@@ -1,7 +1,11 @@
 -- Modify various UI frames
 local function ModifyUI()
-    -- Scale EncounterBar
-    EncounterBar:SetScale(Perskan.db.profile.encounterBarScale or 0.8)
+    -- Scale EncounterBar. Guard the global: if Blizzard removes/renames it in a
+    -- future UI rework (as happened with UIParentBottomManagedFrameContainer),
+    -- an unguarded call here would error and abort the rest of ModifyUI.
+    if EncounterBar then
+        EncounterBar:SetScale(Perskan.db.profile.encounterBarScale or 0.8)
+    end
 
     -- Hide quick join toast button
     if Perskan.db.profile.hideSocialButton then
@@ -9,9 +13,31 @@ local function ModifyUI()
     end
 
     if Perskan.db.profile.talkingHeadScale then
-        hooksecurefunc(TalkingHeadFrame, "PlayCurrent", function()
-            TalkingHeadFrame:SetScale(Perskan.db.profile.talkingHeadScale)
-        end)
+        -- TalkingHeadFrame lives in the load-on-demand Blizzard_TalkingHeadUI
+        -- addon, so it may not exist yet. Hook it now if present, otherwise
+        -- wait for the addon to load instead of erroring on a nil global.
+        local function HookTalkingHead()
+            if not TalkingHeadFrame or TalkingHeadFrame._perskanHooked then return end
+            TalkingHeadFrame._perskanHooked = true
+            hooksecurefunc(TalkingHeadFrame, "PlayCurrent", function()
+                TalkingHeadFrame:SetScale(Perskan.db.profile.talkingHeadScale)
+            end)
+        end
+
+        if TalkingHeadFrame then
+            HookTalkingHead()
+        else
+            local thFrame = CreateFrame("Frame")
+            thFrame:RegisterEvent("ADDON_LOADED")
+            thFrame:SetScript("OnEvent", function(self, _, addonName)
+                if addonName == "Blizzard_TalkingHeadUI" or TalkingHeadFrame then
+                    HookTalkingHead()
+                    if TalkingHeadFrame then
+                        self:UnregisterEvent("ADDON_LOADED")
+                    end
+                end
+            end)
+        end
     end
 
     if Perskan.db.profile.xpBarScale then
