@@ -1,4 +1,21 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/">
+  <!-- Bootstrap first: creates Perskan and the module registry. -->
   <Script file="Options.lua" />
+
+  <!-- Feature modules register their setup functions into Perskan.modules. -->
+  <Script file="Modules\CVars.lua" />
+  <Script file="Modules\FrameScaling.lua" />
+  <Script file="Modules\ActionBars.lua" />
+  <Script file="Modules\HideElements.lua" />
+  <Script file="Modules\Auras.lua" />
+  <Script file="Modules\Nameplates.lua" />
+  <Script file="Modules\DamageMeter.lua" />
+  <Script file="Modules\BuffBars.lua" />
+
+  <!-- Settings window (built in OnInitialize). -->
+  <Script file="Config\Schema.lua" />
+  <Script file="Config\Window.lua" />
+
+  <!-- Lifecycle glue: OnEnable iterates the registry. Loads last. -->
   <Script file="Core.lua" />
 </Ui>

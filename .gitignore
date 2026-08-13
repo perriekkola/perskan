@@ -1,0 +1,3 @@
+# Release packaging staging dir and built zips (produced by the release workflows).
+dist/
+*.zip
