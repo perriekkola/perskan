@@ -422,6 +422,10 @@ function M:CreateTabs(options)
 
 			local thumb = scrollBar:CreateTexture(nil, "OVERLAY")
 			GUI.SetSolid(thumb, 0.55, 0.55, 0.55, 0.85)
+			-- The thumb texture needs an explicit size, otherwise the slider renders it
+			-- as a 1px sliver (only the track border shows). Width matches the track; the
+			-- height is (re)set to the visible-fraction in UpdateScrollBar.
+			thumb:SetSize(8, 20)
 			scrollBar:SetThumbTexture(thumb)
 
 			-- A vertical slider's minimum sits at its TOP, exactly like the scroll offset, so the
