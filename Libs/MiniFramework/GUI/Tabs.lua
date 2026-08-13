@@ -405,38 +405,82 @@ function M:CreateTabs(options)
 			scrollChild:SetSize(childWidth, options.ScrollContentHeight or 100)
 			scrollFrame:SetScrollChild(scrollChild)
 
-			-- Scrollbar, visible only when content overflows
-			local scrollBar = CreateFrame("Slider", nil, scrollContainer, GUI.BackdropTemplate)
-			scrollBar:SetOrientation("VERTICAL")
+			-- Scrollbar track, shown only when content overflows. A plain frame with a
+			-- manually dragged thumb rather than a Slider: the stock Slider's native thumb
+			-- drag maps cursor->value so the thumb outruns the cursor.
+			local scrollBar = CreateFrame("Frame", nil, scrollContainer, GUI.BackdropTemplate)
 			scrollBar:SetWidth(10)
 			scrollBar:SetPoint("TOPRIGHT", scrollContainer, "TOPRIGHT", 0, -2)
 			scrollBar:SetPoint("BOTTOMRIGHT", scrollContainer, "BOTTOMRIGHT", 0, 2)
-			scrollBar:SetMinMaxValues(0, 1)
-			scrollBar:SetValue(0)
-			GUI.TryCall(scrollBar, "SetObeyStepOnDrag", true)
 			GUI.ApplyBackdrop(scrollBar, {
 				bgFile = "Interface\\Buttons\\WHITE8X8",
 				edgeFile = "Interface\\Buttons\\WHITE8X8",
 				edgeSize = 1,
 			}, 0.10, 0.10, 0.10, 0.6, 0.25, 0.25, 0.25, 0.8)
 
-			local thumb = scrollBar:CreateTexture(nil, "OVERLAY")
-			GUI.SetSolid(thumb, 0.55, 0.55, 0.55, 0.85)
-			-- The thumb texture needs an explicit size, otherwise the slider renders it
-			-- as a 1px sliver (only the track border shows). Width matches the track; the
-			-- height is (re)set to the visible-fraction in UpdateScrollBar.
-			thumb:SetSize(8, 20)
-			scrollBar:SetThumbTexture(thumb)
+			local thumb = CreateFrame("Frame", nil, scrollBar)
+			thumb:SetWidth(8)
+			thumb:SetHeight(20)
+			thumb:SetPoint("TOP", scrollBar, "TOP", 0, 0)
+			thumb:EnableMouse(true)
 
-			-- A vertical slider's minimum sits at its TOP, exactly like the scroll offset, so the
-			-- two map onto each other directly; Blizzard's own scrollbars feed SetVerticalScroll
-			-- the raw slider value the same way.
+			local thumbTex = thumb:CreateTexture(nil, "OVERLAY")
+			thumbTex:SetAllPoints(thumb)
+			GUI.SetSolid(thumbTex, 0.55, 0.55, 0.55, 0.85)
 
-			---@param scroll number
-			---@return number
-			local function ScrollToValue(scroll)
-				return math.min(math.max(scroll, 0), maxScroll)
+			-- Places the thumb for the current scroll offset (top = 0, bottom = maxScroll).
+			local function PositionThumb()
+				local travel = math.max(0, scrollBar:GetHeight() - thumb:GetHeight())
+				local frac = 0
+				if maxScroll > 0 then
+					frac = math.min(math.max(scrollFrame:GetVerticalScroll() / maxScroll, 0), 1)
+				end
+				thumb:SetPoint("TOP", scrollBar, "TOP", 0, -travel * frac)
 			end
+
+			local function SetScroll(scroll)
+				scroll = math.min(math.max(scroll, 0), maxScroll)
+				scrollFrame:SetVerticalScroll(scroll)
+				PositionThumb()
+			end
+
+			-- Manual drag: the thumb tracks the cursor 1:1 along the track.
+			local dragging, dragCursorY, dragScroll
+			thumb:SetScript("OnMouseDown", function()
+				dragging = true
+				dragCursorY = select(2, GetCursorPosition())
+				dragScroll = scrollFrame:GetVerticalScroll()
+				thumbTex:SetVertexColor(0.78, 0.78, 0.78, 1)
+			end)
+			thumb:SetScript("OnMouseUp", function()
+				dragging = false
+				thumbTex:SetVertexColor(0.55, 0.55, 0.55, 0.85)
+			end)
+			thumb:SetScript("OnUpdate", function()
+				if not dragging then
+					return
+				end
+				local travel = math.max(1, scrollBar:GetHeight() - thumb:GetHeight())
+				local scale = scrollBar:GetEffectiveScale()
+				-- Screen y grows upward, so dragging the cursor down (smaller y) scrolls down.
+				local dy = (dragCursorY - select(2, GetCursorPosition())) / scale
+				SetScroll(dragScroll + dy * (maxScroll / travel))
+			end)
+
+			-- Clicking the track above/below the thumb pages toward the click.
+			scrollBar:EnableMouse(true)
+			scrollBar:SetScript("OnMouseDown", function(_, button)
+				if button ~= "LeftButton" then
+					return
+				end
+				local top = thumb:GetTop()
+				if not top then
+					return
+				end
+				local cursorY = select(2, GetCursorPosition()) / scrollBar:GetEffectiveScale()
+				local page = scrollFrame:GetHeight() * 0.9
+				SetScroll(scrollFrame:GetVerticalScroll() + (cursorY > top and -page or page))
+			end)
 
 			local function UpdateScrollBar()
 				local frameH = scrollFrame:GetHeight()
@@ -447,25 +491,20 @@ function M:CreateTabs(options)
 				maxScroll = math.max(0, childH - frameH)
 				if maxScroll > 0.5 then
 					scrollBar:Show()
-					scrollBar:SetMinMaxValues(0, maxScroll)
-					scrollBar:SetValue(ScrollToValue(scrollFrame:GetVerticalScroll()))
 					thumb:SetHeight(math.max(20, scrollBar:GetHeight() * (frameH / childH)))
+					SetScroll(scrollFrame:GetVerticalScroll())
 				else
 					scrollBar:Hide()
 					scrollFrame:SetVerticalScroll(0)
 				end
 			end
 
-			scrollBar:SetScript("OnValueChanged", function(_, val)
-				scrollFrame:SetVerticalScroll(val)
-			end)
-
 			scrollFrame:SetScript("OnScrollRangeChanged", function()
 				UpdateScrollBar()
 			end)
 
 			scrollFrame:HookScript("OnMouseWheel", function()
-				scrollBar:SetValue(ScrollToValue(scrollFrame:GetVerticalScroll()))
+				PositionThumb()
 			end)
 
 			scrollBar:Hide()
