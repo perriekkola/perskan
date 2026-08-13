@@ -36,10 +36,15 @@ local function ApplyRegion(button, regionKey, flagKey)
         end)
     end
 
+    -- Only ever reverse OUR own hide, so the off-state never overrides hotkey/macro
+    -- text a player disabled through Blizzard's own options.
+    local hiddenField = "_perskanHiddenBy_" .. flagKey
     if Perskan.db.profile[flagKey] then
+        region[hiddenField] = true
         region:Hide()
         region:SetAlpha(0)
-    else
+    elseif region[hiddenField] then
+        region[hiddenField] = nil
         region:SetAlpha(1)
         region:Show()
     end

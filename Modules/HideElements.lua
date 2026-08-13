@@ -20,9 +20,13 @@ local function ApplyManagedFrame(globalName, flagKey)
         end)
     end
 
+    -- Only ever reverse OUR own hide. Force-showing on the off-state would override a
+    -- frame the player hid elsewhere (Edit Mode, another addon) at every login.
     if Perskan.db.profile[flagKey] then
+        frame._perskanHiddenByUs = true
         frame:Hide()
-    else
+    elseif frame._perskanHiddenByUs then
+        frame._perskanHiddenByUs = nil
         frame:Show()
     end
 end
