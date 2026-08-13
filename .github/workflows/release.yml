@@ -34,6 +34,7 @@ jobs:
             --exclude ".gitignore" \
             --exclude "README*" \
             --exclude "LICENSE*" \
+            --exclude "CLAUDE.md" \
             --exclude "*.psd" --exclude "*.xcf" \
             --exclude "*.zip" \
             ./ "dist/${ADDON_NAME}/"
