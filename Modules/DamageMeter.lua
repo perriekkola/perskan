@@ -146,11 +146,15 @@ Perskan:RegisterModule("DamageMeter", function(self)
     local setupFrame = CreateFrame("Frame")
     setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     setupFrame:RegisterEvent("ADDON_LOADED")
+    -- Positioning is skipped in combat; re-assert once it ends.
+    setupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 
     local initialized = false
-    setupFrame:SetScript("OnEvent", function()
+    setupFrame:SetScript("OnEvent", function(_, event)
         if DamageMeterSessionWindow1 and not initialized then
             initialized = true
+            ApplyDamageMeterSettings()
+        elseif event == "PLAYER_REGEN_ENABLED" and initialized then
             ApplyDamageMeterSettings()
         end
     end)

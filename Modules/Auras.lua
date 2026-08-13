@@ -32,24 +32,34 @@ local function GetCooldownText(cooldown)
     return nil
 end
 
--- Set a cooldown to show or hide numbers, scaling the font when shown. A per-frame
--- state token skips redundant work on the hot update path.
+-- Set a cooldown to show or hide numbers, scaling the font when shown.
+--
+-- The hide-state and the font-scale are cached separately: the countdown FontString
+-- is created lazily (only once numbers have been enabled for a frame), so on the very
+-- first pass there is nothing to scale yet. Caching a combined token there would
+-- permanently skip the frame and the scale would never apply. Instead the font cache
+-- is only committed once SetFont has actually run, leaving the frame eligible for a
+-- retry on the next scheduled pass until the FontString exists.
 local function ConfigureCooldown(cooldown, baseSize, show, scale)
     if not cooldown or not cooldown.SetHideCountdownNumbers then return end
 
-    local token = (show and "1" or "0") .. ":" .. tostring(scale) .. ":" .. tostring(baseSize)
-    if cooldown._perskanState == token then return end
-    cooldown._perskanState = token
-
-    cooldown:SetHideCountdownNumbers(not show)
+    local hide = not show
+    if cooldown._perskanHide ~= hide then
+        cooldown._perskanHide = hide
+        cooldown:SetHideCountdownNumbers(hide)
+    end
 
     if not show then return end
+
+    local fontToken = tostring(scale) .. ":" .. tostring(baseSize)
+    if cooldown._perskanFont == fontToken then return end
 
     local text = GetCooldownText(cooldown)
     if text then
         local font, _, flags = text:GetFont()
         if font then
             text:SetFont(font, baseSize * scale, flags)
+            cooldown._perskanFont = fontToken
         end
     end
 end
@@ -110,20 +120,23 @@ end
 -- Raid/party compact frame cooldown numbers
 --------------------------------------------------------------------------------
 
-local function ProcessRaidFrameAuras(unitFrame, show, scale)
-    if not unitFrame then return end
-
-    local lists = { unitFrame.buffFrames, unitFrame.debuffFrames, unitFrame.dispelDebuffFrames }
-    for _, list in ipairs(lists) do
-        if list then
-            for _, auraFrame in ipairs(list) do
-                local cooldown = auraFrame.cooldown or auraFrame.Cooldown
-                if cooldown then
-                    ConfigureCooldown(cooldown, 12, show, scale)
-                end
-            end
+local function ProcessAuraList(list, show, scale)
+    if not list then return end
+    for _, auraFrame in ipairs(list) do
+        local cooldown = auraFrame.cooldown or auraFrame.Cooldown
+        if cooldown then
+            ConfigureCooldown(cooldown, 12, show, scale)
         end
     end
+end
+
+local function ProcessRaidFrameAuras(unitFrame, show, scale)
+    if not unitFrame then return end
+    -- Guard each list independently: a nil buffFrames must not stop the others (an
+    -- ipairs over a table with a nil hole would halt at index 1).
+    ProcessAuraList(unitFrame.buffFrames, show, scale)
+    ProcessAuraList(unitFrame.debuffFrames, show, scale)
+    ProcessAuraList(unitFrame.dispelDebuffFrames, show, scale)
 end
 
 local function ProcessAllRaidFrames()
@@ -226,14 +239,16 @@ Perskan:RegisterModule("Auras", function(self)
     auraFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
     auraFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
     auraFrame:SetScript("OnEvent", function(_, event, unit)
-        -- Only target/focus aura churn matters for these features.
-        if event == "UNIT_AURA" and unit ~= "target" and unit ~= "focus" then
-            return
-        end
+        -- Cooldown numbers apply to player/boss/party auras too, so this must run for
+        -- any UNIT_AURA, not just target/focus (the original had a separate unfiltered
+        -- frame for it).
         if Perskan.db.profile.showAuraCooldownNumbers then
             ScheduleAuraCooldowns()
         end
-        ProcessTargetFocusSize()
+        -- Aura icon resizing only concerns the target and focus frames.
+        if event ~= "UNIT_AURA" or unit == "target" or unit == "focus" then
+            ProcessTargetFocusSize()
+        end
     end)
 
     -- Late-loading frames after login.
