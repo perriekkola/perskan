@@ -2,8 +2,10 @@ local addonName, addon = ...
 local mini = addon.Framework
 
 -- Layout metrics for the auto-stacking renderer.
+local PAD = 10          -- left inset so labels and the slider's min value aren't clipped
+local RIGHT_MARGIN = 18 -- keeps content clear of the scrollbar
 local SPACING = 14
-local SLIDER_ABOVE = 40 -- room above a slider for its value box + label
+local SLIDER_ABOVE = 26 -- room above a slider for its label + value box (one line)
 local SLIDER_BELOW = 16 -- room below for the min/max labels
 local SLIDER_H = 20
 local TOGGLE_H = 26
@@ -12,6 +14,11 @@ local SELECT_LABEL_H = 16
 local SELECT_GAP = 4
 local SELECT_DD_H = 24
 
+-- Usable content width inside the padding.
+local function InnerWidth()
+    return (mini.ContentWidth or 400) - PAD - RIGHT_MARGIN
+end
+
 --------------------------------------------------------------------------------
 -- Reload banner
 --------------------------------------------------------------------------------
@@ -19,12 +26,14 @@ local SELECT_DD_H = 24
 -- Non-blocking replacement for the old "reload now?" popup that fired on nearly every
 -- toggle. Reload-dependent settings call Perskan:RequestReload(); a quiet bar slides
 -- up at the bottom of the window offering a reload when the player is ready.
-local function BuildReloadBanner(window)
+local function BuildReloadBanner(window, leftInset)
     local accent = mini.GUI.Accent
 
+    -- Overlays the bottom of the content area only (not the sidebar) when a reload is
+    -- pending, so no permanent gap is reserved at the bottom of the window.
     local banner = CreateFrame("Frame", nil, window, mini.GUI.BackdropTemplate)
     banner:SetHeight(30)
-    banner:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", 2, 2)
+    banner:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", (leftInset or 2), 2)
     banner:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -2, 2)
     banner:SetFrameStrata("HIGH")
     banner:SetFrameLevel(window:GetFrameLevel() + 20)
@@ -148,7 +157,7 @@ local function BuildControlEntry(panel, control, sliderWidth)
 
     if control.type == "divider" then
         local divider = mini:Divider({ Parent = panel, Text = control.name })
-        divider:SetWidth(mini.ContentWidth)
+        divider:SetWidth(InnerWidth())
         return { control = control, primary = divider, frames = { divider },
                  above = 4, body = DIVIDER_H, below = 6 }
     end
@@ -179,6 +188,10 @@ local function BuildControlEntry(panel, control, sliderWidth)
             GetValue = get,
             SetValue = set,
         })
+        -- The framework centres the value box above the slider, which collides with a
+        -- long label. Move it to the slider's top-right so it sits on the label's line.
+        slider.EditBox:ClearAllPoints()
+        slider.EditBox:SetPoint("BOTTOMRIGHT", slider.Slider, "TOPRIGHT", 0, 4)
         return { control = control, primary = slider.Slider, frames = { slider.Slider },
                  above = SLIDER_ABOVE, body = SLIDER_H, below = SLIDER_BELOW,
                  setDisabled = function(disabled)
@@ -213,7 +226,7 @@ end
 
 -- Builds one category page and returns a refresh closure.
 local function BuildCategoryPanel(panel, category)
-    local sliderWidth = math.min(340, (mini.ContentWidth or 400) - 20)
+    local sliderWidth = InnerWidth()
     local entries = {}
     for _, control in ipairs(category.controls) do
         entries[#entries + 1] = BuildControlEntry(panel, control, sliderWidth)
@@ -231,7 +244,7 @@ local function BuildCategoryPanel(panel, category)
             else
                 for _, f in ipairs(e.frames) do f:Show() end
                 cursor = cursor - e.above
-                e.primary:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, cursor)
+                e.primary:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, cursor)
                 cursor = cursor - e.body - e.below - SPACING
                 if e.setDisabled then
                     e.setDisabled(e.control.disabled and e.control.disabled())
@@ -264,7 +277,7 @@ local function BuildProfilesPanel(panel)
     local db = Perskan.db
     local y = 0
     local function place(frame, dy)
-        frame:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, y)
+        frame:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
         y = y - dy
     end
 
@@ -306,7 +319,7 @@ local function BuildProfilesPanel(panel)
         GetValue = function() return newBox and newBox.EditBox:GetText() or "" end,
         SetValue = function() end,
     })
-    newBox.Label:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, y)
+    newBox.Label:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
     newBox.EditBox:SetPoint("TOPLEFT", newBox.Label, "BOTTOMLEFT", 0, -SELECT_GAP)
     y = y - (SELECT_LABEL_H + SELECT_GAP + SELECT_DD_H)
 
@@ -327,7 +340,7 @@ local function BuildProfilesPanel(panel)
     y = y - (22 + SPACING * 2)
 
     local divider = mini:Divider({ Parent = panel, Text = "Manage" })
-    divider:SetWidth(mini.ContentWidth)
+    divider:SetWidth(InnerWidth())
     place(divider, DIVIDER_H + SPACING)
 
     -- Copy from
@@ -390,7 +403,7 @@ local function BuildProfilesPanel(panel)
         Danger = true,
         OnClick = function() db:ResetProfile() end,
     })
-    resetBtn:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, y)
+    resetBtn:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
     y = y - (22 + SPACING)
 
     local panelHeight = math.max(1, -y + 10)
@@ -460,7 +473,7 @@ function Perskan:BuildConfig()
         if self._reloadPending and self._reloadBanner then self._reloadBanner:Show() end
     end)
 
-    self._reloadBanner = BuildReloadBanner(window)
+    self._reloadBanner = BuildReloadBanner(window, tabStripWidth + contentPadding + 3)
 
     -- Nav strip flush with the title bar's accent line and the window's left edge.
     local tabsPanel = CreateFrame("Frame", nil, window)
@@ -499,8 +512,7 @@ function Perskan:BuildConfig()
         ScrollBody = true,
         ScrollContentWidth = contentWidth,
         ScrollContentHeight = 10, -- disable the auto-scan; panels set their own height
-        ContentInsets = { Top = 4 + contentPadding + 1, Bottom = 40 },
-        FooterReserve = 40,
+        ContentInsets = { Top = 4 + contentPadding + 1, Bottom = 12 },
         TabFitToParent = true,
         StripWidth = tabStripWidth + contentPadding,
         HorizontalPadding = tabHorizontalPadding,

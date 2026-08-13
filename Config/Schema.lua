@@ -173,9 +173,6 @@ addon.configSchema = {
             { type = "toggle", key = "sortBuffBarsUpward", name = "Sort Bars Upward",
               store = "bool", reload = true,
               desc = "Stack tracked bars upward without gaps. Requires a reload to take effect." },
-            { type = "toggle", key = "anchorExtraQuestButton", name = "Anchor Extra Quest Button",
-              store = "bool", reload = true, hidden = extraQuestButtonMissing,
-              desc = "Anchor ExtraQuestButton above the cast bar. Requires a reload to take effect." },
         },
     },
     --------------------------------------------------------------------------------
@@ -184,6 +181,10 @@ addon.configSchema = {
         title = "Damage Meter",
         icon = "Interface\\Icons\\Ability_Warrior_Rampage",
         controls = {
+            { type = "toggle", key = "enableDamageMeter", name = "Enable Damage Meter", store = "int01",
+              desc = "Toggle Blizzard's built-in damage/healing meter.", cvar = "damageMeterEnabled" },
+
+            { type = "divider", name = "Customization" },
             { type = "toggle", key = "enableDamageMeterCustomization", name = "Enable Customization",
               store = "bool", reload = true,
               desc = "Enable custom sizing, scaling and positioning of the built-in meter. Requires a reload." },
@@ -247,8 +248,6 @@ addon.configSchema = {
               cvar = "Sound_AmbienceVolume" },
             { type = "toggle", key = "autoLootDefault", name = "Auto Loot", store = "int01",
               desc = "Loot automatically by default.", cvar = "autoLootDefault" },
-            { type = "toggle", key = "enableDamageMeter", name = "Enable Damage Meter", store = "int01",
-              desc = "Toggle the built-in damage/healing meter.", cvar = "damageMeterEnabled" },
             { type = "toggle", key = "addChatSizes", name = "Extended Chat Font Sizes", store = "bool",
               reload = true, desc = "Add more chat font size options. Requires a reload to take effect." },
 
@@ -259,6 +258,14 @@ addon.configSchema = {
             { type = "toggle", key = "hideBagsBar", name = "Hide Bags Bar", store = "bool",
               desc = "Hide the bags bar.",
               apply = function() P():ApplyHideBagsBar() end },
+
+            -- Only shown when the ExtraQuestButton addon is installed.
+            { type = "divider", name = "Extra Quest Button", hidden = extraQuestButtonMissing },
+            { type = "toggle", key = "anchorExtraQuestButton", name = "Anchor Above Cast Bar",
+              store = "bool", reload = true, hidden = extraQuestButtonMissing,
+              desc = "This option only appears because the ExtraQuestButton addon is installed. "
+                  .. "Anchors its button above the cast bar (between the cast bar and the tracked "
+                  .. "bars). Requires a reload to take effect." },
         },
     },
 }
