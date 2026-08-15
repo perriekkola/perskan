@@ -279,47 +279,93 @@ end
 -- What's left is rebuilt to the settings window's scrollbar: a 10px flat track with an
 -- 8px grey thumb and no arrow buttons. The stock slider keeps doing the scrolling - only
 -- its art is replaced - so the wheel, the drag and the range all behave as they did.
+-- The stock bar is hidden outright and replaced, rather than restyled: on this client
+-- its arrows and thumb are child frames, not textures, so stripping regions left the
+-- default bar sitting on top of our track. It stays alive at zero alpha as the scroll
+-- frame's own mechanism (the mouse wheel still drives it); what's drawn is ours, built
+-- to the same spec as the settings window's - 10px flat track, 8px grey thumb - and
+-- driving the scroll frame directly.
 local function SkinScrollBar()
     HideAll(_G["BindPadScrollFrameTop"], _G["BindPadScrollFrameMiddle"], _G["BindPadScrollFrameBottom"])
 
-    local scrollBar = _G["BindPadScrollFrameScrollBar"]
-        or (BindPadScrollFrame and (BindPadScrollFrame.ScrollBar or BindPadScrollFrame.scrollBar))
-    if not scrollBar or scrollBar._perskanSkinned then return end
-    scrollBar._perskanSkinned = true
+    local scrollFrame = BindPadScrollFrame
+    if not scrollFrame or scrollFrame._perskanScrollSkinned then return end
+    scrollFrame._perskanScrollSkinned = true
 
-    -- Alpha rather than Hide: the scroll template re-shows these on range changes.
-    for _, key in ipairs({ "ScrollUpButton", "ScrollDownButton", "Back", "Forward" }) do
-        local button = scrollBar[key] or _G["BindPadScrollFrameScrollBar" .. key]
-        if button then
-            button:SetAlpha(0)
-            button:EnableMouse(false)
-        end
+    local stockBar = _G["BindPadScrollFrameScrollBar"] or scrollFrame.ScrollBar or scrollFrame.scrollBar
+    if stockBar then
+        -- Alpha on the bar itself, so its arrow and thumb children go with it.
+        stockBar:SetAlpha(0)
+        stockBar:EnableMouse(false)
     end
 
-    local thumb = scrollBar.GetThumbTexture and scrollBar:GetThumbTexture()
-    for _, region in ipairs({ scrollBar:GetRegions() }) do
-        if region ~= thumb and region.GetObjectType and region:GetObjectType() == "Texture" then
-            region:Hide()
-        end
-    end
-
-    scrollBar:SetWidth(10)
-    if BindPadScrollFrame then
-        scrollBar:ClearAllPoints()
-        scrollBar:SetPoint("TOPLEFT", BindPadScrollFrame, "TOPRIGHT", 6, -2)
-        scrollBar:SetPoint("BOTTOMLEFT", BindPadScrollFrame, "BOTTOMRIGHT", 6, 2)
-    end
-
-    local track = CreateFrame("Frame", nil, scrollBar, mini.GUI.BackdropTemplate)
-    track:SetAllPoints(scrollBar)
-    track:SetFrameLevel(math.max(0, scrollBar:GetFrameLevel() - 1))
+    local track = CreateFrame("Frame", nil, BindPadFrame, mini.GUI.BackdropTemplate)
+    track:SetWidth(10)
+    track:SetPoint("TOPLEFT", scrollFrame, "TOPRIGHT", 6, -2)
+    track:SetPoint("BOTTOMLEFT", scrollFrame, "BOTTOMRIGHT", 6, 2)
+    track:SetFrameLevel(scrollFrame:GetFrameLevel() + 5)
     mini.GUI.ApplyBackdrop(track, BACKDROP, 0.10, 0.10, 0.10, 0.6, 0.25, 0.25, 0.25, 0.8)
 
-    if thumb then
-        thumb:SetTexture("Interface\\Buttons\\WHITE8X8")
-        thumb:SetVertexColor(0.55, 0.55, 0.55, 0.85)
-        thumb:SetSize(8, 40)
+    local thumb = CreateFrame("Frame", nil, track)
+    thumb:SetWidth(8)
+    thumb:SetHeight(20)
+    thumb:SetPoint("TOP", track, "TOP", 0, 0)
+    thumb:EnableMouse(true)
+
+    local thumbTexture = thumb:CreateTexture(nil, "OVERLAY")
+    thumbTexture:SetAllPoints(thumb)
+    thumbTexture:SetColorTexture(0.55, 0.55, 0.55, 0.85)
+
+    local function MaxScroll()
+        return math.max(0, scrollFrame:GetVerticalScrollRange())
     end
+
+    local function PositionThumb()
+        local maxScroll = MaxScroll()
+        track:SetShown(maxScroll > 0)
+        if maxScroll <= 0 then return end
+
+        -- Thumb length tracks how much of the list is on screen.
+        local visible = scrollFrame:GetHeight()
+        local total = visible + maxScroll
+        thumb:SetHeight(math.max(20, math.floor(track:GetHeight() * (visible / total))))
+
+        local travel = math.max(0, track:GetHeight() - thumb:GetHeight())
+        local fraction = math.min(math.max(scrollFrame:GetVerticalScroll() / maxScroll, 0), 1)
+        thumb:SetPoint("TOP", track, "TOP", 0, -travel * fraction)
+    end
+
+    local function SetScroll(value)
+        scrollFrame:SetVerticalScroll(math.min(math.max(value, 0), MaxScroll()))
+        PositionThumb()
+    end
+
+    -- Manual drag: the thumb tracks the cursor 1:1 along the track.
+    local dragging, dragCursorY, dragScroll
+    thumb:SetScript("OnMouseDown", function()
+        dragging = true
+        dragCursorY = select(2, GetCursorPosition())
+        dragScroll = scrollFrame:GetVerticalScroll()
+        thumbTexture:SetColorTexture(0.78, 0.78, 0.78, 1)
+    end)
+    thumb:SetScript("OnMouseUp", function()
+        dragging = false
+        thumbTexture:SetColorTexture(0.55, 0.55, 0.55, 0.85)
+    end)
+    thumb:SetScript("OnUpdate", function()
+        if not dragging then return end
+        local travel = math.max(1, track:GetHeight() - thumb:GetHeight())
+        local scale = track:GetEffectiveScale()
+        -- Screen y grows upward, so dragging down (smaller y) scrolls down.
+        local dy = (dragCursorY - select(2, GetCursorPosition())) / scale
+        SetScroll(dragScroll + dy * (MaxScroll() / travel))
+    end)
+
+    -- The wheel still goes through the stock bar, so follow the frame rather than it.
+    scrollFrame:HookScript("OnVerticalScroll", PositionThumb)
+    scrollFrame:HookScript("OnScrollRangeChanged", PositionThumb)
+    scrollFrame:HookScript("OnShow", PositionThumb)
+    PositionThumb()
 end
 
 --------------------------------------------------------------------------------
@@ -390,11 +436,7 @@ local function SkinBindPad()
         BINDPAD_TEXT_SHOW_HOTKEY or "Show Hotkeys",
         BINDPAD_TOOLTIP_SHOW_HOTKEY, toggleX, 12)
 
-    -- Free-floating and draggable, like the settings window. Dropping it out of the
-    -- UIPanel system is what stops ShowUIPanel re-parking it on the left each time.
-    if UIPanelWindows then
-        UIPanelWindows["BindPadFrame"] = nil
-    end
+    -- Free-floating and draggable, like the settings window.
     BindPadFrame:SetMovable(true)
     BindPadFrame:EnableMouse(true)
     BindPadFrame:SetClampedToScreen(true)
@@ -421,6 +463,17 @@ end
 
 Perskan:RegisterModule("BindPadSkin", function(self)
     if not BindPadFrame then return end
+
+    -- Out of the UIPanel system at login, before anything can show it: as a managed panel
+    -- it was being repositioned to sit beside other windows, and hidden when enough of
+    -- them were open. Registering it late (on first show) was already too late for that
+    -- first show. HIGH strata puts it over the panels it used to make room for.
+    if UIPanelWindows then
+        UIPanelWindows["BindPadFrame"] = nil
+        UIPanelWindows["BindPadMacroFrame"] = nil
+    end
+    BindPadFrame:SetFrameStrata("HIGH")
+    BindPadFrame:SetToplevel(true)
 
     -- Skinned on first show: BindPad's own OnShow lays the panel out, and a frame that
     -- never opens costs nothing.

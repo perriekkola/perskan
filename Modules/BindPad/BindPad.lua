@@ -127,10 +127,13 @@ function BindPadFrame_Toggle()
         BindPadFrame_OutputText("BindPad is switched off in Perskan's Pack settings.")
         return
     end
+    -- [Perskan] Shown directly instead of through the UIPanel system: as a managed panel
+    -- it gets shoved aside to make room for other windows, and hidden outright when too
+    -- many are open. This floats over them, like Perskan's own settings window.
     if BindPadFrame:IsVisible() then
-        HideUIPanel(BindPadFrame)
+        BindPadFrame:Hide()
     else
-        ShowUIPanel(BindPadFrame)
+        BindPadFrame:Show()
     end
 end
 
