@@ -130,14 +130,25 @@ local function SkinShortcutButton(name, icon)
         mini.GUI.LineIdle.r, mini.GUI.LineIdle.g, mini.GUI.LineIdle.b, 1)
 end
 
--- Same treatment as the settings window's close button.
-local function SkinCloseButton(button)
+-- Built to the same spec as the settings window's close button: 28px square, a faint
+-- white hover wash over the whole hit area, and an × that reddens under the mouse.
+local function SkinCloseButton(button, anchorTo)
     if not button or button._perskanSkinned then return end
     button._perskanSkinned = true
 
     HideAll(button:GetNormalTexture(), button:GetPushedTexture(), button:GetDisabledTexture(),
         button:GetHighlightTexture())
-    button:SetSize(26, 26)
+
+    button:SetSize(28, 28)
+    button:SetHitRectInsets(0, 0, 0, 0)
+    if anchorTo then
+        button:ClearAllPoints()
+        button:SetPoint("TOPRIGHT", anchorTo, "TOPRIGHT", -6, -6)
+    end
+
+    local highlight = button:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetAllPoints(button)
+    highlight:SetColorTexture(1, 1, 1, 0.07)
 
     local label = button:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     label:SetAllPoints(button)
@@ -156,8 +167,10 @@ end
 
 -- The stock check button keeps the logic and stays "shown" (a hidden button can't be
 -- clicked programmatically); it's just made invisible and unclickable, with one of the
--- framework's toggles sitting in its place.
-local function ReplaceCheckButton(name, labelText)
+-- framework's toggles sitting in its place. Ours are laid out in their own column rather
+-- than inheriting the originals' positions, which were spaced for 20px checkboxes and
+-- left the taller toggles touching.
+local function ReplaceCheckButton(name, labelText, tooltip, x, y)
     local original = _G[name]
     if not original or original._perskanReplaced then return end
     original._perskanReplaced = true
@@ -170,11 +183,12 @@ local function ReplaceCheckButton(name, labelText)
     local toggle = mini:Checkbox({
         Parent = BindPadFrame,
         LabelText = labelText,
-        Tooltip = original.tooltipText,
+        Tooltip = tooltip,
         GetValue = function() return original:GetChecked() and true or false end,
         SetValue = function() original:Click() end,
     })
-    toggle:SetPoint("LEFT", original, "LEFT", 0, 0)
+    toggle:ClearAllPoints()
+    toggle:SetPoint("BOTTOMLEFT", BindPadFrame, "BOTTOMLEFT", x, y)
 
     return toggle
 end
@@ -183,27 +197,35 @@ end
 -- Tabs
 --------------------------------------------------------------------------------
 
+-- PanelTemplates re-shows a tab's stock art every time the selection changes, so this
+-- runs on every styling pass rather than once. Sweeping the regions beats naming them:
+-- the template's pieces have moved around between clients, and the tabs were still
+-- drawing their boxes when only the known names were hidden.
+local function StripTabArt(tab)
+    for _, region in ipairs({ tab:GetRegions() }) do
+        if region.GetObjectType and region:GetObjectType() == "Texture" and not region._perskanOwned then
+            region:Hide()
+        end
+    end
+    if tab.NineSlice then Hide(tab.NineSlice) end
+    HideAll(tab:GetHighlightTexture(), tab:GetDisabledTexture(), tab:GetNormalTexture())
+end
+
 local function StyleTabs()
     for i = 1, 4 do
         local tab = _G["BindPadFrameTab" .. i]
         if tab then
-            local name = tab:GetName()
+            StripTabArt(tab)
+
             if not tab._perskanSkinned then
                 tab._perskanSkinned = true
-
-                HideAll(_G[name .. "Left"], _G[name .. "Middle"], _G[name .. "Right"],
-                    _G[name .. "LeftDisabled"], _G[name .. "MiddleDisabled"], _G[name .. "RightDisabled"],
-                    _G[name .. "HighlightTexture"])
-                if tab.Left then HideAll(tab.Left, tab.Middle, tab.Right) end
-                if tab.LeftActive then HideAll(tab.LeftActive, tab.MiddleActive, tab.RightActive) end
-                if tab.LeftHighlight then HideAll(tab.LeftHighlight, tab.MiddleHighlight, tab.RightHighlight) end
-                HideAll(tab:GetHighlightTexture(), tab:GetDisabledTexture())
 
                 -- Selection wash and the accent bar down the left edge, as in the
                 -- settings window's sidebar.
                 local wash = tab:CreateTexture(nil, "BACKGROUND")
                 wash:SetAllPoints(tab)
                 wash:SetColorTexture(mini.GUI.Accent.r, mini.GUI.Accent.g, mini.GUI.Accent.b, 0.16)
+                wash._perskanOwned = true
                 tab._perskanWash = wash
 
                 local bar = tab:CreateTexture(nil, "OVERLAY")
@@ -211,6 +233,7 @@ local function StyleTabs()
                 bar:SetPoint("TOPLEFT", tab, "TOPLEFT", 0, 0)
                 bar:SetPoint("BOTTOMLEFT", tab, "BOTTOMLEFT", 0, 0)
                 bar:SetColorTexture(mini.GUI.Accent.r, mini.GUI.Accent.g, mini.GUI.Accent.b, 1)
+                bar._perskanOwned = true
                 tab._perskanBar = bar
 
                 tab:HookScript("OnEnter", function(self)
@@ -253,24 +276,49 @@ end
 --------------------------------------------------------------------------------
 
 -- The panel carried its own scrollbar art on top of the template's, so both were drawn.
--- The addon's decorative pieces go, and the stock bar's frame art with them; the thumb is
--- left alone so dragging still reads.
+-- What's left is rebuilt to the settings window's scrollbar: a 10px flat track with an
+-- 8px grey thumb and no arrow buttons. The stock slider keeps doing the scrolling - only
+-- its art is replaced - so the wheel, the drag and the range all behave as they did.
 local function SkinScrollBar()
     HideAll(_G["BindPadScrollFrameTop"], _G["BindPadScrollFrameMiddle"], _G["BindPadScrollFrameBottom"])
 
     local scrollBar = _G["BindPadScrollFrameScrollBar"]
         or (BindPadScrollFrame and (BindPadScrollFrame.ScrollBar or BindPadScrollFrame.scrollBar))
-    if not scrollBar then return end
+    if not scrollBar or scrollBar._perskanSkinned then return end
+    scrollBar._perskanSkinned = true
 
-    HideAll(scrollBar.Background, scrollBar.Track and scrollBar.Track.Background,
-        scrollBar.Top, scrollBar.Middle, scrollBar.Bottom)
-
+    -- Alpha rather than Hide: the scroll template re-shows these on range changes.
     for _, key in ipairs({ "ScrollUpButton", "ScrollDownButton", "Back", "Forward" }) do
         local button = scrollBar[key] or _G["BindPadScrollFrameScrollBar" .. key]
         if button then
-            HideAll(button:GetNormalTexture(), button:GetPushedTexture(),
-                button:GetDisabledTexture(), button:GetHighlightTexture())
+            button:SetAlpha(0)
+            button:EnableMouse(false)
         end
+    end
+
+    local thumb = scrollBar.GetThumbTexture and scrollBar:GetThumbTexture()
+    for _, region in ipairs({ scrollBar:GetRegions() }) do
+        if region ~= thumb and region.GetObjectType and region:GetObjectType() == "Texture" then
+            region:Hide()
+        end
+    end
+
+    scrollBar:SetWidth(10)
+    if BindPadScrollFrame then
+        scrollBar:ClearAllPoints()
+        scrollBar:SetPoint("TOPLEFT", BindPadScrollFrame, "TOPRIGHT", 6, -2)
+        scrollBar:SetPoint("BOTTOMLEFT", BindPadScrollFrame, "BOTTOMRIGHT", 6, 2)
+    end
+
+    local track = CreateFrame("Frame", nil, scrollBar, mini.GUI.BackdropTemplate)
+    track:SetAllPoints(scrollBar)
+    track:SetFrameLevel(math.max(0, scrollBar:GetFrameLevel() - 1))
+    mini.GUI.ApplyBackdrop(track, BACKDROP, 0.10, 0.10, 0.10, 0.6, 0.25, 0.25, 0.25, 0.8)
+
+    if thumb then
+        thumb:SetTexture("Interface\\Buttons\\WHITE8X8")
+        thumb:SetVertexColor(0.55, 0.55, 0.55, 0.85)
+        thumb:SetSize(8, 40)
     end
 end
 
@@ -290,8 +338,10 @@ local function SkinBindPad()
         HideAll(BindPadFrame.Inset.NineSlice, BindPadFrame.Inset.Bg)
     end
 
-    -- Room for the tab strip down the left.
+    -- Room for the tab strip down the left, and for a column of three toggles along the
+    -- bottom (taller than the 20px checkboxes they replace).
     BindPadFrame:SetWidth(BindPadFrame:GetWidth() + SIDEBAR_WIDTH)
+    BindPadFrame:SetHeight(BindPadFrame:GetHeight() + 26)
     if BindPadScrollFrame then
         BindPadScrollFrame:ClearAllPoints()
         BindPadScrollFrame:SetPoint("TOPLEFT", BindPadFrame, "TOPLEFT", 13 + SIDEBAR_WIDTH, -68)
@@ -321,15 +371,24 @@ local function SkinBindPad()
     mini.GUI.SetGradientH(accentLine, accent.r, accent.g, accent.b, 0.9, accent.r, accent.g, accent.b, 0.04)
 
     SkinScrollBar()
-    SkinCloseButton(BindPadFrame.CloseButton or _G["BindPadFrameCloseButton"])
+    SkinCloseButton(BindPadFrame.CloseButton or _G["BindPadFrameCloseButton"], BindPadFrame)
     SkinTextButton(_G["BindPadFrameExitButton"])
 
     for name, icon in pairs(SHORTCUT_ICONS) do
         SkinShortcutButton(name, icon)
     end
 
-    ReplaceCheckButton("BindPadFrameSaveAllKeysButton", BINDPAD_TEXT_SAVE_ALL_KEYS or "Save All Keys")
-    ReplaceCheckButton("BindPadFrameShowHotkeyButton", BINDPAD_TEXT_SHOW_HOTKEY or "Show Hotkeys")
+    -- One column, clear of the icon buttons, 28px apart so the toggles aren't touching.
+    local toggleX = SIDEBAR_WIDTH + 110
+    ReplaceCheckButton("BindPadFrameCharacterButton",
+        CHARACTER_SPECIFIC_KEYBINDINGS or "Character Specific",
+        CHARACTER_SPECIFIC_KEYBINDING_TOOLTIP, toggleX, 68)
+    ReplaceCheckButton("BindPadFrameSaveAllKeysButton",
+        BINDPAD_TEXT_SAVE_ALL_KEYS or "Save All Keys",
+        BINDPAD_TOOLTIP_SAVE_ALL_KEYS, toggleX, 40)
+    ReplaceCheckButton("BindPadFrameShowHotkeyButton",
+        BINDPAD_TEXT_SHOW_HOTKEY or "Show Hotkeys",
+        BINDPAD_TOOLTIP_SHOW_HOTKEY, toggleX, 12)
 
     -- Free-floating and draggable, like the settings window. Dropping it out of the
     -- UIPanel system is what stops ShowUIPanel re-parking it on the left each time.
