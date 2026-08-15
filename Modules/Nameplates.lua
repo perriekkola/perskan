@@ -1,7 +1,7 @@
--- Nameplate tweaks: name outline and custom healthbar height.
+-- Nameplate tweaks: name outline, custom healthbar height and custom castbar height.
 --
--- Both hooks are installed unconditionally at login and gated internally by the
--- profile, so either setting can be toggled live without a reload. Each exposes an
+-- The hooks are installed unconditionally at login and gated internally by the
+-- profile, so every setting can be changed live without a reload. Each exposes an
 -- applier that re-runs over the currently visible nameplates for instant feedback.
 
 local outlineHooked = false
@@ -100,6 +100,40 @@ function Perskan:ApplyNameplateHealthbarHeight()
 end
 
 --------------------------------------------------------------------------------
+-- Castbar height
+--------------------------------------------------------------------------------
+
+local function ApplyCastbarHeight(nameplate)
+    local frame = nameplate and nameplate.UnitFrame
+    if not frame or frame:IsForbidden() then return end
+
+    -- Blizzard's nameplate unit frame keys the castbar as `castBar`; accept the
+    -- capitalised spelling too in case a future interface version renames it.
+    local castBar = frame.castBar or frame.CastBar
+    if not castBar then return end
+
+    castBar:SetHeight(Perskan.db.profile.nameplateCastbarHeight or 8)
+
+    -- Re-apply after Blizzard resets it (guarded against our own re-entrant SetHeight).
+    if not castBar._perskanHeightHooked then
+        castBar._perskanHeightHooked = true
+        hooksecurefunc(castBar, "SetHeight", function(self)
+            if self._perskanChanging then return end
+            self._perskanChanging = true
+            self:SetHeight(Perskan.db.profile.nameplateCastbarHeight or 8)
+            self._perskanChanging = false
+        end)
+    end
+end
+
+function Perskan:ApplyNameplateCastbarHeight()
+    if not C_NamePlate or not C_NamePlate.GetNamePlates then return end
+    for _, nameplate in pairs(C_NamePlate.GetNamePlates()) do
+        pcall(ApplyCastbarHeight, nameplate)
+    end
+end
+
+--------------------------------------------------------------------------------
 -- Setup
 --------------------------------------------------------------------------------
 
@@ -114,6 +148,7 @@ Perskan:RegisterModule("Nameplates", function(self)
         local nameplate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit(unit)
         if not nameplate then return end
         ApplyHealthbarHeight(nameplate)
+        ApplyCastbarHeight(nameplate)
         local frame = nameplate.UnitFrame
         if frame and not frame:IsForbidden() then
             HookNameplateName(frame)
@@ -122,5 +157,6 @@ Perskan:RegisterModule("Nameplates", function(self)
 
     -- Catch nameplates that already exist at login.
     self:ApplyNameplateHealthbarHeight()
+    self:ApplyNameplateCastbarHeight()
     self:ApplyNameplateNameOutline()
 end)

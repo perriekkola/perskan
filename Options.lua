@@ -13,6 +13,7 @@ local defaults = {
         nameplateWidth = 240,
         nameplateClickableHeight = 65,
         nameplateHealthbarHeight = 10.8,
+        nameplateCastbarHeight = 8,
         nameplateNameOutline = false,
         alwaysShowNameplates = 1,
         nameplateShowAll = 1,
