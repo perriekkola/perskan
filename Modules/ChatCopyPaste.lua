@@ -205,7 +205,7 @@ local function AttachCopyButton(index)
     -- takes mouse-over but never draws and can be clicked through.
     button:SetFrameStrata(chatFrame:GetFrameStrata())
     button:SetFrameLevel(chatFrame:GetFrameLevel() + 10)
-    button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    button:RegisterForClicks("AnyUp")
     button:EnableMouse(true)
     button:Hide()
 
@@ -234,27 +234,40 @@ local function AttachCopyButton(index)
         end
     end)
 
+    local function ShowButton()
+        if Perskan.db.profile.chatCopyButton then button:Show() end
+    end
+
+    -- Moving the mouse onto a child frame fires the parent's OnLeave, so hiding
+    -- immediately makes the button hide the instant you reach for it - which is both the
+    -- flicker and the reason a click never lands. Defer the hide a frame and only take it
+    -- if the mouse has actually left both the chat frame and the button.
+    local function HideButtonSoon()
+        C_Timer.After(0.05, function()
+            if button:IsMouseOver() or chatFrame:IsMouseOver() then return end
+            button:Hide()
+            if GameTooltip:GetOwner() == button then
+                GameTooltip:Hide()
+            end
+        end)
+    end
+
     button:SetScript("OnEnter", function(self)
+        self:Show()
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:SetText("Copy Chat")
         GameTooltip:Show()
     end)
     button:SetScript("OnLeave", function()
         GameTooltip:Hide()
+        HideButtonSoon()
     end)
 
-    local function ShowButton()
-        if Perskan.db.profile.chatCopyButton then button:Show() end
-    end
-    local function HideButton()
-        button:Hide()
-    end
-
     chatFrame:HookScript("OnEnter", ShowButton)
-    chatFrame:HookScript("OnLeave", HideButton)
+    chatFrame:HookScript("OnLeave", HideButtonSoon)
     if chatFrame.ScrollToBottomButton then
         chatFrame.ScrollToBottomButton:HookScript("OnEnter", ShowButton)
-        chatFrame.ScrollToBottomButton:HookScript("OnLeave", HideButton)
+        chatFrame.ScrollToBottomButton:HookScript("OnLeave", HideButtonSoon)
     end
 
     chatFrame.perskanCopyButton = button

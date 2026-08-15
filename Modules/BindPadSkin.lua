@@ -2,12 +2,14 @@
 --
 -- Purely cosmetic, and deliberately a skin rather than a rebuild: BindPad's slots are
 -- secure action buttons carrying drag-and-drop and key capture, so re-creating its panel
--- on MiniFramework widgets would put working behaviour at risk for a paint job. Instead
--- the stock ButtonFrameTemplate art (gold NineSlice, portrait, parchment insets) is
--- hidden and a flat dark panel with our accent is drawn behind it.
+-- on MiniFramework widgets would put working behaviour at risk for a paint job. The stock
+-- ButtonFrameTemplate art is hidden, a flat dark panel drawn behind it, the top tabs
+-- moved into a vertical strip down the left like the settings sidebar, and the stock
+-- checkboxes swapped for the framework's toggles (the originals stay alive underneath,
+-- since they own the logic - ours just click them).
 --
--- Every lookup is guarded: these are Blizzard template internals, and a renamed region
--- should cost some styling, never an error inside BindPad.
+-- Every lookup is guarded: these are Blizzard template internals and another addon's
+-- frame names, and a rename should cost some styling, never an error inside BindPad.
 
 local addonName, addon = ...
 local mini = addon.Framework
@@ -16,6 +18,19 @@ local BACKDROP = {
     bgFile = "Interface\\Buttons\\WHITE8X8",
     edgeFile = "Interface\\Buttons\\WHITE8X8",
     edgeSize = 1,
+}
+
+-- Width of the tab strip the window grows by, and the geometry of one tab in it.
+local SIDEBAR_WIDTH = 132
+local TAB_WIDTH, TAB_HEIGHT, TAB_SPACING = 122, 26, 4
+local TAB_TOP = -46
+
+-- Stock icons for the three shortcut buttons, whose micro-button art doesn't survive
+-- being flattened.
+local SHORTCUT_ICONS = {
+    BindPadFrameOpenSpellBookButton = "Interface\\Icons\\INV_Misc_Book_09",
+    BindPadFrameOpenMacroButton = "Interface\\Icons\\INV_Scroll_03",
+    BindPadFrameOpenBagButton = "Interface\\Icons\\INV_Misc_Bag_08",
 }
 
 local skinned = false
@@ -30,23 +45,29 @@ local function HideAll(...)
     end
 end
 
--- Flat dark field with a one-pixel border, matching the settings window's chrome.
-local function PaintPanel(frame, r, g, b, a)
+local function Label(button)
+    if not button then return nil end
+    return button.Text or (button.GetFontString and button:GetFontString()) or _G[(button:GetName() or "") .. "Text"]
+end
+
+local function PaintPanel(frame, level)
     local backdropFrame = CreateFrame("Frame", nil, frame, mini.GUI.BackdropTemplate)
-    backdropFrame:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0)
-    backdropFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
-    backdropFrame:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
+    backdropFrame:SetAllPoints(frame)
+    backdropFrame:SetFrameLevel(math.max(0, frame:GetFrameLevel() - (level or 1)))
 
     local accent = mini.GUI.Accent
     mini.GUI.ApplyBackdrop(backdropFrame, BACKDROP,
-        r or 0.09, g or 0.08, b or 0.08, a or 0.96,
-        accent.r, accent.g, accent.b, 0.55)
+        0.09, 0.08, 0.08, 0.96, accent.r, accent.g, accent.b, 0.55)
 
     return backdropFrame
 end
 
--- Blizzard's button art swapped for the same flat field the framework's buttons use.
-local function SkinButton(button)
+--------------------------------------------------------------------------------
+-- Buttons
+--------------------------------------------------------------------------------
+
+-- Flat dark field with an accent hover, for text buttons.
+local function SkinTextButton(button)
     if not button or button._perskanSkinned then return end
     button._perskanSkinned = true
 
@@ -63,69 +84,227 @@ local function SkinButton(button)
 
     local highlight = button:GetHighlightTexture()
     if highlight then
-        highlight:SetColorTexture(mini.GUI.AccentHi.r, mini.GUI.AccentHi.g, mini.GUI.AccentHi.b, 0.18)
+        highlight:SetColorTexture(mini.GUI.AccentHi.r, mini.GUI.AccentHi.g, mini.GUI.AccentHi.b, 0.2)
     end
 
-    local label = button.Text or (button.GetFontString and button:GetFontString())
+    local label = Label(button)
     if label then
         label:SetTextColor(mini.GUI.TabTextHover.r, mini.GUI.TabTextHover.g, mini.GUI.TabTextHover.b, 1)
     end
 end
 
--- Top tabs lose their parchment and read like the settings sidebar: dim when idle, gold
--- when selected.
-local function SkinTabs()
+-- The three shortcuts were 29x58 micro buttons: too big, and left blank by flattening.
+-- They become square icon buttons; their tooltips are BindPad's own and stay untouched.
+local function SkinShortcutButton(name, icon)
+    local button = _G[name]
+    if not button or button._perskanSkinned then return end
+    button._perskanSkinned = true
+
+    button:SetSize(26, 26)
+    button:SetHitRectInsets(0, 0, 0, 0)
+
+    local normal = button:GetNormalTexture()
+    if normal then
+        normal:SetTexture(icon)
+        normal:ClearAllPoints()
+        normal:SetPoint("TOPLEFT", button, "TOPLEFT", 2, -2)
+        normal:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -2, 2)
+        normal:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        normal:Show()
+    end
+    HideAll(button:GetPushedTexture(), button:GetDisabledTexture())
+
+    local highlight = button:GetHighlightTexture()
+    if highlight then
+        highlight:SetTexture("Interface\\Buttons\\WHITE8X8")
+        highlight:SetVertexColor(mini.GUI.AccentHi.r, mini.GUI.AccentHi.g, mini.GUI.AccentHi.b, 0.25)
+        highlight:ClearAllPoints()
+        highlight:SetAllPoints(button)
+    end
+
+    local field = CreateFrame("Frame", nil, button, mini.GUI.BackdropTemplate)
+    field:SetAllPoints(button)
+    field:SetFrameLevel(math.max(0, button:GetFrameLevel() - 1))
+    mini.GUI.ApplyBackdrop(field, BACKDROP,
+        mini.GUI.FieldIdle.r, mini.GUI.FieldIdle.g, mini.GUI.FieldIdle.b, 1,
+        mini.GUI.LineIdle.r, mini.GUI.LineIdle.g, mini.GUI.LineIdle.b, 1)
+end
+
+-- Same treatment as the settings window's close button.
+local function SkinCloseButton(button)
+    if not button or button._perskanSkinned then return end
+    button._perskanSkinned = true
+
+    HideAll(button:GetNormalTexture(), button:GetPushedTexture(), button:GetDisabledTexture(),
+        button:GetHighlightTexture())
+    button:SetSize(26, 26)
+
+    local label = button:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    label:SetAllPoints(button)
+    label:SetJustifyH("CENTER")
+    label:SetJustifyV("MIDDLE")
+    label:SetText("×")
+    label:SetTextColor(0.5, 0.5, 0.5, 1)
+
+    button:HookScript("OnEnter", function() label:SetTextColor(1, 0.3, 0.3, 1) end)
+    button:HookScript("OnLeave", function() label:SetTextColor(0.5, 0.5, 0.5, 1) end)
+end
+
+--------------------------------------------------------------------------------
+-- Toggles
+--------------------------------------------------------------------------------
+
+-- The stock check button keeps the logic and stays "shown" (a hidden button can't be
+-- clicked programmatically); it's just made invisible and unclickable, with one of the
+-- framework's toggles sitting in its place.
+local function ReplaceCheckButton(name, labelText)
+    local original = _G[name]
+    if not original or original._perskanReplaced then return end
+    original._perskanReplaced = true
+
+    local originalLabel = Label(original)
+    if originalLabel then originalLabel:SetText("") end
+    original:SetAlpha(0)
+    original:EnableMouse(false)
+
+    local toggle = mini:Checkbox({
+        Parent = BindPadFrame,
+        LabelText = labelText,
+        Tooltip = original.tooltipText,
+        GetValue = function() return original:GetChecked() and true or false end,
+        SetValue = function() original:Click() end,
+    })
+    toggle:SetPoint("LEFT", original, "LEFT", 0, 0)
+
+    return toggle
+end
+
+--------------------------------------------------------------------------------
+-- Tabs
+--------------------------------------------------------------------------------
+
+local function StyleTabs()
     for i = 1, 4 do
         local tab = _G["BindPadFrameTab" .. i]
         if tab then
+            local name = tab:GetName()
             if not tab._perskanSkinned then
                 tab._perskanSkinned = true
-                HideAll(_G[tab:GetName() .. "Left"], _G[tab:GetName() .. "Middle"],
-                    _G[tab:GetName() .. "Right"], _G[tab:GetName() .. "LeftDisabled"],
-                    _G[tab:GetName() .. "MiddleDisabled"], _G[tab:GetName() .. "RightDisabled"])
+
+                HideAll(_G[name .. "Left"], _G[name .. "Middle"], _G[name .. "Right"],
+                    _G[name .. "LeftDisabled"], _G[name .. "MiddleDisabled"], _G[name .. "RightDisabled"],
+                    _G[name .. "HighlightTexture"])
                 if tab.Left then HideAll(tab.Left, tab.Middle, tab.Right) end
                 if tab.LeftActive then HideAll(tab.LeftActive, tab.MiddleActive, tab.RightActive) end
                 if tab.LeftHighlight then HideAll(tab.LeftHighlight, tab.MiddleHighlight, tab.RightHighlight) end
+                HideAll(tab:GetHighlightTexture(), tab:GetDisabledTexture())
 
-                -- Accent bar under the selected tab, in place of the raised art.
-                local marker = tab:CreateTexture(nil, "OVERLAY")
-                marker:SetHeight(2)
-                marker:SetPoint("BOTTOMLEFT", tab, "BOTTOMLEFT", 6, 2)
-                marker:SetPoint("BOTTOMRIGHT", tab, "BOTTOMRIGHT", -6, 2)
-                marker:SetColorTexture(mini.GUI.Accent.r, mini.GUI.Accent.g, mini.GUI.Accent.b, 1)
-                tab._perskanMarker = marker
+                -- Selection wash and the accent bar down the left edge, as in the
+                -- settings window's sidebar.
+                local wash = tab:CreateTexture(nil, "BACKGROUND")
+                wash:SetAllPoints(tab)
+                wash:SetColorTexture(mini.GUI.Accent.r, mini.GUI.Accent.g, mini.GUI.Accent.b, 0.16)
+                tab._perskanWash = wash
+
+                local bar = tab:CreateTexture(nil, "OVERLAY")
+                bar:SetWidth(3)
+                bar:SetPoint("TOPLEFT", tab, "TOPLEFT", 0, 0)
+                bar:SetPoint("BOTTOMLEFT", tab, "BOTTOMLEFT", 0, 0)
+                bar:SetColorTexture(mini.GUI.Accent.r, mini.GUI.Accent.g, mini.GUI.Accent.b, 1)
+                tab._perskanBar = bar
+
+                tab:HookScript("OnEnter", function(self)
+                    local label = Label(self)
+                    if label and BindPadFrame.selectedTab ~= i then
+                        label:SetTextColor(mini.GUI.TabTextBright.r, mini.GUI.TabTextBright.g,
+                            mini.GUI.TabTextBright.b, 1)
+                    end
+                end)
+                tab:HookScript("OnLeave", function() StyleTabs() end)
+            end
+
+            -- Re-asserted on every pass: PanelTemplates rewrites tab geometry when the
+            -- selection changes.
+            tab:SetSize(TAB_WIDTH, TAB_HEIGHT)
+            tab:ClearAllPoints()
+            tab:SetPoint("TOPLEFT", BindPadFrame, "TOPLEFT", 8,
+                TAB_TOP - (i - 1) * (TAB_HEIGHT + TAB_SPACING))
+
+            local label = Label(tab)
+            if label then
+                label:ClearAllPoints()
+                label:SetPoint("LEFT", tab, "LEFT", 12, 0)
+                label:SetJustifyH("LEFT")
             end
 
             local selected = BindPadFrame and BindPadFrame.selectedTab == i
-            local color = selected and mini.GUI.TabTextSelected or mini.GUI.TabTextIdle
-            local label = tab.Text or (tab.GetFontString and tab:GetFontString())
+            local color = selected and mini.GUI.TabTextSelected or mini.GUI.TabTextHover
             if label then
                 label:SetTextColor(color.r, color.g, color.b, 1)
             end
-            if tab._perskanMarker then
-                tab._perskanMarker:SetShown(selected and true or false)
-            end
+            if tab._perskanWash then tab._perskanWash:SetShown(selected and true or false) end
+            if tab._perskanBar then tab._perskanBar:SetShown(selected and true or false) end
         end
     end
 end
+
+--------------------------------------------------------------------------------
+-- Scroll bar
+--------------------------------------------------------------------------------
+
+-- The panel carried its own scrollbar art on top of the template's, so both were drawn.
+-- The addon's decorative pieces go, and the stock bar's frame art with them; the thumb is
+-- left alone so dragging still reads.
+local function SkinScrollBar()
+    HideAll(_G["BindPadScrollFrameTop"], _G["BindPadScrollFrameMiddle"], _G["BindPadScrollFrameBottom"])
+
+    local scrollBar = _G["BindPadScrollFrameScrollBar"]
+        or (BindPadScrollFrame and (BindPadScrollFrame.ScrollBar or BindPadScrollFrame.scrollBar))
+    if not scrollBar then return end
+
+    HideAll(scrollBar.Background, scrollBar.Track and scrollBar.Track.Background,
+        scrollBar.Top, scrollBar.Middle, scrollBar.Bottom)
+
+    for _, key in ipairs({ "ScrollUpButton", "ScrollDownButton", "Back", "Forward" }) do
+        local button = scrollBar[key] or _G["BindPadScrollFrameScrollBar" .. key]
+        if button then
+            HideAll(button:GetNormalTexture(), button:GetPushedTexture(),
+                button:GetDisabledTexture(), button:GetHighlightTexture())
+        end
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Skin
+--------------------------------------------------------------------------------
 
 local function SkinBindPad()
     if skinned or not BindPadFrame then return end
     skinned = true
 
     -- Panel chrome.
-    HideAll(BindPadFrame.NineSlice, BindPadFrame.Bg, BindPadFrame.TopTileStreaks,
-        _G["MacroFramePortrait"])
+    HideAll(BindPadFrame.NineSlice, BindPadFrame.Bg, BindPadFrame.TopTileStreaks, _G["MacroFramePortrait"])
     if BindPadFrame.PortraitContainer then Hide(BindPadFrame.PortraitContainer) end
     if BindPadFrame.portrait then Hide(BindPadFrame.portrait) end
     if BindPadFrame.Inset then
         HideAll(BindPadFrame.Inset.NineSlice, BindPadFrame.Inset.Bg)
     end
 
+    -- Room for the tab strip down the left.
+    BindPadFrame:SetWidth(BindPadFrame:GetWidth() + SIDEBAR_WIDTH)
+    if BindPadScrollFrame then
+        BindPadScrollFrame:ClearAllPoints()
+        BindPadScrollFrame:SetPoint("TOPLEFT", BindPadFrame, "TOPLEFT", 13 + SIDEBAR_WIDTH, -68)
+    end
+    if BindPadFrameOpenSpellBookButton then
+        BindPadFrameOpenSpellBookButton:ClearAllPoints()
+        BindPadFrameOpenSpellBookButton:SetPoint("BOTTOMLEFT", BindPadFrame, "BOTTOMLEFT",
+            16 + SIDEBAR_WIDTH, 16)
+    end
+
     PaintPanel(BindPadFrame)
 
-    -- Title: same colour and accent rule as the settings window's title bar.
-    local title = BindPadFrame.TitleContainer and BindPadFrame.TitleContainer.TitleText
+    local title = (BindPadFrame.TitleContainer and BindPadFrame.TitleContainer.TitleText)
         or _G["BindPadFrameTitleText"]
     if title then
         local titleColor = mini.GUI.TitleText
@@ -141,17 +320,28 @@ local function SkinBindPad()
     accentLine:SetPoint("TOPRIGHT", BindPadFrame, "TOPRIGHT", -1, -34)
     mini.GUI.SetGradientH(accentLine, accent.r, accent.g, accent.b, 0.9, accent.r, accent.g, accent.b, 0.04)
 
-    -- The scroll frame's old character-sheet scrollbar art.
-    HideAll(_G["BindPadScrollFrameTop"], _G["BindPadScrollFrameMiddle"], _G["BindPadScrollFrameBottom"])
+    SkinScrollBar()
+    SkinCloseButton(BindPadFrame.CloseButton or _G["BindPadFrameCloseButton"])
+    SkinTextButton(_G["BindPadFrameExitButton"])
 
-    for _, name in ipairs({
-        "BindPadFrameExitButton",
-        "BindPadFrameOpenSpellBookButton",
-        "BindPadFrameOpenMacroButton",
-        "BindPadFrameOpenBagButton",
-    }) do
-        SkinButton(_G[name])
+    for name, icon in pairs(SHORTCUT_ICONS) do
+        SkinShortcutButton(name, icon)
     end
+
+    ReplaceCheckButton("BindPadFrameSaveAllKeysButton", BINDPAD_TEXT_SAVE_ALL_KEYS or "Save All Keys")
+    ReplaceCheckButton("BindPadFrameShowHotkeyButton", BINDPAD_TEXT_SHOW_HOTKEY or "Show Hotkeys")
+
+    -- Free-floating and draggable, like the settings window. Dropping it out of the
+    -- UIPanel system is what stops ShowUIPanel re-parking it on the left each time.
+    if UIPanelWindows then
+        UIPanelWindows["BindPadFrame"] = nil
+    end
+    BindPadFrame:SetMovable(true)
+    BindPadFrame:EnableMouse(true)
+    BindPadFrame:SetClampedToScreen(true)
+    BindPadFrame:RegisterForDrag("LeftButton")
+    BindPadFrame:HookScript("OnDragStart", function(self) self:StartMoving() end)
+    BindPadFrame:HookScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
 
     -- The key-capture dialog and the macro popup are separate top-level frames.
     if BindPadBindFrame then
@@ -164,9 +354,10 @@ local function SkinBindPad()
             HideAll(BindPadMacroPopupFrame.Inset.NineSlice, BindPadMacroPopupFrame.Inset.Bg)
         end
         PaintPanel(BindPadMacroPopupFrame)
+        SkinCloseButton(BindPadMacroPopupFrame.CloseButton)
     end
 
-    SkinTabs()
+    StyleTabs()
 end
 
 Perskan:RegisterModule("BindPadSkin", function(self)
@@ -174,13 +365,14 @@ Perskan:RegisterModule("BindPadSkin", function(self)
 
     -- Skinned on first show: BindPad's own OnShow lays the panel out, and a frame that
     -- never opens costs nothing.
-    BindPadFrame:HookScript("OnShow", function()
+    BindPadFrame:HookScript("OnShow", function(frame)
         SkinBindPad()
-        SkinTabs()
+        StyleTabs()
+        -- Re-sync the toggles with whatever BindPad set the real checkboxes to.
+        if frame.MiniRefresh then frame:MiniRefresh() end
     end)
 
-    -- Selection colour has to follow the tab clicks.
     if type(BindPadFrameTab_OnClick) == "function" then
-        hooksecurefunc("BindPadFrameTab_OnClick", SkinTabs)
+        hooksecurefunc("BindPadFrameTab_OnClick", StyleTabs)
     end
 end, "bindPadEnabled")
