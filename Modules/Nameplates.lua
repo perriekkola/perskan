@@ -117,15 +117,34 @@ local function GetCastBarParts(frame)
     return nil, frame.castBar or frame.CastBar
 end
 
+-- Retail 12.x can hand back a "secret" value from a getter while an addon is on the
+-- call stack: it can be passed around, but comparing it throws. Nameplate heights come
+-- back secret during unit setup, so every measurement is screened before it is used.
+-- issecretvalue only exists on 12.x; the pcall covers older clients and any getter
+-- that hands back something unexpected.
+local function PlainNumber(value)
+    if issecretvalue and issecretvalue(value) then return nil end
+    local ok, usable = pcall(function() return type(value) == "number" and value > 0 end)
+    if not ok or not usable then return nil end
+    return value
+end
+
 -- Remember what Blizzard sized things to, so our offset is always applied to its
--- values rather than compounding on top of a height we set ourselves.
+-- values rather than compounding on top of a height we set ourselves. A measurement
+-- we can't read keeps the previous baseline rather than replacing it with a partial
+-- one - the plate then keeps the height it already had.
 local function CaptureCastbarBaseline(container, castBar)
-    local barHeight = castBar:GetHeight()
-    if not barHeight or barHeight <= 0 then return false end
+    local barHeight = PlainNumber(castBar:GetHeight())
+    if not barHeight then return false end
+
+    local containerHeight = container and PlainNumber(container:GetHeight()) or nil
+    if container and not containerHeight then return false end
 
     castBar._perskanBaseBar = barHeight
-    castBar._perskanBaseContainer = container and container:GetHeight() or nil
-    castBar._perskanBaseSpark = castBar.Spark and castBar.Spark:GetHeight() or nil
+    castBar._perskanBaseContainer = containerHeight
+    if castBar.Spark then
+        castBar._perskanBaseSpark = PlainNumber(castBar.Spark:GetHeight()) or castBar._perskanBaseSpark
+    end
     return true
 end
 
@@ -166,8 +185,10 @@ local function ApplyCastbarHeight(nameplate)
             hooksecurefunc(frame, "ApplyFrameOptions", function(self)
                 local hookedContainer, hookedBar = GetCastBarParts(self)
                 if not hookedBar then return end
-                CaptureCastbarBaseline(hookedContainer, hookedBar)
-                SetCastbarHeight(hookedContainer, hookedBar)
+                -- Runs inside Blizzard's own setup path, so keep any surprise here
+                -- from turning into an error message per nameplate.
+                pcall(CaptureCastbarBaseline, hookedContainer, hookedBar)
+                pcall(SetCastbarHeight, hookedContainer, hookedBar)
             end)
         else
             -- Pre-12.x: no ApplyFrameOptions to hang off, so re-assert on SetHeight
