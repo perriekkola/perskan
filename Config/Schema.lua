@@ -90,7 +90,8 @@ addon.configSchema = {
               desc = "Height of the healthbar on nameplates.", min = 1, max = 30, step = 0.1,
               apply = function() P():ApplyNameplateHealthbarHeight() end },
             { type = "range", key = "nameplateCastbarHeight", name = "Castbar Height",
-              desc = "Height of the cast bar on nameplates.", min = 1, max = 30, step = 0.1,
+              desc = "Height of the cast bar on nameplates. 0 keeps Blizzard's own height, "
+                  .. "which varies with nameplate style and size.", min = 0, max = 40, step = 0.5,
               apply = function() P():ApplyNameplateCastbarHeight() end },
             { type = "toggle", key = "nameplateNameOutline", name = "Name Outline", store = "bool",
               desc = "Add an outline to nameplate names for readability.",

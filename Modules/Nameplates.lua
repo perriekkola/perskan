@@ -103,27 +103,88 @@ end
 -- Castbar height
 --------------------------------------------------------------------------------
 
+-- Retail 12.x nests the cast bar as UnitFrame.CastBarsContainer.castBar, and the
+-- container is what the rest of the plate is laid out against (the health bar is
+-- anchored to its top). Depending on nameplate style the bar is stretched to fill
+-- that container - anchored top *and* bottom - which makes castBar:SetHeight a no-op
+-- on its own, so the container has to move with it. Older interface versions kept a
+-- flat UnitFrame.castBar with no container; both shapes are handled here.
+local function GetCastBarParts(frame)
+    local container = frame.CastBarsContainer
+    if container then
+        return container, container.castBar
+    end
+    return nil, frame.castBar or frame.CastBar
+end
+
+-- Remember what Blizzard sized things to, so our offset is always applied to its
+-- values rather than compounding on top of a height we set ourselves.
+local function CaptureCastbarBaseline(container, castBar)
+    local barHeight = castBar:GetHeight()
+    if not barHeight or barHeight <= 0 then return false end
+
+    castBar._perskanBaseBar = barHeight
+    castBar._perskanBaseContainer = container and container:GetHeight() or nil
+    castBar._perskanBaseSpark = castBar.Spark and castBar.Spark:GetHeight() or nil
+    return true
+end
+
+local function SetCastbarHeight(container, castBar)
+    local baseBar = castBar._perskanBaseBar
+    if not baseBar or baseBar <= 0 then return end
+
+    -- Zero means "leave Blizzard's height alone", so the setting is inert until used.
+    local target = Perskan.db.profile.nameplateCastbarHeight or 0
+    if target <= 0 then target = baseBar end
+
+    local delta = target - baseBar
+
+    -- The container carries the icon strip in styles that put the spell name outside
+    -- the bar, so shift it by the delta instead of setting it to the bar height.
+    if container and castBar._perskanBaseContainer then
+        container:SetHeight(math.max(1, castBar._perskanBaseContainer + delta))
+    end
+    castBar:SetHeight(target)
+    if castBar.Spark and castBar._perskanBaseSpark then
+        castBar.Spark:SetHeight(math.max(1, castBar._perskanBaseSpark + delta))
+    end
+end
+
 local function ApplyCastbarHeight(nameplate)
     local frame = nameplate and nameplate.UnitFrame
     if not frame or frame:IsForbidden() then return end
 
-    -- Blizzard's nameplate unit frame keys the castbar as `castBar`; accept the
-    -- capitalised spelling too in case a future interface version renames it.
-    local castBar = frame.castBar or frame.CastBar
+    local container, castBar = GetCastBarParts(frame)
     if not castBar then return end
 
-    castBar:SetHeight(Perskan.db.profile.nameplateCastbarHeight or 8)
-
-    -- Re-apply after Blizzard resets it (guarded against our own re-entrant SetHeight).
     if not castBar._perskanHeightHooked then
         castBar._perskanHeightHooked = true
-        hooksecurefunc(castBar, "SetHeight", function(self)
-            if self._perskanChanging then return end
-            self._perskanChanging = true
-            self:SetHeight(Perskan.db.profile.nameplateCastbarHeight or 8)
-            self._perskanChanging = false
-        end)
+
+        if frame.ApplyFrameOptions then
+            -- Blizzard rebuilds the whole cast bar layout here (style change, nameplate
+            -- size CVar, plate reuse). Re-baseline off its fresh values, then re-apply.
+            hooksecurefunc(frame, "ApplyFrameOptions", function(self)
+                local hookedContainer, hookedBar = GetCastBarParts(self)
+                if not hookedBar then return end
+                CaptureCastbarBaseline(hookedContainer, hookedBar)
+                SetCastbarHeight(hookedContainer, hookedBar)
+            end)
+        else
+            -- Pre-12.x: no ApplyFrameOptions to hang off, so re-assert on SetHeight
+            -- (guarded against our own re-entrant call).
+            hooksecurefunc(castBar, "SetHeight", function(self)
+                if self._perskanChanging then return end
+                self._perskanChanging = true
+                SetCastbarHeight(nil, self)
+                self._perskanChanging = false
+            end)
+        end
     end
+
+    if castBar._perskanBaseBar == nil and not CaptureCastbarBaseline(container, castBar) then
+        return
+    end
+    SetCastbarHeight(container, castBar)
 end
 
 function Perskan:ApplyNameplateCastbarHeight()
