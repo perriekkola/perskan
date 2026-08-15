@@ -1,7 +1,7 @@
 local addonName, addon = ...
 
 -- Data-driven description of the settings window. The renderer (Config/Window.lua)
--- walks this and builds MiniFramework widgets from it.
+-- walks this and builds the window from Blizzard's own templates.
 --
 -- Control fields:
 --   type      "toggle" | "range" | "select" | "divider"
@@ -28,6 +28,33 @@ end
 
 local function damageMeterCustomizationOff()
     return not profile().enableDamageMeterCustomization
+end
+
+-- Simple Item Level keeps its own account-wide saved variables (see Modules/ItemLevel.lua),
+-- so its controls read and write there instead of the profile. Options that have never been
+-- changed resolve to upstream's defaults, which is what keeps this identical to running the
+-- standalone addon.
+local function ilvl(control)
+    control.get = function() return P():GetItemLevelOption(control.key) end
+    control.set = function(value) P():SetItemLevelOption(control.key, value) end
+    return control
+end
+
+local ILVL_POSITIONS = {
+    { value = "TOPLEFT", text = "Top Left" },
+    { value = "TOP", text = "Top" },
+    { value = "TOPRIGHT", text = "Top Right" },
+    { value = "LEFT", text = "Left" },
+    { value = "CENTER", text = "Center" },
+    { value = "RIGHT", text = "Right" },
+    { value = "BOTTOMLEFT", text = "Bottom Left" },
+    { value = "BOTTOM", text = "Bottom" },
+    { value = "BOTTOMRIGHT", text = "Bottom Right" },
+}
+
+-- Anchor point/offsets only mean anything once the window is pinned to the screen.
+local function damageMeterAnchorOff()
+    return damageMeterCustomizationOff() or not profile().damageMeterAnchorEnabled
 end
 
 addon.configSchema = {
@@ -107,24 +134,10 @@ addon.configSchema = {
 
             { type = "divider", name = "Target & Focus Auras" },
             { type = "range", key = "targetFocusAuraSize", name = "Aura Size",
-              desc = "Size of buff/debuff icons on the target and focus frames.", min = 10, max = 40, step = 1,
+              desc = "Size of buff/debuff icons on the target and focus frames. Applies to "
+                  .. "every aura, including your own (Blizzard draws those larger by default).",
+              min = 10, max = 40, step = 1,
               apply = function() P():ApplyTargetFocusAuraSize() end },
-            { type = "toggle", key = "showAuraCooldownNumbers", name = "Show Aura Cooldown Numbers",
-              store = "bool", desc = "Force cooldown numbers on unit frame buff/debuff icons.",
-              apply = function() P():ApplyAuraCooldownNumbers() end },
-            { type = "range", key = "auraCooldownNumbersScale", name = "Cooldown Number Scale",
-              desc = "Size of the cooldown numbers.", min = 0.3, max = 1.5, step = 0.1,
-              apply = function() P():ApplyAuraCooldownNumbers() end,
-              disabled = function() return not profile().showAuraCooldownNumbers end },
-
-            { type = "divider", name = "Raid Frame Auras" },
-            { type = "toggle", key = "showRaidFrameAuraCooldowns", name = "Show Raid Frame Cooldowns",
-              store = "bool", desc = "Show cooldown numbers on raid frame buff/debuff icons.",
-              apply = function() P():ApplyRaidFrameAuraCooldowns() end },
-            { type = "range", key = "raidFrameAuraCooldownScale", name = "Raid Cooldown Number Scale",
-              desc = "Size of the cooldown numbers on raid frames.", min = 0.3, max = 1.5, step = 0.1,
-              apply = function() P():ApplyRaidFrameAuraCooldowns() end,
-              disabled = function() return not profile().showRaidFrameAuraCooldowns end },
         },
     },
     --------------------------------------------------------------------------------
@@ -139,6 +152,183 @@ addon.configSchema = {
             { type = "toggle", key = "hideMacroText", name = "Hide Macro Text", store = "bool",
               desc = "Hide macro names on action buttons.",
               apply = function() P():ApplyHideMacroText() end },
+
+            { type = "divider", name = "Grey On Cooldown" },
+            { type = "toggle", key = "greyOnCooldown", name = "Grey Icons On Cooldown", store = "bool",
+              desc = "Desaturate an action button's icon while its ability is on cooldown. "
+                  .. "The global cooldown is ignored. Replaces the GreyOnCooldown addon.",
+              apply = function() P():ApplyGreyOnCooldown() end },
+            { type = "toggle", key = "greyOnCooldownUnusable", name = "Grey Unusable Actions", store = "bool",
+              desc = "Also desaturate actions you can't use right now (out of range, no target, "
+                  .. "wrong form).",
+              disabled = function() return not profile().greyOnCooldown end,
+              apply = function() P():ApplyGreyOnCooldown() end },
+            { type = "toggle", key = "greyOnCooldownNoResources", name = "Grey Actions Without Resources",
+              store = "bool", desc = "Also desaturate actions you lack the mana/rage/energy for.",
+              disabled = function() return not profile().greyOnCooldown end,
+              apply = function() P():ApplyGreyOnCooldown() end },
+            { type = "toggle", key = "greyOnCooldownPetBar", name = "Include Pet Bar", store = "bool",
+              desc = "Apply the same greying to pet action buttons.",
+              disabled = function() return not profile().greyOnCooldown end,
+              apply = function() P():ApplyGreyOnCooldown() end },
+
+            { type = "divider", name = "Range & Resources" },
+            { type = "toggle", key = "rangeColoring", name = "Colour By Range And Resources",
+              store = "bool",
+              desc = "Tint action icons red when the target is out of range and blue when "
+                  .. "you're short on power. Replaces the tullaRange addon.",
+              apply = function() P():ApplyRangeColoring() end },
+            { type = "toggle", key = "rangeColoringHotkeys", name = "Colour Hotkey Text",
+              store = "bool", desc = "Tint the hotkey text red as well when out of range.",
+              disabled = function() return not profile().rangeColoring end,
+              apply = function() P():ApplyRangeColoring() end },
+            { type = "toggle", key = "rangeColoringPetBar", name = "Include Pet Bar",
+              store = "bool", desc = "Apply the same colouring to pet action buttons.",
+              disabled = function() return not profile().rangeColoring end,
+              apply = function() P():ApplyRangeColoring() end },
+        },
+    },
+    --------------------------------------------------------------------------------
+    {
+        key = "itemlevel",
+        title = "Item Levels",
+        icon = "Interface\\Icons\\INV_Chest_Plate04",
+        controls = {
+            { type = "divider", name = "Where To Show" },
+            ilvl{ type = "toggle", key = "bags", name = "Bags", store = "bool" },
+            ilvl{ type = "toggle", key = "character", name = "Character Frame", store = "bool" },
+            ilvl{ type = "toggle", key = "character_inset", name = "Inside The Character Frame",
+                  store = "bool", desc = "Place the level inside the frame instead of over the item.",
+                  disabled = function() return not P():GetItemLevelOption("character") end },
+            ilvl{ type = "toggle", key = "flyout", name = "Equipment Flyouts", store = "bool" },
+            ilvl{ type = "toggle", key = "inspect", name = "Inspect Frame", store = "bool" },
+            ilvl{ type = "toggle", key = "inspect_inset", name = "Inside The Inspect Frame",
+                  store = "bool", desc = "Place the level inside the frame instead of over the item.",
+                  disabled = function() return not P():GetItemLevelOption("inspect") end },
+            ilvl{ type = "toggle", key = "loot", name = "Loot Windows", store = "bool" },
+            ilvl{ type = "toggle", key = "characteravg", name = "Character Average Item Level",
+                  store = "bool" },
+            ilvl{ type = "toggle", key = "inspectavg", name = "Inspect Average Item Level",
+                  store = "bool" },
+
+            { type = "divider", name = "Which Items" },
+            ilvl{ type = "toggle", key = "equipment", name = "Equippable Items", store = "bool" },
+            ilvl{ type = "toggle", key = "battlepets", name = "Battle Pets", store = "bool" },
+            ilvl{ type = "toggle", key = "reagents", name = "Crafting Reagents", store = "bool" },
+            ilvl{ type = "toggle", key = "misc", name = "Anything Else", store = "bool" },
+            ilvl{ type = "select", key = "quality", name = "Minimum Item Quality",
+                  desc = "Items below this quality are left alone.",
+                  values = {
+                      { value = 0, text = "Poor" },
+                      { value = 1, text = "Common" },
+                      { value = 2, text = "Uncommon" },
+                      { value = 3, text = "Rare" },
+                      { value = 4, text = "Epic" },
+                      { value = 5, text = "Legendary" },
+                      { value = 6, text = "Artifact" },
+                      { value = 7, text = "Heirloom" },
+                  } },
+
+            { type = "divider", name = "What To Show" },
+            ilvl{ type = "toggle", key = "itemlevel", name = "Item Level", store = "bool" },
+            ilvl{ type = "toggle", key = "upgrades", name = "Flag Upgrades", store = "bool" },
+            ilvl{ type = "toggle", key = "missinggems", name = "Flag Missing Gems", store = "bool" },
+            ilvl{ type = "toggle", key = "missingenchants", name = "Flag Missing Enchants",
+                  store = "bool" },
+            ilvl{ type = "toggle", key = "missingcharacter", name = "Only On The Character Frame",
+                  store = "bool", desc = "Restrict the missing gem/enchant flags to the character frame." },
+            ilvl{ type = "toggle", key = "bound", name = "Flag Soulbound Items", store = "bool",
+                  desc = "Only on items you control: bags and the character frame." },
+            ilvl{ type = "toggle", key = "color", name = "Colour By Item Quality", store = "bool" },
+
+            { type = "divider", name = "Appearance" },
+            ilvl{ type = "select", key = "font", name = "Font",
+                  values = {
+                      { value = "NumberNormal", text = "Number" },
+                      { value = "NumberNormalSmall", text = "Number (Small)" },
+                      { value = "HighlightSmall", text = "Highlight (Small)" },
+                      { value = "Normal", text = "Normal" },
+                      { value = "Large", text = "Large" },
+                      { value = "Huge", text = "Huge" },
+                  } },
+            ilvl{ type = "select", key = "position", name = "Item Level Position",
+                  values = ILVL_POSITIONS },
+            ilvl{ type = "select", key = "positionup", name = "Upgrade Flag Position",
+                  values = ILVL_POSITIONS },
+            ilvl{ type = "range", key = "scaleup", name = "Upgrade Flag Size",
+                  min = 0.5, max = 3, step = 0.1 },
+            ilvl{ type = "select", key = "positionmissing", name = "Missing Flag Position",
+                  values = ILVL_POSITIONS },
+            ilvl{ type = "select", key = "positionbound", name = "Soulbound Flag Position",
+                  values = ILVL_POSITIONS },
+            ilvl{ type = "range", key = "scalebound", name = "Soulbound Flag Size",
+                  min = 0.5, max = 3, step = 0.1 },
+        },
+    },
+    --------------------------------------------------------------------------------
+    {
+        key = "keybindings",
+        title = "Key Bindings",
+        icon = "Interface\\Icons\\INV_Misc_Key_03",
+        controls = {
+            { type = "toggle", key = "bindPadEnabled", name = "Enable BindPad", store = "bool",
+              reload = true,
+              desc = "BindPad's keybinding pad: drag a spell, item or macro into a slot and "
+                  .. "click it to bind a key. Bindings are applied at login, so switching this "
+                  .. "on or off needs a reload.",
+              apply = function() P():ApplyBindPad() end },
+            { type = "button", name = "Open BindPad", width = 220,
+              onClick = function() P():OpenBindPad() end,
+              disabled = function() return not profile().bindPadEnabled end },
+        },
+    },
+    --------------------------------------------------------------------------------
+    {
+        key = "chat",
+        title = "Chat",
+        icon = "Interface\\Icons\\INV_Letter_15",
+        controls = {
+            { type = "toggle", key = "chatCopyButton", name = "Chat Copy Button", store = "bool",
+              desc = "Show a copy button in the bottom right of a chat window while the mouse "
+                  .. "is over it. Replaces the ChatCopyPaste addon.",
+              apply = function() P():ApplyChatCopyButton() end },
+            { type = "range", key = "chatCopyMaxLines", name = "Max Lines Copied",
+              desc = "How many lines of history the copy window shows.", min = 50, max = 1000, step = 10,
+              disabled = function() return not profile().chatCopyButton end },
+            { type = "toggle", key = "chatDisableFade", name = "Disable Chat Fade", store = "bool",
+              desc = "Stop chat text fading out when you haven't hovered the window for a while.",
+              apply = function() P():ApplyChatFade() end },
+
+            { type = "divider", name = "Links" },
+            { type = "toggle", key = "chatUrlLinks", name = "Clickable URLs", store = "bool",
+              desc = "Turn website addresses in chat into clickable links that open the copy "
+                  .. "window with the URL selected." },
+            { type = "color", key = "chatUrlColor", name = "URL Colour",
+              desc = "Colour used to highlight URLs in chat.",
+              disabled = function() return not profile().chatUrlLinks end },
+
+            { type = "divider", name = "Font Sizes" },
+            { type = "toggle", key = "addChatSizes", name = "Extended Chat Font Sizes", store = "bool",
+              reload = true, desc = "Add more chat font size options. Requires a reload to take effect." },
+        },
+    },
+    --------------------------------------------------------------------------------
+    {
+        key = "map",
+        title = "Map",
+        icon = "Interface\\Icons\\INV_Misc_Map02",
+        controls = {
+            { type = "toggle", key = "showDelvesOnContinentMap", name = "Show Delves On Continent Map",
+              store = "bool",
+              desc = "Roll every zone's delve entrances up onto the continent map. Blizzard's "
+                  .. "own Delves map filter still applies.",
+              apply = function() P():ApplyDelveMapPins() end },
+            { type = "toggle", key = "delvesBountifulOnly", name = "Bountiful Delves Only",
+              store = "bool",
+              desc = "Only show bountiful delves. Same setting as the checkbox in the map's "
+                  .. "tracking menu.",
+              disabled = function() return not profile().showDelvesOnContinentMap end,
+              apply = function() P():ApplyDelveMapPins() end },
         },
     },
     --------------------------------------------------------------------------------
@@ -170,9 +360,6 @@ addon.configSchema = {
             { type = "toggle", key = "anchorBuffBarsToWidgetFrame", name = "Anchor Buff Bars to Cast Bar",
               store = "bool", reload = true,
               desc = "Anchor BuffBarCooldownViewer above the cast bar. Requires a reload to take effect." },
-            { type = "toggle", key = "sortBuffBarsUpward", name = "Sort Bars Upward",
-              store = "bool", reload = true,
-              desc = "Stack tracked bars upward without gaps. Requires a reload to take effect." },
         },
     },
     --------------------------------------------------------------------------------
@@ -222,18 +409,46 @@ addon.configSchema = {
               desc = "Spacing between multiple meter windows.", min = -50, max = 50, step = 1,
               hidden = damageMeterCustomizationOff,
               apply = function() if P().ApplyDamageMeterSettings then P().ApplyDamageMeterSettings() end end },
-            { type = "toggle", key = "damageMeterAnchorBottomRight", name = "Anchor to Bottom Right",
-              store = "bool", desc = "Anchor the primary window to the screen's bottom right.",
+            { type = "divider", name = "Position", hidden = damageMeterCustomizationOff },
+            { type = "toggle", key = "damageMeterAnchorEnabled", name = "Anchor to Screen",
+              store = "bool", desc = "Pin the primary window to a screen position instead of "
+                  .. "leaving it where Blizzard put it.",
               hidden = damageMeterCustomizationOff,
               apply = function() if P().ApplyDamageMeterSettings then P().ApplyDamageMeterSettings() end end },
-            { type = "range", key = "damageMeterAnchorYOffset", name = "Bottom Right Y Offset",
-              desc = "Vertical offset from the bottom of the screen.", min = 0, max = 500, step = 1,
-              hidden = function() return damageMeterCustomizationOff() or not profile().damageMeterAnchorBottomRight end,
+            { type = "select", key = "damageMeterAnchorPoint", name = "Anchor Point",
+              desc = "Which part of the screen the window is pinned to.",
+              hidden = damageMeterAnchorOff,
+              values = {
+                  { value = "TOPLEFT", text = "Top Left" },
+                  { value = "TOP", text = "Top" },
+                  { value = "TOPRIGHT", text = "Top Right" },
+                  { value = "LEFT", text = "Left" },
+                  { value = "CENTER", text = "Center" },
+                  { value = "RIGHT", text = "Right" },
+                  { value = "BOTTOMLEFT", text = "Bottom Left" },
+                  { value = "BOTTOM", text = "Bottom" },
+                  { value = "BOTTOMRIGHT", text = "Bottom Right" },
+              },
+              apply = function() if P().ApplyDamageMeterSettings then P().ApplyDamageMeterSettings() end end },
+            { type = "range", key = "damageMeterAnchorXOffset", name = "X Offset",
+              desc = "Horizontal offset from the anchor point. Negative moves left.",
+              min = -1000, max = 1000, step = 1,
+              hidden = damageMeterAnchorOff,
+              apply = function() if P().ApplyDamageMeterSettings then P().ApplyDamageMeterSettings() end end },
+            { type = "range", key = "damageMeterAnchorYOffset", name = "Y Offset",
+              desc = "Vertical offset from the anchor point. Negative moves down.",
+              min = -1000, max = 1000, step = 1,
+              hidden = damageMeterAnchorOff,
               apply = function() if P().ApplyDamageMeterSettings then P().ApplyDamageMeterSettings() end end },
             { type = "select", key = "damageMeterMultiWindowAnchor", name = "Multiple Windows Position",
-              desc = "Where to attach secondary windows relative to the primary.",
+              desc = "Which side of the primary window secondary windows stack on.",
               hidden = damageMeterCustomizationOff,
-              values = { { value = "left", text = "Attach to Left" }, { value = "top", text = "Attach to Top" } },
+              values = {
+                  { value = "left", text = "Attach to Left" },
+                  { value = "right", text = "Attach to Right" },
+                  { value = "top", text = "Attach to Top" },
+                  { value = "bottom", text = "Attach to Bottom" },
+              },
               apply = function() if P().ApplyDamageMeterSettings then P().ApplyDamageMeterSettings() end end },
         },
     },
@@ -248,8 +463,6 @@ addon.configSchema = {
               cvar = "Sound_AmbienceVolume" },
             { type = "toggle", key = "autoLootDefault", name = "Auto Loot", store = "int01",
               desc = "Loot automatically by default.", cvar = "autoLootDefault" },
-            { type = "toggle", key = "addChatSizes", name = "Extended Chat Font Sizes", store = "bool",
-              reload = true, desc = "Add more chat font size options. Requires a reload to take effect." },
 
             { type = "divider", name = "Hide UI Elements" },
             { type = "toggle", key = "hideSocialButton", name = "Hide Social Button", store = "bool",

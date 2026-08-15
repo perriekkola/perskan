@@ -25,8 +25,8 @@ end
 
 -- Re-apply everything that can take effect live. Called after a profile switch/reset
 -- so the new profile's values show up immediately instead of only after a reload.
--- (Reload-gated features - chat sizes, buff-bar anchoring, damage-meter customization -
--- still need a reload; their controls flag the banner when changed individually.)
+-- (Reload-gated features - chat sizes, buff-bar cast-bar anchoring, damage-meter
+-- customization - still need a reload; their controls flag the banner individually.)
 local LIVE_APPLIERS = {
     "ApplyCVars",
     "ApplyNameplateSize",
@@ -38,10 +38,13 @@ local LIVE_APPLIERS = {
     "ApplyTalkingHeadScale",
     "ApplyHideHotkeys",
     "ApplyHideMacroText",
+    "ApplyGreyOnCooldown",
+    "ApplyRangeColoring",
+    "ApplyDelveMapPins",
+    "ApplyChatCopyButton",
+    "ApplyChatFade",
     "ApplyHideSocialButton",
     "ApplyHideBagsBar",
-    "ApplyAuraCooldownNumbers",
-    "ApplyRaidFrameAuraCooldowns",
     "ApplyTargetFocusAuraSize",
 }
 

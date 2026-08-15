@@ -1,10 +1,11 @@
 -- BuffBarCooldownViewer positioning + ExtraQuestButton anchoring.
 --
--- Three related settings live here because they share the cast-bar anchor and the
--- bar-sorting state:
+-- Two related settings live here because they share the cast-bar anchor:
 --   * anchorBuffBarsToWidgetFrame - park the viewer above the cast bar
 --   * anchorExtraQuestButton       - park ExtraQuestButton above the cast bar
---   * sortBuffBarsUpward           - stack active bars upward without gaps
+--
+-- A third, stacking the bars upward without gaps, is gone: the cooldown viewer's layout
+-- no longer leaves an addon's anchoring in place on current patches.
 --
 -- The old code installed the cast-bar SetPoint hook and the login init twice (once
 -- per anchor feature); this consolidates them into a single event frame and a single
@@ -12,62 +13,10 @@
 -- reasserted on PLAYER_REGEN_ENABLED. These settings can't cleanly revert an
 -- Edit-Mode-owned frame at runtime, so the settings window asks for a reload on change.
 
-local sortState = {
-    containers = {},
-    containerHeight = nil,
-    containerSpacing = 2,
-    parentFrame = nil,
-}
-
 -- 12.1 removed UIParentBottomManagedFrameContainer; anchor to the player cast bar
 -- (the frame this option is named for), falling back to UIParent.
 local function GetBottomAnchorFrame()
     return PlayerCastingBarFrame or UIParent
-end
-
-local RepositionBuffBarContainers
-
-local function CollectBuffBarContainers()
-    wipe(sortState.containers)
-
-    sortState.parentFrame = BuffBarCooldownViewer
-    if not sortState.parentFrame then return end
-
-    for _, child in ipairs({ sortState.parentFrame:GetChildren() }) do
-        if child.Icon then
-            sortState.containers[#sortState.containers + 1] = child
-            if not sortState.containerHeight then
-                sortState.containerHeight = child:GetHeight()
-            end
-
-            if not child._perskanHooked then
-                child._perskanHooked = true
-                child:HookScript("OnShow", function() RepositionBuffBarContainers() end)
-                child:HookScript("OnHide", function() RepositionBuffBarContainers() end)
-            end
-        end
-    end
-end
-
-RepositionBuffBarContainers = function()
-    if not Perskan.db.profile.sortBuffBarsUpward or not sortState.parentFrame then return end
-    -- Child OnShow/OnHide fire during combat as cooldowns come and go; SetPoint is
-    -- protected, so never reposition in a lockdown.
-    if InCombatLockdown() then return end
-
-    if not sortState.containerHeight and #sortState.containers > 0 then
-        sortState.containerHeight = sortState.containers[1]:GetHeight()
-    end
-
-    local visibleIndex = 0
-    for _, container in ipairs(sortState.containers) do
-        if container:IsVisible() then
-            container:ClearAllPoints()
-            container:SetPoint("BOTTOMLEFT", sortState.parentFrame, "BOTTOMLEFT", 0,
-                visibleIndex * ((sortState.containerHeight or 0) + sortState.containerSpacing))
-            visibleIndex = visibleIndex + 1
-        end
-    end
 end
 
 local function RepositionBuffBarsAboveWidget()
@@ -90,7 +39,6 @@ local function RepositionBuffBarsAboveWidget()
         BuffBarCooldownViewer:SetPoint("BOTTOM", anchor, "TOP", 0, yOffset)
     end)
 
-    RepositionBuffBarContainers()
 end
 
 local function RepositionExtraQuestButton()
@@ -111,7 +59,6 @@ end
 local function RepositionAll()
     RepositionExtraQuestButton()
     RepositionBuffBarsAboveWidget()
-    RepositionBuffBarContainers()
 end
 
 Perskan:RegisterModule("BuffBars", function(self)
@@ -150,7 +97,6 @@ Perskan:RegisterModule("BuffBars", function(self)
                 end)
             end
 
-            CollectBuffBarContainers()
             RepositionAll()
         end
 

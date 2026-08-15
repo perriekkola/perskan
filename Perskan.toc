@@ -2,10 +2,10 @@
 ## Notes: Lua snippets altering the default UI
 ## Author: Per Riekkola
 ## Interface: 110207, 120000
-## Version: 1.1.31
+## Version: 1.2.0
 ## IconTexture: Interface\Icons\ability_titankeeper_testofconfidence
 
-## SavedVariables: PerskanDB
+## SavedVariables: PerskanDB, BindPadVars, SimpleItemLevelDB
 
 # Library files
 Libs\LibStub\LibStub.lua
@@ -17,9 +17,10 @@ Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml
 Libs\AceGUI-3.0\AceGUI-3.0.xml
 Libs\AceConsole-3.0\AceConsole-3.0.xml
 Libs\AceConfig-3.0\AceConfig-3.0.xml
+Libs\HereBeDragons\HereBeDragons-2.0.lua
+Libs\HereBeDragons\HereBeDragons-Pins-2.0.lua
+Libs\LibAppropriateItems-1.0\LibAppropriateItems-1.0.lua
 
-# Settings UI framework (embedded MiniFramework)
-Libs\MiniFramework\MiniFramework.xml
 
 # Core files
 Perskan.xml

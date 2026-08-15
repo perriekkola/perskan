@@ -6,11 +6,27 @@
   <Script file="Modules\CVars.lua" />
   <Script file="Modules\FrameScaling.lua" />
   <Script file="Modules\ActionBars.lua" />
+  <Script file="Modules\GreyOnCooldown.lua" />
+  <Script file="Modules\RangeColoring.lua" />
   <Script file="Modules\HideElements.lua" />
   <Script file="Modules\Auras.lua" />
   <Script file="Modules\Nameplates.lua" />
   <Script file="Modules\DamageMeter.lua" />
   <Script file="Modules\BuffBars.lua" />
+  <Script file="Modules\DelveMap.lua" />
+  <Script file="Modules\ChatCopyPaste.lua" />
+  <Script file="Modules\KeyBindings.lua" />
+  <Script file="Modules\BindPadTweaks.lua" />
+  <Script file="Modules\ItemLevel.lua" />
+
+  <!-- Vendored Simple Item Level: own namespace and saved variable, see Namespace.lua. -->
+  <Script file="Modules\SimpleItemLevel\Namespace.lua" />
+  <Script file="Modules\SimpleItemLevel\addon.lua" />
+  <Script file="Modules\SimpleItemLevel\api.lua" />
+
+  <!-- Vendored BindPad: its own frames, saved variables and slash commands, gated by
+       the two [Perskan] guards in Modules\BindPad\BindPad.lua. -->
+  <Include file="Modules\BindPad\BindPad.xml" />
 
   <!-- Settings window (built in OnInitialize). -->
   <Script file="Config\Schema.lua" />

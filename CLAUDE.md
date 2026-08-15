@@ -9,8 +9,12 @@ Perskan's Pack is a World of Warcraft retail addon that modifies the default UI 
 ## Architecture
 
 The addon uses the Ace3 framework for its saved-variable/profile layer (AceDB-3.0) and
-a small module registry for feature code. The settings UI is a custom standalone window
-built on the embedded **MiniFramework** widget toolkit (`Libs/MiniFramework/`), not AceConfig.
+a small module registry for feature code. The settings UI is a standalone window built
+from **Blizzard's own templates** - `ButtonFrameTemplate`, `UICheckButtonTemplate`,
+`UISliderTemplateWithLabels`, `WowStyle1DropdownTemplate`, `UIPanelButtonTemplate`,
+`MinimalScrollBar` - not AceConfig and not a custom widget toolkit. Anything drawn by
+this addon should use stock game art; skinning over Blizzard's own art is what the UI
+was deliberately moved away from.
 
 - **Options.lua**: Bootstrap. Creates the addon via AceAddon-3.0, holds `defaults.profile`,
   defines the module registry (`Perskan:RegisterModule(name, setupFn, optionalKey)`),
@@ -19,22 +23,40 @@ built on the embedded **MiniFramework** widget toolkit (`Libs/MiniFramework/`), 
 - **Modules/*.lua**: One file per feature area. Each registers a setup function into the
   registry and exposes live-apply methods on `Perskan` (e.g. `Perskan:ApplyXpBarScale()`).
   Modules read `Perskan.db.profile` live (never cache it — AceDB repoints the table on a
-  profile switch). Files: `CVars`, `FrameScaling`, `ActionBars`, `HideElements`, `Auras`,
-  `Nameplates`, `DamageMeter` (gated on `enableDamageMeterCustomization`), `BuffBars`.
+  profile switch). Files: `CVars`, `FrameScaling`, `ActionBars`, `GreyOnCooldown`,
+  `RangeColoring`, `HideElements`, `Auras`, `Nameplates`, `DamageMeter` (gated on
+  `enableDamageMeterCustomization`), `BuffBars`, `DelveMap`, `ChatCopyPaste`,
+  `KeyBindings`, `BindPadTweaks`, `ItemLevel`.
+- **Vendored addons**: `Modules/BindPad/` (BindPad, Tageshi) and
+  `Modules/SimpleItemLevel/` (Simple Item Level, Kemayo) are third-party addons carried
+  whole, each with its own saved variable listed in the toc. Every deviation from
+  upstream is marked `[Perskan]` in-file, and there are only a handful: a feature gate in
+  BindPad, and namespace/saved-variable pinning in Simple Item Level (files loaded from
+  another addon's toc otherwise receive *its* name and private table from `...`). Thin
+  glue modules - `KeyBindings.lua`, `ItemLevel.lua` - expose them to the settings window.
+- **Action button visuals** are split by property so features stack rather than fight:
+  `GreyOnCooldown` owns desaturation (cooldowns), `RangeColoring` owns vertex colour
+  (range/resources).
+- **Retail 12.x note**: unit-frame and raid-frame auras are engine-owned
+  (`AuraContainer`/`AuraButton`, private auras). Individual aura icons and their
+  cooldowns are not reachable from an addon; the only public knobs are the container's
+  `SetSmallAuraSize`/`SetLargeAuraSize`, which is what `Modules/Auras.lua` drives.
 - **Config/Schema.lua**: Data-driven description of the settings window — categories and
-  controls (`toggle`/`range`/`select`/`divider`) with `cvar`, `apply`, `reload`, `hidden`,
-  `disabled` flags. Adding a setting is mostly a schema edit.
-- **Config/Window.lua**: Renders the schema into a MiniFramework standalone window with a
-  left sidebar, styled widgets, a non-blocking reload banner, and a Profiles panel. Exposes
-  `Perskan:OpenConfig()` / `RequestReload()` / `RefreshConfig()`.
+  controls (`toggle`/`range`/`select`/`color`/`button`/`divider`) with `cvar`, `apply`,
+  `reload`, `hidden`, `disabled` flags, plus optional `get`/`set` for settings that don't
+  live in the profile. Adding a setting is mostly a schema edit.
+- **Config/Window.lua**: Renders the schema into a `ButtonFrameTemplate` window with a
+  category list on the left, a scrolling content pane (`MinimalScrollBar` paired through
+  `ScrollUtil.InitScrollFrameWithScrollBar`), a Reload UI button that appears only when
+  something asks for one, and a Profiles page. Exposes `Perskan:OpenConfig()` /
+  `RequestReload()` / `RefreshConfig()`.
 - **Core.lua**: Lifecycle glue. `OnEnable` iterates the registry (each module in a `pcall`
   so one failure can't abort the rest); `PLAYER_ENTERING_WORLD` re-asserts CVars;
   `ApplyProfileSettings` re-applies live settings after a profile switch.
-- **Libs/MiniFramework/**: Embedded UI toolkit (widgets, standalone window, tabs). Storage-
-  agnostic (get/set callbacks) and rebranded via `M:SetPalette` in Window.lua.
+- **Libs/HereBeDragons/**: Embedded map/pin library (BSD), used by `Modules/DelveMap.lua`
+  to place pins on the world map canvas.
 - **Perskan.xml**: Load order — Options → Modules → Config → Core.
-- **Perskan.toc**: Manifest (multi-interface: 110207, 120000); loads `MiniFramework.xml`
-  before `Perskan.xml`.
+- **Perskan.toc**: Manifest (multi-interface: 110207, 120000).
 
 Settings are stored in `PerskanDB` SavedVariable using AceDB-3.0 profiles.
 
