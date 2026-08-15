@@ -58,7 +58,6 @@ local defaults = {
         extendedVendor = true,
         vendorColumns = 3,
         vendorRows = 6,
-        vendorSearch = true,
         -- World Map
         showDelvesOnContinentMap = true,
         delvesBountifulOnly = false,
