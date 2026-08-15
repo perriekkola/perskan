@@ -9,9 +9,11 @@
 -- What the container does expose publicly is the aura size, which is what this
 -- drives. The 11.x pool walk is kept as a fallback for clients that still have it.
 
--- Blizzard ships 17/21 for small/large auras; keep that 4px gap between the two so
--- important auras stay visibly bigger at any setting.
-local LARGE_AURA_BONUS = 4
+-- Blizzard ships 17/21 for small/large, where "large" means an aura you cast yourself
+-- (ShouldShowAuraWithLargeSize matches the aura's source against the player's units).
+-- One size is applied to both so every aura on the frame scales the same; set this to
+-- 4 to get Blizzard's emphasis on your own auras back.
+local LARGE_AURA_BONUS = 0
 
 local function GetAuraContainer(unitFrame)
     if not unitFrame or type(unitFrame.GetAuraContainer) ~= "function" then return nil end

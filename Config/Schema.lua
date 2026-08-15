@@ -112,8 +112,9 @@ addon.configSchema = {
 
             { type = "divider", name = "Target & Focus Auras" },
             { type = "range", key = "targetFocusAuraSize", name = "Aura Size",
-              desc = "Size of buff/debuff icons on the target and focus frames. "
-                  .. "Important auras are drawn 4px larger than this.", min = 10, max = 40, step = 1,
+              desc = "Size of buff/debuff icons on the target and focus frames. Applies to "
+                  .. "every aura, including your own (Blizzard draws those larger by default).",
+              min = 10, max = 40, step = 1,
               apply = function() P():ApplyTargetFocusAuraSize() end },
         },
     },
