@@ -11,6 +11,10 @@ local addonName, addon = ...
 -- missing, and a sheet of parchment reads as "copy this text" at 20px.
 local COPY_ICON = "Interface\\Icons\\INV_Misc_Note_01"
 
+-- Height of the strip below the inset, and where a 22px button sits centred in it.
+local FOOTER_HEIGHT = 34
+local FOOTER_BUTTON_Y = 7
+
 local copyWindow, copyEditBox
 
 --------------------------------------------------------------------------------
@@ -90,7 +94,14 @@ local function BuildCopyWindow()
     -- Blizzard's scrolling input frame does the heavy lifting, sat inside the template's
     -- own inset: anchoring it to the frame's edges instead left it straddling the inset's
     -- border art.
+    -- The template's inset runs almost to the bottom edge, leaving no real footer. Its
+    -- bottom is pinned explicitly so the strip below it is a known height, which is what
+    -- the buttons are centred in.
     local inset = frame.Inset or frame
+    if frame.Inset then
+        frame.Inset:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -4, FOOTER_HEIGHT)
+    end
+
     local scroll = CreateFrame("ScrollFrame", nil, frame, "InputScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 6, -6)
     scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -26, 6)
@@ -108,11 +119,10 @@ local function BuildCopyWindow()
         editBox:SetWidth(math.max(100, scroll:GetWidth() - 20))
     end
 
-    -- Footer buttons sit centred as a pair below the inset - anchoring them to the
-    -- window's bottom edge instead left them riding up over the inset's border.
+    -- Footer buttons sit centred as a pair in that strip.
     local selectAll = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    selectAll:SetSize(120, 24)
-    selectAll:SetPoint("TOP", inset, "BOTTOM", -64, -6)
+    selectAll:SetSize(120, 22)
+    selectAll:SetPoint("BOTTOM", frame, "BOTTOM", -64, FOOTER_BUTTON_Y)
     selectAll:SetText("Select All")
     selectAll:SetScript("OnClick", function()
         editBox:SetFocus()
@@ -120,8 +130,8 @@ local function BuildCopyWindow()
     end)
 
     local close = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    close:SetSize(120, 24)
-    close:SetPoint("TOP", inset, "BOTTOM", 64, -6)
+    close:SetSize(120, 22)
+    close:SetPoint("BOTTOM", frame, "BOTTOM", 64, FOOTER_BUTTON_Y)
     close:SetText("Close")
     close:SetScript("OnClick", function() frame:Hide() end)
 

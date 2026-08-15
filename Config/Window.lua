@@ -14,6 +14,10 @@ local TOP_PAD = 12
 local SPACING = 10
 local RIGHT_MARGIN = 26
 
+-- Height of the strip below the insets, and where a 22px button sits centred in it.
+local FOOTER_HEIGHT = 34
+local FOOTER_BUTTON_Y = 7
+
 -- Per-control vertical space. Sliders need room above for their value label and below for
 -- the min/max labels the template anchors outside the bar.
 local TOGGLE_H = 26
@@ -603,12 +607,12 @@ function Perskan:BuildConfig()
     -- Category list on the left, content on the right, both in stock insets.
     local sidebar = CreateFrame("Frame", nil, window, "InsetFrameTemplate")
     sidebar:SetPoint("TOPLEFT", window, "TOPLEFT", 8, -64)
-    sidebar:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", 8, 36)
+    sidebar:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", 8, FOOTER_HEIGHT)
     sidebar:SetWidth(SIDEBAR_WIDTH)
 
     local contentInset = CreateFrame("Frame", nil, window, "InsetFrameTemplate")
     contentInset:SetPoint("TOPLEFT", sidebar, "TOPRIGHT", 6, 0)
-    contentInset:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -8, 36)
+    contentInset:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -8, FOOTER_HEIGHT)
 
     local scrollFrame = CreateFrame("ScrollFrame", nil, contentInset)
     scrollFrame:SetPoint("TOPLEFT", contentInset, "TOPLEFT", 4, -4)
@@ -626,11 +630,11 @@ function Perskan:BuildConfig()
     scrollFrame:SetScrollChild(contentChild)
 
     -- Reload prompt: a stock button that only appears once something asks for one.
-    -- Anchored under the content inset rather than to the window's bottom edge, so it
-    -- lands in the footer strip instead of overlapping the inset's border.
+    -- Centred in the strip below the insets, which end FOOTER_HEIGHT above the window's
+    -- bottom edge.
     local reloadButton = CreateFrame("Button", nil, window, "UIPanelButtonTemplate")
     reloadButton:SetSize(140, 22)
-    reloadButton:SetPoint("TOPRIGHT", contentInset, "BOTTOMRIGHT", -2, -6)
+    reloadButton:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -10, FOOTER_BUTTON_Y)
     reloadButton:SetText("Reload UI")
     reloadButton:SetScript("OnClick", function() C_UI.Reload() end)
     reloadButton:Hide()
