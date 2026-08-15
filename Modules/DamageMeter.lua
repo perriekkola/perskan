@@ -5,6 +5,16 @@
 -- master switch asks for a reload. All sub-options apply live via
 -- Perskan.ApplyDamageMeterSettings (the field name several config handlers rely on).
 
+-- Where a secondary window attaches relative to the one before it. The sign is
+-- applied to the configured spacing so a positive spacing always pushes the windows
+-- apart, whichever direction they grow in.
+local MULTI_WINDOW_ANCHORS = {
+    left   = { point = "BOTTOMRIGHT", relativePoint = "BOTTOMLEFT",  x = -1, y = 0 },
+    right  = { point = "BOTTOMLEFT",  relativePoint = "BOTTOMRIGHT", x = 1,  y = 0 },
+    top    = { point = "BOTTOMRIGHT", relativePoint = "TOPRIGHT",    x = 0,  y = 1 },
+    bottom = { point = "TOPRIGHT",    relativePoint = "BOTTOMRIGHT", x = 0,  y = -1 },
+}
+
 Perskan:RegisterModule("DamageMeter", function(self)
     local hookedWindows = {}
     local originalSetWidth = {}
@@ -119,25 +129,25 @@ Perskan:RegisterModule("DamageMeter", function(self)
         -- avoid taint, and rely on the next out-of-combat apply.
         if InCombatLockdown() then return end
 
-        if Perskan.db.profile.damageMeterAnchorBottomRight and DamageMeter then
+        if Perskan.db.profile.damageMeterAnchorEnabled and DamageMeter then
+            -- Anchor point to point, so the offsets read the same way from whichever
+            -- corner/edge the player picked.
+            local anchorPoint = Perskan.db.profile.damageMeterAnchorPoint or "BOTTOMRIGHT"
+            local xOffset = Perskan.db.profile.damageMeterAnchorXOffset or 0
             local yOffset = Perskan.db.profile.damageMeterAnchorYOffset or 0
             DamageMeter:ClearAllPoints()
-            DamageMeter:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, yOffset)
+            DamageMeter:SetPoint(anchorPoint, UIParent, anchorPoint, xOffset, yOffset)
         end
 
-        local multiAnchor = Perskan.db.profile.damageMeterMultiWindowAnchor
+        local multiAnchor = MULTI_WINDOW_ANCHORS[Perskan.db.profile.damageMeterMultiWindowAnchor]
+            or MULTI_WINDOW_ANCHORS.left
         local spacing = Perskan.db.profile.damageMeterSpacing or 0
-        if #allWindows > 1 then
-            for i = 2, #allWindows do
-                local window = allWindows[i]
-                local prevWindow = allWindows[i - 1]
-                window:ClearAllPoints()
-                if multiAnchor == "top" then
-                    window:SetPoint("BOTTOMRIGHT", prevWindow, "TOPRIGHT", 0, spacing)
-                else
-                    window:SetPoint("BOTTOMRIGHT", prevWindow, "BOTTOMLEFT", -spacing, 0)
-                end
-            end
+        for i = 2, #allWindows do
+            local window = allWindows[i]
+            local prevWindow = allWindows[i - 1]
+            window:ClearAllPoints()
+            window:SetPoint(multiAnchor.point, prevWindow, multiAnchor.relativePoint,
+                multiAnchor.x * spacing, multiAnchor.y * spacing)
         end
     end
 

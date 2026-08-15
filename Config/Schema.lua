@@ -30,6 +30,11 @@ local function damageMeterCustomizationOff()
     return not profile().enableDamageMeterCustomization
 end
 
+-- Anchor point/offsets only mean anything once the window is pinned to the screen.
+local function damageMeterAnchorOff()
+    return damageMeterCustomizationOff() or not profile().damageMeterAnchorEnabled
+end
+
 addon.configSchema = {
     --------------------------------------------------------------------------------
     {
@@ -107,24 +112,9 @@ addon.configSchema = {
 
             { type = "divider", name = "Target & Focus Auras" },
             { type = "range", key = "targetFocusAuraSize", name = "Aura Size",
-              desc = "Size of buff/debuff icons on the target and focus frames.", min = 10, max = 40, step = 1,
+              desc = "Size of buff/debuff icons on the target and focus frames. "
+                  .. "Important auras are drawn 4px larger than this.", min = 10, max = 40, step = 1,
               apply = function() P():ApplyTargetFocusAuraSize() end },
-            { type = "toggle", key = "showAuraCooldownNumbers", name = "Show Aura Cooldown Numbers",
-              store = "bool", desc = "Force cooldown numbers on unit frame buff/debuff icons.",
-              apply = function() P():ApplyAuraCooldownNumbers() end },
-            { type = "range", key = "auraCooldownNumbersScale", name = "Cooldown Number Scale",
-              desc = "Size of the cooldown numbers.", min = 0.3, max = 1.5, step = 0.1,
-              apply = function() P():ApplyAuraCooldownNumbers() end,
-              disabled = function() return not profile().showAuraCooldownNumbers end },
-
-            { type = "divider", name = "Raid Frame Auras" },
-            { type = "toggle", key = "showRaidFrameAuraCooldowns", name = "Show Raid Frame Cooldowns",
-              store = "bool", desc = "Show cooldown numbers on raid frame buff/debuff icons.",
-              apply = function() P():ApplyRaidFrameAuraCooldowns() end },
-            { type = "range", key = "raidFrameAuraCooldownScale", name = "Raid Cooldown Number Scale",
-              desc = "Size of the cooldown numbers on raid frames.", min = 0.3, max = 1.5, step = 0.1,
-              apply = function() P():ApplyRaidFrameAuraCooldowns() end,
-              disabled = function() return not profile().showRaidFrameAuraCooldowns end },
         },
     },
     --------------------------------------------------------------------------------
@@ -139,6 +129,25 @@ addon.configSchema = {
             { type = "toggle", key = "hideMacroText", name = "Hide Macro Text", store = "bool",
               desc = "Hide macro names on action buttons.",
               apply = function() P():ApplyHideMacroText() end },
+
+            { type = "divider", name = "Grey On Cooldown" },
+            { type = "toggle", key = "greyOnCooldown", name = "Grey Icons On Cooldown", store = "bool",
+              desc = "Desaturate an action button's icon while its ability is on cooldown. "
+                  .. "The global cooldown is ignored. Replaces the GreyOnCooldown addon.",
+              apply = function() P():ApplyGreyOnCooldown() end },
+            { type = "toggle", key = "greyOnCooldownUnusable", name = "Grey Unusable Actions", store = "bool",
+              desc = "Also desaturate actions you can't use right now (out of range, no target, "
+                  .. "wrong form).",
+              disabled = function() return not profile().greyOnCooldown end,
+              apply = function() P():ApplyGreyOnCooldown() end },
+            { type = "toggle", key = "greyOnCooldownNoResources", name = "Grey Actions Without Resources",
+              store = "bool", desc = "Also desaturate actions you lack the mana/rage/energy for.",
+              disabled = function() return not profile().greyOnCooldown end,
+              apply = function() P():ApplyGreyOnCooldown() end },
+            { type = "toggle", key = "greyOnCooldownPetBar", name = "Include Pet Bar", store = "bool",
+              desc = "Apply the same greying to pet action buttons.",
+              disabled = function() return not profile().greyOnCooldown end,
+              apply = function() P():ApplyGreyOnCooldown() end },
         },
     },
     --------------------------------------------------------------------------------
@@ -171,8 +180,9 @@ addon.configSchema = {
               store = "bool", reload = true,
               desc = "Anchor BuffBarCooldownViewer above the cast bar. Requires a reload to take effect." },
             { type = "toggle", key = "sortBuffBarsUpward", name = "Sort Bars Upward",
-              store = "bool", reload = true,
-              desc = "Stack tracked bars upward without gaps. Requires a reload to take effect." },
+              store = "bool",
+              desc = "Stack active tracked bars upward from the bottom of the viewer, without gaps.",
+              apply = function() P():ApplySortBuffBars() end },
         },
     },
     --------------------------------------------------------------------------------
@@ -222,18 +232,46 @@ addon.configSchema = {
               desc = "Spacing between multiple meter windows.", min = -50, max = 50, step = 1,
               hidden = damageMeterCustomizationOff,
               apply = function() if P().ApplyDamageMeterSettings then P().ApplyDamageMeterSettings() end end },
-            { type = "toggle", key = "damageMeterAnchorBottomRight", name = "Anchor to Bottom Right",
-              store = "bool", desc = "Anchor the primary window to the screen's bottom right.",
+            { type = "divider", name = "Position", hidden = damageMeterCustomizationOff },
+            { type = "toggle", key = "damageMeterAnchorEnabled", name = "Anchor to Screen",
+              store = "bool", desc = "Pin the primary window to a screen position instead of "
+                  .. "leaving it where Blizzard put it.",
               hidden = damageMeterCustomizationOff,
               apply = function() if P().ApplyDamageMeterSettings then P().ApplyDamageMeterSettings() end end },
-            { type = "range", key = "damageMeterAnchorYOffset", name = "Bottom Right Y Offset",
-              desc = "Vertical offset from the bottom of the screen.", min = 0, max = 500, step = 1,
-              hidden = function() return damageMeterCustomizationOff() or not profile().damageMeterAnchorBottomRight end,
+            { type = "select", key = "damageMeterAnchorPoint", name = "Anchor Point",
+              desc = "Which part of the screen the window is pinned to.",
+              hidden = damageMeterAnchorOff,
+              values = {
+                  { value = "TOPLEFT", text = "Top Left" },
+                  { value = "TOP", text = "Top" },
+                  { value = "TOPRIGHT", text = "Top Right" },
+                  { value = "LEFT", text = "Left" },
+                  { value = "CENTER", text = "Center" },
+                  { value = "RIGHT", text = "Right" },
+                  { value = "BOTTOMLEFT", text = "Bottom Left" },
+                  { value = "BOTTOM", text = "Bottom" },
+                  { value = "BOTTOMRIGHT", text = "Bottom Right" },
+              },
+              apply = function() if P().ApplyDamageMeterSettings then P().ApplyDamageMeterSettings() end end },
+            { type = "range", key = "damageMeterAnchorXOffset", name = "X Offset",
+              desc = "Horizontal offset from the anchor point. Negative moves left.",
+              min = -1000, max = 1000, step = 1,
+              hidden = damageMeterAnchorOff,
+              apply = function() if P().ApplyDamageMeterSettings then P().ApplyDamageMeterSettings() end end },
+            { type = "range", key = "damageMeterAnchorYOffset", name = "Y Offset",
+              desc = "Vertical offset from the anchor point. Negative moves down.",
+              min = -1000, max = 1000, step = 1,
+              hidden = damageMeterAnchorOff,
               apply = function() if P().ApplyDamageMeterSettings then P().ApplyDamageMeterSettings() end end },
             { type = "select", key = "damageMeterMultiWindowAnchor", name = "Multiple Windows Position",
-              desc = "Where to attach secondary windows relative to the primary.",
+              desc = "Which side of the primary window secondary windows stack on.",
               hidden = damageMeterCustomizationOff,
-              values = { { value = "left", text = "Attach to Left" }, { value = "top", text = "Attach to Top" } },
+              values = {
+                  { value = "left", text = "Attach to Left" },
+                  { value = "right", text = "Attach to Right" },
+                  { value = "top", text = "Attach to Top" },
+                  { value = "bottom", text = "Attach to Bottom" },
+              },
               apply = function() if P().ApplyDamageMeterSettings then P().ApplyDamageMeterSettings() end end },
         },
     },

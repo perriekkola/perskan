@@ -19,8 +19,13 @@ built on the embedded **MiniFramework** widget toolkit (`Libs/MiniFramework/`), 
 - **Modules/*.lua**: One file per feature area. Each registers a setup function into the
   registry and exposes live-apply methods on `Perskan` (e.g. `Perskan:ApplyXpBarScale()`).
   Modules read `Perskan.db.profile` live (never cache it — AceDB repoints the table on a
-  profile switch). Files: `CVars`, `FrameScaling`, `ActionBars`, `HideElements`, `Auras`,
-  `Nameplates`, `DamageMeter` (gated on `enableDamageMeterCustomization`), `BuffBars`.
+  profile switch). Files: `CVars`, `FrameScaling`, `ActionBars`, `GreyOnCooldown`,
+  `HideElements`, `Auras`, `Nameplates`, `DamageMeter` (gated on
+  `enableDamageMeterCustomization`), `BuffBars`.
+- **Retail 12.x note**: unit-frame and raid-frame auras are engine-owned
+  (`AuraContainer`/`AuraButton`, private auras). Individual aura icons and their
+  cooldowns are not reachable from an addon; the only public knobs are the container's
+  `SetSmallAuraSize`/`SetLargeAuraSize`, which is what `Modules/Auras.lua` drives.
 - **Config/Schema.lua**: Data-driven description of the settings window — categories and
   controls (`toggle`/`range`/`select`/`divider`) with `cvar`, `apply`, `reload`, `hidden`,
   `disabled` flags. Adding a setting is mostly a schema edit.

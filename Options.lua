@@ -39,12 +39,12 @@ local defaults = {
         -- Action Bars
         hideHotkeys = false,
         hideMacroText = false,
+        greyOnCooldown = true,
+        greyOnCooldownUnusable = true,
+        greyOnCooldownNoResources = false,
+        greyOnCooldownPetBar = true,
         -- Unit Frame Auras
-        showAuraCooldownNumbers = false,
-        auraCooldownNumbersScale = 0.75,
         targetFocusAuraSize = 20,
-        showRaidFrameAuraCooldowns = false,
-        raidFrameAuraCooldownScale = 0.75,
         -- Hide UI Elements
         hideSocialButton = false,
         hideBagsBar = false,
@@ -59,7 +59,9 @@ local defaults = {
         damageMeterScale = 1.0,
         damageMeterHeights = {},
         damageMeterSpacing = 0,
-        damageMeterAnchorBottomRight = false,
+        damageMeterAnchorEnabled = false,
+        damageMeterAnchorPoint = "BOTTOMRIGHT",
+        damageMeterAnchorXOffset = 0,
         damageMeterAnchorYOffset = 0,
         damageMeterMultiWindowAnchor = "left",
     }
@@ -83,12 +85,26 @@ function Perskan:RegisterModule(name, setupFn, optionalKey)
     self.modules[#self.modules + 1] = { name = name, setup = setupFn, key = optionalKey }
 end
 
+-- Carry settings from renamed keys over to their replacements, once per profile.
+-- Dropped keys (the aura cooldown-number options that 12.0's private aura system made
+-- impossible) are simply left in the saved table; AceDB ignores what isn't in defaults.
+local function MigrateProfile(profile)
+    -- The damage meter's bottom-right-only anchor became a free anchor point.
+    if profile.damageMeterAnchorBottomRight ~= nil then
+        profile.damageMeterAnchorEnabled = profile.damageMeterAnchorBottomRight and true or false
+        profile.damageMeterAnchorPoint = "BOTTOMRIGHT"
+        profile.damageMeterAnchorBottomRight = nil
+    end
+end
+
 function Perskan:OnInitialize()
     self.db = LibStub("AceDB-3.0"):New(addonName .. "DB", defaults, true)
+    MigrateProfile(self.db.profile)
 
     -- On a profile switch/copy/reset: re-apply live settings to the game and refresh
     -- the config window's controls so both reflect the new values immediately.
     local function OnProfileEvent()
+        MigrateProfile(self.db.profile)
         if self.ApplyProfileSettings then
             self:ApplyProfileSettings()
         end

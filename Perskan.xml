@@ -6,6 +6,7 @@
   <Script file="Modules\CVars.lua" />
   <Script file="Modules\FrameScaling.lua" />
   <Script file="Modules\ActionBars.lua" />
+  <Script file="Modules\GreyOnCooldown.lua" />
   <Script file="Modules\HideElements.lua" />
   <Script file="Modules\Auras.lua" />
   <Script file="Modules\Nameplates.lua" />
