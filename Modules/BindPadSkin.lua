@@ -283,11 +283,33 @@ end
 -- What's left is rebuilt to the settings window's scrollbar: a 10px flat track with an
 -- 8px grey thumb and no arrow buttons. The stock slider keeps doing the scrolling - only
 -- its art is replaced - so the wheel, the drag and the range all behave as they did.
--- The panel drew its own scrollbar art (old character-sheet pieces) on top of the
--- template's, so two bars showed at once. Only that decorative art goes; the stock
--- scrollbar is left exactly as Blizzard draws it.
+-- Two bars were showing: the panel draws its own art (old character-sheet scrollbar
+-- pieces) on top of the template's, and the template's own bar is the dated
+-- UIPanelScrollFrameTemplate slider. The decorative art is hidden, the legacy slider is
+-- parked in a hidden holder - reparenting rather than alpha, since the scroll template
+-- resets a scrollbar's alpha on range changes and mouse-over - and Blizzard's current
+-- MinimalScrollBar takes over, wired up by ScrollUtil exactly as retail's own panels do.
 local function SkinScrollBar()
     HideAll(_G["BindPadScrollFrameTop"], _G["BindPadScrollFrameMiddle"], _G["BindPadScrollFrameBottom"])
+
+    local scrollFrame = BindPadScrollFrame
+    if not scrollFrame or scrollFrame._perskanScrollSkinned then return end
+    if not (ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar) then return end
+    scrollFrame._perskanScrollSkinned = true
+
+    local stockBar = _G["BindPadScrollFrameScrollBar"] or scrollFrame.ScrollBar or scrollFrame.scrollBar
+    if stockBar then
+        local holder = CreateFrame("Frame", nil, BindPadFrame)
+        holder:Hide()
+        stockBar:SetParent(holder)
+    end
+
+    local ok, scrollBar = pcall(CreateFrame, "EventFrame", nil, BindPadFrame, "MinimalScrollBar")
+    if not ok or not scrollBar then return end
+
+    scrollBar:SetPoint("TOPLEFT", scrollFrame, "TOPRIGHT", 8, 0)
+    scrollBar:SetPoint("BOTTOMLEFT", scrollFrame, "BOTTOMRIGHT", 8, 0)
+    pcall(ScrollUtil.InitScrollFrameWithScrollBar, scrollFrame, scrollBar)
 end
 
 --------------------------------------------------------------------------------
