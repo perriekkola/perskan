@@ -14,6 +14,12 @@
   <Script file="Modules\DamageMeter.lua" />
   <Script file="Modules\BuffBars.lua" />
   <Script file="Modules\DelveMap.lua" />
+  <Script file="Modules\ChatCopyPaste.lua" />
+  <Script file="Modules\KeyBindings.lua" />
+
+  <!-- Vendored BindPad: its own frames, saved variables and slash commands, gated by
+       the two [Perskan] guards in Modules\BindPad\BindPad.lua. -->
+  <Include file="Modules\BindPad\BindPad.xml" />
 
   <!-- Settings window (built in OnInitialize). -->
   <Script file="Config\Schema.lua" />

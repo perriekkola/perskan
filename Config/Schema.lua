@@ -168,6 +168,53 @@ addon.configSchema = {
     },
     --------------------------------------------------------------------------------
     {
+        key = "keybindings",
+        title = "Key Bindings",
+        icon = "Interface\\Icons\\INV_Misc_Key_03",
+        controls = {
+            { type = "toggle", key = "bindPadEnabled", name = "Enable BindPad", store = "bool",
+              reload = true,
+              desc = "BindPad's keybinding pad: drag a spell, item or macro into a slot and "
+                  .. "click it to bind a key. Bindings are applied at login, so switching this "
+                  .. "on or off needs a reload.",
+              apply = function() P():ApplyBindPad() end },
+            { type = "button", name = "Open BindPad", width = 220,
+              onClick = function() P():OpenBindPad() end,
+              disabled = function() return not profile().bindPadEnabled end },
+        },
+    },
+    --------------------------------------------------------------------------------
+    {
+        key = "chat",
+        title = "Chat",
+        icon = "Interface\\Icons\\INV_Letter_15",
+        controls = {
+            { type = "toggle", key = "chatCopyButton", name = "Chat Copy Button", store = "bool",
+              desc = "Show a copy button in the bottom right of a chat window while the mouse "
+                  .. "is over it. Replaces the ChatCopyPaste addon.",
+              apply = function() P():ApplyChatCopyButton() end },
+            { type = "range", key = "chatCopyMaxLines", name = "Max Lines Copied",
+              desc = "How many lines of history the copy window shows.", min = 50, max = 1000, step = 10,
+              disabled = function() return not profile().chatCopyButton end },
+            { type = "toggle", key = "chatDisableFade", name = "Disable Chat Fade", store = "bool",
+              desc = "Stop chat text fading out when you haven't hovered the window for a while.",
+              apply = function() P():ApplyChatFade() end },
+
+            { type = "divider", name = "Links" },
+            { type = "toggle", key = "chatUrlLinks", name = "Clickable URLs", store = "bool",
+              desc = "Turn website addresses in chat into clickable links that open the copy "
+                  .. "window with the URL selected." },
+            { type = "color", key = "chatUrlColor", name = "URL Colour",
+              desc = "Colour used to highlight URLs in chat.",
+              disabled = function() return not profile().chatUrlLinks end },
+
+            { type = "divider", name = "Font Sizes" },
+            { type = "toggle", key = "addChatSizes", name = "Extended Chat Font Sizes", store = "bool",
+              reload = true, desc = "Add more chat font size options. Requires a reload to take effect." },
+        },
+    },
+    --------------------------------------------------------------------------------
+    {
         key = "map",
         title = "Map",
         icon = "Interface\\Icons\\INV_Misc_Map02",
@@ -321,8 +368,6 @@ addon.configSchema = {
               cvar = "Sound_AmbienceVolume" },
             { type = "toggle", key = "autoLootDefault", name = "Auto Loot", store = "int01",
               desc = "Loot automatically by default.", cvar = "autoLootDefault" },
-            { type = "toggle", key = "addChatSizes", name = "Extended Chat Font Sizes", store = "bool",
-              reload = true, desc = "Add more chat font size options. Requires a reload to take effect." },
 
             { type = "divider", name = "Hide UI Elements" },
             { type = "toggle", key = "hideSocialButton", name = "Hide Social Button", store = "bool",

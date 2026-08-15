@@ -100,6 +100,13 @@ end
 local function MakeGet(control)
     if control.get then return control.get end
     local key = control.key
+    if control.type == "color" then
+        -- Colours are stored as { r, g, b }; the swatch deals in loose components.
+        return function()
+            local color = Perskan.db.profile[key] or {}
+            return color.r or 1, color.g or 1, color.b or 1, 1
+        end
+    end
     if control.type == "toggle" then
         if control.store == "int01" then
             return function() return Perskan.db.profile[key] == 1 end
@@ -132,6 +139,19 @@ local function MakeSet(control)
             if control.apply then control.apply() end
             if control.reload then Perskan:RequestReload() end
             Relayout()
+        end
+    end
+
+    if control.type == "color" then
+        return function(r, g, b)
+            local color = Perskan.db.profile[key]
+            if type(color) ~= "table" then
+                color = {}
+                Perskan.db.profile[key] = color
+            end
+            color.r, color.g, color.b = r, g, b
+            if control.apply then control.apply() end
+            if control.reload then Perskan:RequestReload() end
         end
     end
 
@@ -197,6 +217,35 @@ local function BuildControlEntry(panel, control, sliderWidth)
                  setDisabled = function(disabled)
                      if disabled then slider.Slider:Disable() else slider.Slider:Enable() end
                  end }
+    end
+
+    if control.type == "button" then
+        local button = mini:Button({
+            Parent = panel,
+            Text = control.name,
+            Width = control.width or 220,
+            Height = 24,
+            OnClick = function() control.onClick() end,
+        })
+        return { control = control, primary = button, frames = { button },
+                 above = 0, body = 24, below = 0,
+                 setDisabled = function(disabled)
+                     if disabled then button:Disable() else button:Enable() end
+                 end }
+    end
+
+    if control.type == "color" then
+        local swatch = mini:ColorSwatch({
+            Parent = panel,
+            LabelText = control.name,
+            HasOpacity = false,
+            GetValue = get,
+            SetValue = set,
+        })
+        local frames = { swatch }
+        if swatch.Label then frames[#frames + 1] = swatch.Label end
+        return { control = control, primary = swatch, frames = frames,
+                 above = 0, body = TOGGLE_H, below = 0 }
     end
 
     if control.type == "select" then

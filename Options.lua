@@ -46,6 +46,14 @@ local defaults = {
         rangeColoring = true,
         rangeColoringHotkeys = true,
         rangeColoringPetBar = true,
+        -- Chat
+        chatCopyButton = true,
+        chatCopyMaxLines = 500,
+        chatDisableFade = false,
+        chatUrlLinks = true,
+        chatUrlColor = { r = 0, g = 0.678, b = 1 },
+        -- Key Bindings
+        bindPadEnabled = true,
         -- World Map
         showDelvesOnContinentMap = true,
         delvesBountifulOnly = false,

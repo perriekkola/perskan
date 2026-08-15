@@ -5,7 +5,7 @@
 ## Version: 1.2.0
 ## IconTexture: Interface\Icons\ability_titankeeper_testofconfidence
 
-## SavedVariables: PerskanDB
+## SavedVariables: PerskanDB, BindPadVars
 
 # Library files
 Libs\LibStub\LibStub.lua

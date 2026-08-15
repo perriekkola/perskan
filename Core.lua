@@ -41,6 +41,8 @@ local LIVE_APPLIERS = {
     "ApplyGreyOnCooldown",
     "ApplyRangeColoring",
     "ApplyDelveMapPins",
+    "ApplyChatCopyButton",
+    "ApplyChatFade",
     "ApplyHideSocialButton",
     "ApplyHideBagsBar",
     "ApplyTargetFocusAuraSize",
