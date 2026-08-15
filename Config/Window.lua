@@ -17,7 +17,7 @@ local RIGHT_MARGIN = 26
 -- Per-control vertical space. Sliders need room above for their value label and below for
 -- the min/max labels the template anchors outside the bar.
 local TOGGLE_H = 26
-local SLIDER_ABOVE, SLIDER_H, SLIDER_BELOW = 20, 20, 14
+local SLIDER_ABOVE, SLIDER_H, SLIDER_BELOW = 22, 20, 14
 local SELECT_LABEL_H, SELECT_GAP, SELECT_DD_H = 16, 4, 30
 local DIVIDER_H = 24
 local BUTTON_H = 26
@@ -185,7 +185,7 @@ end
 
 local function BuildRange(parent, control, get, set)
     local slider = CreateFrame("Slider", nil, parent, "UISliderTemplateWithLabels")
-    slider:SetSize(ContentWidth() - 60, SLIDER_H)
+    slider:SetSize(ContentWidth() - 90, SLIDER_H)
     slider:SetOrientation("HORIZONTAL")
     slider:SetMinMaxValues(control.min, control.max)
     slider:SetValueStep(control.step)
@@ -194,13 +194,10 @@ local function BuildRange(parent, control, get, set)
     slider.Low:SetText(tostring(control.min))
     slider.High:SetText(tostring(control.max))
 
-    -- Name and current value share the line above the bar, as Blizzard's own sliders do.
+    -- Name on the line above the bar, as Blizzard's own sliders do.
     slider.Text:ClearAllPoints()
-    slider.Text:SetPoint("BOTTOMLEFT", slider, "TOPLEFT", 0, 2)
+    slider.Text:SetPoint("BOTTOMLEFT", slider, "TOPLEFT", 0, 4)
     slider.Text:SetJustifyH("LEFT")
-
-    local value = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    value:SetPoint("BOTTOMRIGHT", slider, "TOPRIGHT", 0, 2)
 
     -- Whole numbers read as integers; fractional steps keep two decimals.
     local function Format(number)
@@ -210,9 +207,53 @@ local function BuildRange(parent, control, get, set)
         return tostring(math.floor(number + 0.5))
     end
 
+    -- An editable value rather than a label: dragging can't reliably hit an exact number,
+    -- least of all on the wider ranges.
+    local box = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
+    box:SetSize(64, 20)
+    box:SetPoint("LEFT", slider, "RIGHT", 14, 0)
+    box:SetAutoFocus(false)
+    box:SetJustifyH("CENTER")
+    box:SetMaxLetters(8)
+
     local syncing = false
-    slider:SetScript("OnValueChanged", function(self, newValue)
-        value:SetText(Format(newValue))
+
+    local function SyncBox(value)
+        syncing = true
+        box:SetText(Format(value))
+        box:SetCursorPosition(0)
+        syncing = false
+    end
+
+    -- Typed values are clamped to the range and snapped to the control's step, so the box
+    -- can't put the slider somewhere it could never be dragged to.
+    local function Commit()
+        local typed = tonumber(box:GetText())
+        if typed then
+            typed = math.max(control.min, math.min(control.max, typed))
+            if control.step and control.step > 0 then
+                local steps = math.floor(((typed - control.min) / control.step) + 0.5)
+                typed = control.min + steps * control.step
+            end
+            typed = tonumber(Format(typed)) or typed
+            slider:SetValue(typed)
+            set(typed)
+        end
+        SyncBox(slider:GetValue())
+        box:ClearFocus()
+    end
+
+    box:SetScript("OnEnterPressed", Commit)
+    box:SetScript("OnEditFocusLost", Commit)
+    box:SetScript("OnEscapePressed", function()
+        SyncBox(slider:GetValue())
+        box:ClearFocus()
+    end)
+
+    slider:SetScript("OnValueChanged", function(_, newValue)
+        if not box:HasFocus() then
+            SyncBox(newValue)
+        end
         if syncing then return end
         set(newValue)
     end)
@@ -221,19 +262,20 @@ local function BuildRange(parent, control, get, set)
     return {
         control = control,
         primary = slider,
-        frames = { slider, value },
+        frames = { slider, box },
         above = SLIDER_ABOVE, body = SLIDER_H, below = SLIDER_BELOW,
         refresh = function()
             syncing = true
             local current = get() or control.min
             slider:SetValue(current)
-            value:SetText(Format(current))
+            SyncBox(current)
             syncing = false
         end,
         setDisabled = function(disabled)
             if disabled then slider:Disable() else slider:Enable() end
             slider.Text:SetFontObject(disabled and "GameFontDisable" or "GameFontHighlight")
-            value:SetFontObject(disabled and "GameFontDisableSmall" or "GameFontHighlightSmall")
+            box:EnableMouse(not disabled)
+            box:SetTextColor(disabled and 0.5 or 1, disabled and 0.5 or 1, disabled and 0.5 or 1)
         end,
     }
 end
