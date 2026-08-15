@@ -14,9 +14,9 @@ local TOP_PAD = 12
 local SPACING = 10
 local RIGHT_MARGIN = 26
 
--- Height of the strip below the insets, and where a 22px button sits centred in it.
+-- Height of the strip below the insets, and where a 22px button sits in it.
 local FOOTER_HEIGHT = 34
-local FOOTER_BUTTON_Y = 7
+local FOOTER_BUTTON_Y = 4
 
 -- Per-control vertical space. Sliders need room above for their value label and below for
 -- the min/max labels the template anchors outside the bar.
@@ -641,7 +641,8 @@ function Perskan:BuildConfig()
 
     -- A region of the button, so it shows and hides with it.
     local reloadText = reloadButton:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    reloadText:SetPoint("RIGHT", reloadButton, "LEFT", -10, 0)
+    -- Two below the button's centre: the button's art has more headroom than the text.
+    reloadText:SetPoint("RIGHT", reloadButton, "LEFT", -10, -2)
     reloadText:SetText("Some changes need a UI reload to take effect.")
     reloadText:SetTextColor(1, 0.82, 0)
 
