@@ -87,10 +87,13 @@ local function BuildCopyWindow()
         ButtonFrameTemplate_HidePortrait(frame)
     end
 
-    -- Blizzard's scrolling input frame does the heavy lifting.
+    -- Blizzard's scrolling input frame does the heavy lifting, sat inside the template's
+    -- own inset: anchoring it to the frame's edges instead left it straddling the inset's
+    -- border art.
+    local inset = frame.Inset or frame
     local scroll = CreateFrame("ScrollFrame", nil, frame, "InputScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -34)
-    scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -32, 40)
+    scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 6, -6)
+    scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -26, 6)
     scroll.maxLetters = 0
     if scroll.CharCount then scroll.CharCount:Hide() end
 
@@ -105,9 +108,10 @@ local function BuildCopyWindow()
         editBox:SetWidth(math.max(100, scroll:GetWidth() - 20))
     end
 
+    -- Footer buttons sit centred as a pair, which is where the stock panels put them.
     local selectAll = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     selectAll:SetSize(120, 24)
-    selectAll:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 12, 8)
+    selectAll:SetPoint("BOTTOM", frame, "BOTTOM", -64, 6)
     selectAll:SetText("Select All")
     selectAll:SetScript("OnClick", function()
         editBox:SetFocus()
@@ -116,7 +120,7 @@ local function BuildCopyWindow()
 
     local close = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     close:SetSize(120, 24)
-    close:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -12, 8)
+    close:SetPoint("BOTTOM", frame, "BOTTOM", 64, 6)
     close:SetText("Close")
     close:SetScript("OnClick", function() frame:Hide() end)
 

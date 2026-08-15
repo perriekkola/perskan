@@ -9,7 +9,8 @@ local addonName, addon = ...
 -- knows how to place itself, refresh its value, and grey itself out.
 
 local SIDEBAR_WIDTH = 170
-local PAD = 14
+local PAD = 16
+local TOP_PAD = 12
 local SPACING = 10
 local RIGHT_MARGIN = 26
 
@@ -372,7 +373,8 @@ local function BuildCategoryPanel(panel, category)
     end
 
     local function RelayoutPanel()
-        local cursor = 0
+        -- Start below the inset's top edge rather than flush against it.
+        local cursor = -TOP_PAD
         for _, entry in ipairs(entries) do
             local hidden = entry.control.hidden and entry.control.hidden()
             entry.primary:ClearAllPoints()
@@ -609,7 +611,7 @@ function Perskan:BuildConfig()
         contentChild:SetHeight(pages[key] and pages[key]:GetHeight() or 10)
     end
 
-    local listY = -8
+    local listY = -TOP_PAD
     local function AddCategory(key, title, icon, builder)
         local page = CreateFrame("Frame", nil, contentChild)
         page:SetPoint("TOPLEFT", contentChild, "TOPLEFT", 0, 0)
