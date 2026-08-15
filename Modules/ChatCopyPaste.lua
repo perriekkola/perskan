@@ -108,10 +108,11 @@ local function BuildCopyWindow()
         editBox:SetWidth(math.max(100, scroll:GetWidth() - 20))
     end
 
-    -- Footer buttons sit centred as a pair, which is where the stock panels put them.
+    -- Footer buttons sit centred as a pair below the inset - anchoring them to the
+    -- window's bottom edge instead left them riding up over the inset's border.
     local selectAll = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     selectAll:SetSize(120, 24)
-    selectAll:SetPoint("BOTTOM", frame, "BOTTOM", -64, 6)
+    selectAll:SetPoint("TOP", inset, "BOTTOM", -64, -6)
     selectAll:SetText("Select All")
     selectAll:SetScript("OnClick", function()
         editBox:SetFocus()
@@ -120,7 +121,7 @@ local function BuildCopyWindow()
 
     local close = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     close:SetSize(120, 24)
-    close:SetPoint("BOTTOM", frame, "BOTTOM", 64, 6)
+    close:SetPoint("TOP", inset, "BOTTOM", 64, -6)
     close:SetText("Close")
     close:SetScript("OnClick", function() frame:Hide() end)
 

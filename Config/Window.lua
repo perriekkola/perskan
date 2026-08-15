@@ -626,13 +626,21 @@ function Perskan:BuildConfig()
     scrollFrame:SetScrollChild(contentChild)
 
     -- Reload prompt: a stock button that only appears once something asks for one.
+    -- Anchored under the content inset rather than to the window's bottom edge, so it
+    -- lands in the footer strip instead of overlapping the inset's border.
     local reloadButton = CreateFrame("Button", nil, window, "UIPanelButtonTemplate")
-    reloadButton:SetSize(160, 24)
-    reloadButton:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -10, 8)
+    reloadButton:SetSize(140, 22)
+    reloadButton:SetPoint("TOPRIGHT", contentInset, "BOTTOMRIGHT", -2, -6)
     reloadButton:SetText("Reload UI")
     reloadButton:SetScript("OnClick", function() C_UI.Reload() end)
     reloadButton:Hide()
-    AddTooltip(reloadButton, "Reload UI", "Some changes you made need a UI reload to take effect.")
+
+    -- A region of the button, so it shows and hides with it.
+    local reloadText = reloadButton:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    reloadText:SetPoint("RIGHT", reloadButton, "LEFT", -10, 0)
+    reloadText:SetText("Some changes need a UI reload to take effect.")
+    reloadText:SetTextColor(1, 0.82, 0)
+
     self._reloadButton = reloadButton
 
     --------------------------------------------------------------------------------
