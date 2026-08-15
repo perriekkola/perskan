@@ -233,7 +233,9 @@ addon.configSchema = {
                   disabled = function() return not P():GetItemLevelOption("inspect") end },
             ilvl{ type = "toggle", key = "loot", name = "Loot Windows", store = "bool" },
             ilvl{ type = "toggle", key = "tooltip", name = "Item Tooltips", store = "bool",
-                  desc = "Add the item level to tooltips." },
+                  desc = "Add an item level line to item tooltips. Retail already shows item "
+                      .. "level in tooltips, so this only really does anything on Classic - "
+                      .. "which is why it defaults to off here." },
             ilvl{ type = "toggle", key = "characteravg", name = "Character Average Item Level",
                   store = "bool" },
             ilvl{ type = "toggle", key = "inspectavg", name = "Inspect Average Item Level",

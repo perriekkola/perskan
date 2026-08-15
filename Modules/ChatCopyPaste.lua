@@ -8,7 +8,15 @@
 local addonName, addon = ...
 local mini = addon.Framework
 
-local COPY_ICON = "Interface\\AddOns\\" .. addonName .. "\\Media\\copypaste"
+-- A stock icon rather than the original addon's bundled texture: no shipped art to go
+-- missing, and a sheet of parchment reads as "copy this text" at 20px.
+local COPY_ICON = "Interface\\Icons\\INV_Misc_Note_01"
+
+local BUTTON_BACKDROP = {
+    bgFile = "Interface\\Buttons\\WHITE8X8",
+    edgeFile = "Interface\\Buttons\\WHITE8X8",
+    edgeSize = 1,
+}
 
 local copyWindow, copyEditBox
 
@@ -189,16 +197,34 @@ local function AttachCopyButton(index)
     local chatFrame = _G["ChatFrame" .. index]
     if not chatFrame or chatFrame.perskanCopyButton then return end
 
-    local button = CreateFrame("Button", nil, chatFrame)
-    button:SetSize(18, 18)
+    local button = CreateFrame("Button", nil, chatFrame, mini.GUI.BackdropTemplate)
+    button:SetSize(20, 20)
     button:SetPoint("BOTTOMRIGHT", -2, -3)
-    -- Above the (usually unused) scroll-to-bottom button.
-    button:SetFrameLevel(7)
+    -- Relative to the chat frame, not a fixed level: a fixed 7 (as the original addon
+    -- used) can land *behind* the chat frame's own art, leaving a button that still
+    -- takes mouse-over but never draws and can be clicked through.
+    button:SetFrameStrata(chatFrame:GetFrameStrata())
+    button:SetFrameLevel(chatFrame:GetFrameLevel() + 10)
+    button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    button:EnableMouse(true)
     button:Hide()
+
+    -- Same flat field as the settings window's controls, so it reads as one of ours.
+    local accent = mini.GUI.Accent
+    mini.GUI.ApplyBackdrop(button, BUTTON_BACKDROP,
+        0.09, 0.08, 0.08, 0.9,
+        mini.GUI.LineIdle.r, mini.GUI.LineIdle.g, mini.GUI.LineIdle.b, 1)
 
     local texture = button:CreateTexture(nil, "ARTWORK")
     texture:SetTexture(COPY_ICON)
-    texture:SetAllPoints(button)
+    texture:SetPoint("TOPLEFT", button, "TOPLEFT", 2, -2)
+    texture:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -2, 2)
+    -- Crop the icon's built-in border.
+    texture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+    local highlight = button:CreateTexture(nil, "HIGHLIGHT")
+    highlight:SetAllPoints(button)
+    highlight:SetColorTexture(accent.r, accent.g, accent.b, 0.25)
 
     button:SetScript("OnClick", function()
         if copyWindow and copyWindow:IsVisible() then
