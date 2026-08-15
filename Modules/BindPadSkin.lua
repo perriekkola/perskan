@@ -25,6 +25,10 @@ local SIDEBAR_WIDTH = 132
 local TAB_WIDTH, TAB_HEIGHT, TAB_SPACING = 122, 26, 4
 local TAB_TOP = -46
 
+-- The slot grid starts below the old top-tab band; with the tabs on the left it can come
+-- up by that much.
+local GRID_LIFT = 32
+
 -- Stock icons for the three shortcut buttons, whose micro-button art doesn't survive
 -- being flattened.
 local SHORTCUT_ICONS = {
@@ -294,7 +298,13 @@ local function SkinScrollBar()
 
     local stockBar = _G["BindPadScrollFrameScrollBar"] or scrollFrame.ScrollBar or scrollFrame.scrollBar
     if stockBar then
-        -- Alpha on the bar itself, so its arrow and thumb children go with it.
+        -- Reparented into a hidden holder rather than alpha'd: the scroll template resets
+        -- a scrollbar's alpha as the range changes and on mouse-over, which is why zeroing
+        -- it kept letting the stock bar back through. Nothing parented to a hidden frame is
+        -- ever drawn, and the bar still works as the wheel's target.
+        local holder = CreateFrame("Frame", nil, BindPadFrame)
+        holder:Hide()
+        stockBar:SetParent(holder)
         stockBar:SetAlpha(0)
         stockBar:EnableMouse(false)
     end
@@ -389,8 +399,12 @@ local function SkinBindPad()
     BindPadFrame:SetWidth(BindPadFrame:GetWidth() + SIDEBAR_WIDTH)
     BindPadFrame:SetHeight(BindPadFrame:GetHeight() + 26)
     if BindPadScrollFrame then
+        -- The slot grid sat below where the top tabs used to be; with the tabs down the
+        -- left that band is dead space, so the grid moves up into it and the viewport
+        -- grows by the same amount.
         BindPadScrollFrame:ClearAllPoints()
-        BindPadScrollFrame:SetPoint("TOPLEFT", BindPadFrame, "TOPLEFT", 13 + SIDEBAR_WIDTH, -68)
+        BindPadScrollFrame:SetPoint("TOPLEFT", BindPadFrame, "TOPLEFT", 13 + SIDEBAR_WIDTH, -68 + GRID_LIFT)
+        BindPadScrollFrame:SetHeight(BindPadScrollFrame:GetHeight() + GRID_LIFT)
     end
     if BindPadFrameOpenSpellBookButton then
         BindPadFrameOpenSpellBookButton:ClearAllPoints()
