@@ -46,7 +46,6 @@ local LIVE_APPLIERS = {
     "ApplyHideSocialButton",
     "ApplyHideBagsBar",
     "ApplyTargetFocusAuraSize",
-    "ApplySortBuffBars",
 }
 
 function Perskan:ApplyProfileSettings()

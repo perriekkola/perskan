@@ -63,7 +63,6 @@ local defaults = {
         hideSocialButton = false,
         hideBagsBar = false,
         -- Tracked Bars
-        sortBuffBarsUpward = true,
         anchorBuffBarsToWidgetFrame = true,
         anchorExtraQuestButton = false,
         -- Damage Meter

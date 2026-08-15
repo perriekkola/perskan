@@ -1,96 +1,54 @@
 local addonName, addon = ...
-local mini = addon.Framework
 
--- Layout metrics for the auto-stacking renderer.
-local PAD = 10          -- left inset so labels and the slider's min value aren't clipped
-local RIGHT_MARGIN = 18 -- keeps content clear of the scrollbar
-local SPACING = 14
-local SLIDER_ABOVE = 26 -- room above a slider for its label + value box (one line)
-local SLIDER_BELOW = 16 -- room below for the min/max labels
-local SLIDER_H = 20
+-- The settings window, built from Blizzard's own templates: ButtonFrameTemplate for the
+-- window, UICheckButtonTemplate / UISliderTemplateWithLabels / WowStyle1DropdownTemplate /
+-- UIPanelButtonTemplate for the controls, and a MinimalScrollBar paired to the content
+-- through ScrollUtil. No custom widget art anywhere - the game's UI is the design.
+--
+-- The renderer walks Config/Schema.lua and builds one entry per control, each of which
+-- knows how to place itself, refresh its value, and grey itself out.
+
+local SIDEBAR_WIDTH = 170
+local PAD = 14
+local SPACING = 10
+local RIGHT_MARGIN = 26
+
+-- Per-control vertical space. Sliders need room above for their value label and below for
+-- the min/max labels the template anchors outside the bar.
 local TOGGLE_H = 26
-local DIVIDER_H = 26
-local SELECT_LABEL_H = 16
-local SELECT_GAP = 4
-local SELECT_DD_H = 24
+local SLIDER_ABOVE, SLIDER_H, SLIDER_BELOW = 20, 20, 14
+local SELECT_LABEL_H, SELECT_GAP, SELECT_DD_H = 16, 4, 30
+local DIVIDER_H = 24
+local BUTTON_H = 26
+local COLOR_H = 24
 
--- Usable content width inside the padding.
-local function InnerWidth()
-    return (mini.ContentWidth or 400) - PAD - RIGHT_MARGIN
+local window, contentChild
+
+local function ContentWidth()
+    return 760 - SIDEBAR_WIDTH - PAD * 2 - RIGHT_MARGIN
 end
 
 --------------------------------------------------------------------------------
--- Reload banner
+-- Shared behaviour
 --------------------------------------------------------------------------------
 
--- Non-blocking replacement for the old "reload now?" popup that fired on nearly every
--- toggle. Reload-dependent settings call Perskan:RequestReload(); a quiet bar slides
--- up at the bottom of the window offering a reload when the player is ready.
-local function BuildReloadBanner(window, leftInset)
-    local accent = mini.GUI.Accent
-
-    -- Overlays the bottom of the content area only (not the sidebar) when a reload is
-    -- pending, so no permanent gap is reserved at the bottom of the window.
-    local banner = CreateFrame("Frame", nil, window, mini.GUI.BackdropTemplate)
-    banner:SetHeight(30)
-    banner:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", (leftInset or 2), 2)
-    banner:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -2, 2)
-    banner:SetFrameStrata("HIGH")
-    banner:SetFrameLevel(window:GetFrameLevel() + 20)
-    -- Solid dark bar with an accent border, so the text stays legible over whatever
-    -- content sits behind the window's bottom edge.
-    mini.GUI.ApplyBackdrop(banner, {
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1,
-    }, 0.12, 0.10, 0.10, 0.97, accent.r, accent.g, accent.b, 0.7)
-
-    local stripe = banner:CreateTexture(nil, "OVERLAY")
-    stripe:SetWidth(3)
-    stripe:SetPoint("TOPLEFT", banner, "TOPLEFT", 1, -1)
-    stripe:SetPoint("BOTTOMLEFT", banner, "BOTTOMLEFT", 1, 1)
-    stripe:SetColorTexture(accent.r, accent.g, accent.b, 0.9)
-
-    local text = banner:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    text:SetPoint("LEFT", banner, "LEFT", 14, 0)
-    text:SetText("Some changes need a UI reload to take effect.")
-    text:SetTextColor(0.95, 0.9, 0.85, 1)
-
-    local reloadBtn = mini:Button({
-        Parent = banner,
-        Text = "Reload Now",
-        Width = 110,
-        Height = 22,
-        OnClick = function() C_UI.Reload() end,
-    })
-    reloadBtn:SetPoint("RIGHT", banner, "RIGHT", -10, 0)
-
-    local dismiss = CreateFrame("Button", nil, banner)
-    dismiss:SetSize(22, 22)
-    dismiss:SetPoint("RIGHT", reloadBtn, "LEFT", -6, 0)
-    local dismissLabel = dismiss:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    dismissLabel:SetAllPoints(dismiss)
-    dismissLabel:SetText("×")
-    dismissLabel:SetTextColor(0.7, 0.66, 0.62, 1)
-    dismiss:SetScript("OnEnter", function() dismissLabel:SetTextColor(1, 0.5, 0.5, 1) end)
-    dismiss:SetScript("OnLeave", function() dismissLabel:SetTextColor(0.7, 0.66, 0.62, 1) end)
-    dismiss:SetScript("OnClick", function() banner:Hide() end)
-
-    banner:Hide()
-    return banner
+local function AddTooltip(frame, title, text)
+    if not text and not title then return end
+    frame:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(title or "", 1, 1, 1)
+        if text then
+            GameTooltip:AddLine(text, nil, nil, nil, true)
+        end
+        GameTooltip:Show()
+    end)
+    frame:HookScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
---------------------------------------------------------------------------------
--- Get/set wiring from a schema control to the AceDB profile
---------------------------------------------------------------------------------
-
--- Reflow disabled/hidden states in place after a change (no value re-sync, so a
--- toggle's slide animation isn't cut short).
 local function Relayout()
     if Perskan._relayoutActive then Perskan._relayoutActive() end
 end
 
--- CVar toggles need the 1/0 form regardless of how the profile stores them.
 local function ApplyCVarToggle(control, value)
     if control.cvar then
         Perskan:SetCVarValue(control.cvar, value and 1 or 0)
@@ -100,11 +58,11 @@ end
 local function MakeGet(control)
     if control.get then return control.get end
     local key = control.key
+
     if control.type == "color" then
-        -- Colours are stored as { r, g, b }; the swatch deals in loose components.
         return function()
             local color = Perskan.db.profile[key] or {}
-            return color.r or 1, color.g or 1, color.b or 1, 1
+            return color.r or 1, color.g or 1, color.b or 1
         end
     end
     if control.type == "toggle" then
@@ -120,7 +78,7 @@ local function MakeSet(control)
     local key = control.key
 
     if control.set then
-        -- Explicit setters (damage-meter per-window heights) do their own apply.
+        -- Explicit setters (Simple Item Level's own saved variables) do their own apply.
         return function(value)
             control.set(value)
             if control.reload then Perskan:RequestReload() end
@@ -163,443 +121,604 @@ local function MakeSet(control)
         end
         if control.apply then control.apply() end
         if control.reload then Perskan:RequestReload() end
-        -- Ranges (sliders) don't gate other controls; skip the per-tick reflow.
         if control.type ~= "range" then Relayout() end
     end
 end
 
 --------------------------------------------------------------------------------
--- Control builders -> layout entries
+-- Controls
 --------------------------------------------------------------------------------
 
-local function BuildControlEntry(panel, control, sliderWidth)
-    local get, set = MakeGet(control), MakeSet(control)
+local function BuildDivider(parent, control)
+    local header = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    header:SetText(control.name)
+    header:SetTextColor(1, 0.82, 0)
 
-    if control.type == "divider" then
-        local divider = mini:Divider({ Parent = panel, Text = control.name })
-        divider:SetWidth(InnerWidth())
-        return { control = control, primary = divider, frames = { divider },
-                 above = 4, body = DIVIDER_H, below = 6 }
-    end
-
-    if control.type == "toggle" then
-        local toggle = mini:Checkbox({
-            Parent = panel,
-            LabelText = control.name,
-            Tooltip = control.desc,
-            GetValue = get,
-            SetValue = set,
-        })
-        return { control = control, primary = toggle, frames = { toggle },
-                 above = 0, body = TOGGLE_H, below = 0,
-                 setDisabled = function(disabled)
-                     if disabled then toggle:Disable() else toggle:Enable() end
-                 end }
-    end
-
-    if control.type == "range" then
-        local slider = mini:Slider({
-            Parent = panel,
-            LabelText = control.name,
-            Min = control.min,
-            Max = control.max,
-            Step = control.step,
-            Width = sliderWidth,
-            GetValue = get,
-            SetValue = set,
-        })
-        -- The framework centres the value box above the slider, which collides with a
-        -- long label. Move it to the slider's top-right so it sits on the label's line.
-        slider.EditBox:ClearAllPoints()
-        slider.EditBox:SetPoint("BOTTOMRIGHT", slider.Slider, "TOPRIGHT", 0, 4)
-        return { control = control, primary = slider.Slider, frames = { slider.Slider },
-                 above = SLIDER_ABOVE, body = SLIDER_H, below = SLIDER_BELOW,
-                 setDisabled = function(disabled)
-                     if disabled then slider.Slider:Disable() else slider.Slider:Enable() end
-                 end }
-    end
-
-    if control.type == "button" then
-        local button = mini:Button({
-            Parent = panel,
-            Text = control.name,
-            Width = control.width or 220,
-            Height = 24,
-            OnClick = function() control.onClick() end,
-        })
-        return { control = control, primary = button, frames = { button },
-                 above = 0, body = 24, below = 0,
-                 setDisabled = function(disabled)
-                     if disabled then button:Disable() else button:Enable() end
-                 end }
-    end
-
-    if control.type == "color" then
-        local swatch = mini:ColorSwatch({
-            Parent = panel,
-            LabelText = control.name,
-            HasOpacity = false,
-            GetValue = get,
-            SetValue = set,
-        })
-        local frames = { swatch }
-        if swatch.Label then frames[#frames + 1] = swatch.Label end
-        return { control = control, primary = swatch, frames = frames,
-                 above = 0, body = TOGGLE_H, below = 0 }
-    end
-
-    if control.type == "select" then
-        local items, textOf = {}, {}
-        for _, entry in ipairs(control.values) do
-            items[#items + 1] = entry.value
-            textOf[entry.value] = entry.text
-        end
-
-        local label = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        label:SetText(control.name)
-
-        local dd = mini:Dropdown({
-            Parent = panel,
-            Items = items,
-            Width = 220,
-            GetValue = get,
-            SetValue = set,
-            GetText = function(value) return textOf[value] or tostring(value) end,
-        })
-        dd:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -SELECT_GAP)
-
-        return { control = control, primary = label, frames = { label, dd },
-                 above = 0, body = SELECT_LABEL_H + SELECT_GAP + SELECT_DD_H, below = 0 }
-    end
-end
-
--- Builds one category page and returns a refresh closure.
-local function BuildCategoryPanel(panel, category)
-    local sliderWidth = InnerWidth()
-    local entries = {}
-    for _, control in ipairs(category.controls) do
-        entries[#entries + 1] = BuildControlEntry(panel, control, sliderWidth)
-    end
-
-    local function RelayoutPanel()
-        local cursor = 0
-        for _, e in ipairs(entries) do
-            local hidden = e.control.hidden and e.control.hidden()
-            e.primary:ClearAllPoints()
-            if hidden then
-                -- Leave hidden controls unanchored so they don't count toward the
-                -- scroll height; they get repositioned if they become visible.
-                for _, f in ipairs(e.frames) do f:Hide() end
-            else
-                for _, f in ipairs(e.frames) do f:Show() end
-                cursor = cursor - e.above
-                e.primary:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, cursor)
-                cursor = cursor - e.body - e.below - SPACING
-                if e.setDisabled then
-                    e.setDisabled(e.control.disabled and e.control.disabled())
-                end
-            end
-        end
-        -- Drives the framework's scroll range (fires OnScrollRangeChanged).
-        panel:SetHeight(math.max(1, -cursor + 10))
-    end
-
-    RelayoutPanel()
-    -- Recompute when the tab is first shown: frame heights are only valid on screen,
-    -- so this is what makes the scrollbar appear for tall pages.
-    panel:HookScript("OnShow", RelayoutPanel)
+    local line = parent:CreateTexture(nil, "ARTWORK")
+    line:SetHeight(1)
+    line:SetPoint("LEFT", header, "RIGHT", 8, 0)
+    line:SetColorTexture(0.4, 0.35, 0.28, 0.8)
 
     return {
-        relayout = RelayoutPanel,
-        refresh = function()
-            if panel.MiniRefresh then panel:MiniRefresh() end
-            RelayoutPanel()
+        control = control,
+        primary = header,
+        frames = { header, line },
+        above = 6, body = DIVIDER_H, below = 2,
+        place = function()
+            line:SetPoint("RIGHT", parent, "RIGHT", -RIGHT_MARGIN, 0)
         end,
     }
 end
 
+local function BuildToggle(parent, control, get, set)
+    local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+    check:SetSize(24, 24)
+
+    local label = check.Text or check.text
+    if label then
+        label:SetFontObject("GameFontHighlight")
+        label:SetText(control.name)
+        label:ClearAllPoints()
+        label:SetPoint("LEFT", check, "RIGHT", 4, 0)
+    end
+
+    check:SetScript("OnClick", function(self)
+        set(self:GetChecked() and true or false)
+    end)
+    AddTooltip(check, control.name, control.desc)
+
+    return {
+        control = control,
+        primary = check,
+        frames = { check },
+        above = 0, body = TOGGLE_H, below = 0,
+        refresh = function() check:SetChecked(get() and true or false) end,
+        setDisabled = function(disabled)
+            check:SetEnabled(not disabled)
+            if label then
+                label:SetFontObject(disabled and "GameFontDisable" or "GameFontHighlight")
+            end
+        end,
+    }
+end
+
+local function BuildRange(parent, control, get, set)
+    local slider = CreateFrame("Slider", nil, parent, "UISliderTemplateWithLabels")
+    slider:SetSize(ContentWidth() - 60, SLIDER_H)
+    slider:SetOrientation("HORIZONTAL")
+    slider:SetMinMaxValues(control.min, control.max)
+    slider:SetValueStep(control.step)
+    slider:SetObeyStepOnDrag(true)
+
+    slider.Low:SetText(tostring(control.min))
+    slider.High:SetText(tostring(control.max))
+
+    -- Name and current value share the line above the bar, as Blizzard's own sliders do.
+    slider.Text:ClearAllPoints()
+    slider.Text:SetPoint("BOTTOMLEFT", slider, "TOPLEFT", 0, 2)
+    slider.Text:SetJustifyH("LEFT")
+
+    local value = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    value:SetPoint("BOTTOMRIGHT", slider, "TOPRIGHT", 0, 2)
+
+    -- Whole numbers read as integers; fractional steps keep two decimals.
+    local function Format(number)
+        if control.step and control.step < 1 then
+            return string.format("%.2f", number)
+        end
+        return tostring(math.floor(number + 0.5))
+    end
+
+    local syncing = false
+    slider:SetScript("OnValueChanged", function(self, newValue)
+        value:SetText(Format(newValue))
+        if syncing then return end
+        set(newValue)
+    end)
+    AddTooltip(slider, control.name, control.desc)
+
+    return {
+        control = control,
+        primary = slider,
+        frames = { slider, value },
+        above = SLIDER_ABOVE, body = SLIDER_H, below = SLIDER_BELOW,
+        refresh = function()
+            syncing = true
+            local current = get() or control.min
+            slider:SetValue(current)
+            value:SetText(Format(current))
+            syncing = false
+        end,
+        setDisabled = function(disabled)
+            if disabled then slider:Disable() else slider:Enable() end
+            slider.Text:SetFontObject(disabled and "GameFontDisable" or "GameFontHighlight")
+            value:SetFontObject(disabled and "GameFontDisableSmall" or "GameFontHighlightSmall")
+        end,
+    }
+end
+
+local function BuildSelect(parent, control, get, set)
+    local label = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    label:SetText(control.name)
+
+    local dropdown = CreateFrame("DropdownButton", nil, parent, "WowStyle1DropdownTemplate")
+    dropdown:SetSize(240, SELECT_DD_H)
+    dropdown:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -SELECT_GAP)
+
+    local function TextFor(value)
+        for _, entry in ipairs(control.values) do
+            if entry.value == value then return entry.text end
+        end
+        return tostring(value)
+    end
+
+    dropdown:SetupMenu(function(_, rootDescription)
+        for _, entry in ipairs(control.values) do
+            rootDescription:CreateRadio(entry.text,
+                function() return get() == entry.value end,
+                function() set(entry.value) end)
+        end
+    end)
+    AddTooltip(dropdown, control.name, control.desc)
+
+    return {
+        control = control,
+        primary = label,
+        frames = { label, dropdown },
+        above = 0, body = SELECT_LABEL_H + SELECT_GAP + SELECT_DD_H, below = 0,
+        refresh = function()
+            dropdown:SetDefaultText(TextFor(get()))
+            if dropdown.GenerateMenu then dropdown:GenerateMenu() end
+        end,
+        setDisabled = function(disabled)
+            dropdown:SetEnabled(not disabled)
+            label:SetFontObject(disabled and "GameFontDisable" or "GameFontHighlight")
+        end,
+    }
+end
+
+local function BuildColor(parent, control, get, set)
+    local swatch = CreateFrame("Button", nil, parent)
+    swatch:SetSize(20, 20)
+
+    local border = swatch:CreateTexture(nil, "BACKGROUND")
+    border:SetAllPoints(swatch)
+    border:SetColorTexture(0, 0, 0, 1)
+
+    local fill = swatch:CreateTexture(nil, "ARTWORK")
+    fill:SetPoint("TOPLEFT", swatch, "TOPLEFT", 1, -1)
+    fill:SetPoint("BOTTOMRIGHT", swatch, "BOTTOMRIGHT", -1, 1)
+
+    local label = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    label:SetText(control.name)
+    label:SetPoint("LEFT", swatch, "RIGHT", 8, 0)
+
+    local function Refresh()
+        local r, g, b = get()
+        fill:SetColorTexture(r or 1, g or 1, b or 1, 1)
+    end
+
+    swatch:SetScript("OnClick", function()
+        local r, g, b = get()
+        local function OnColorChanged()
+            local newR, newG, newB = ColorPickerFrame:GetColorRGB()
+            set(newR, newG, newB)
+            Refresh()
+        end
+        ColorPickerFrame:SetupColorPickerAndShow({
+            r = r, g = g, b = b,
+            hasOpacity = false,
+            swatchFunc = OnColorChanged,
+            cancelFunc = function(previous)
+                if previous then
+                    set(previous.r, previous.g, previous.b)
+                    Refresh()
+                end
+            end,
+        })
+    end)
+    AddTooltip(swatch, control.name, control.desc)
+
+    return {
+        control = control,
+        primary = swatch,
+        frames = { swatch, label },
+        above = 0, body = COLOR_H, below = 0,
+        refresh = Refresh,
+        setDisabled = function(disabled)
+            swatch:SetEnabled(not disabled)
+            label:SetFontObject(disabled and "GameFontDisable" or "GameFontHighlight")
+        end,
+    }
+end
+
+local function BuildButton(parent, control)
+    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    button:SetSize(control.width or 200, BUTTON_H)
+    button:SetText(control.name)
+    button:SetScript("OnClick", function() control.onClick() end)
+    AddTooltip(button, control.name, control.desc)
+
+    return {
+        control = control,
+        primary = button,
+        frames = { button },
+        above = 0, body = BUTTON_H, below = 0,
+        setDisabled = function(disabled) button:SetEnabled(not disabled) end,
+    }
+end
+
+local BUILDERS = {
+    divider = function(parent, control) return BuildDivider(parent, control) end,
+    toggle = BuildToggle,
+    range = BuildRange,
+    select = BuildSelect,
+    color = BuildColor,
+    button = function(parent, control) return BuildButton(parent, control) end,
+}
+
 --------------------------------------------------------------------------------
--- Profiles panel (AceDB, rendered with MiniFramework widgets)
+-- Category pages
+--------------------------------------------------------------------------------
+
+local function BuildCategoryPanel(panel, category)
+    local entries = {}
+    for _, control in ipairs(category.controls) do
+        local builder = BUILDERS[control.type]
+        if builder then
+            local get, set = MakeGet(control), MakeSet(control)
+            entries[#entries + 1] = builder(panel, control, get, set)
+        end
+    end
+
+    local function RelayoutPanel()
+        local cursor = 0
+        for _, entry in ipairs(entries) do
+            local hidden = entry.control.hidden and entry.control.hidden()
+            entry.primary:ClearAllPoints()
+            if hidden then
+                for _, frame in ipairs(entry.frames) do frame:Hide() end
+            else
+                for _, frame in ipairs(entry.frames) do frame:Show() end
+                cursor = cursor - entry.above
+                entry.primary:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, cursor)
+                if entry.place then entry.place() end
+                cursor = cursor - entry.body - entry.below - SPACING
+                if entry.setDisabled then
+                    entry.setDisabled(entry.control.disabled and entry.control.disabled())
+                end
+            end
+        end
+        panel:SetHeight(math.max(1, -cursor + 10))
+    end
+
+    local function Refresh()
+        for _, entry in ipairs(entries) do
+            if entry.refresh then entry.refresh() end
+        end
+        RelayoutPanel()
+    end
+
+    Refresh()
+    panel:HookScript("OnShow", Refresh)
+
+    return { relayout = RelayoutPanel, refresh = Refresh }
+end
+
+--------------------------------------------------------------------------------
+-- Profiles page
 --------------------------------------------------------------------------------
 
 local function BuildProfilesPanel(panel)
     local db = Perskan.db
     local y = 0
-    local function place(frame, dy)
-        frame:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
-        y = y - dy
+    local refreshers = {}
+
+    local function Header(text, dy)
+        local label = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        label:SetText(text)
+        label:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
+        y = y - (dy or (SELECT_LABEL_H + SELECT_GAP))
+        return label
     end
 
-    local currentList, copyList, deleteList = {}, {}, {}
-    local function refillLists()
-        wipe(currentList); wipe(copyList); wipe(deleteList)
-        local current = db:GetCurrentProfile()
-        for _, name in ipairs(db:GetProfiles()) do
-            currentList[#currentList + 1] = name
-            if name ~= current then
-                copyList[#copyList + 1] = name
-                deleteList[#deleteList + 1] = name
+    local function ProfileDropdown(getValue, setValue, includeCurrent, defaultText)
+        local dropdown = CreateFrame("DropdownButton", nil, panel, "WowStyle1DropdownTemplate")
+        dropdown:SetSize(240, SELECT_DD_H)
+        dropdown:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
+        dropdown:SetupMenu(function(_, rootDescription)
+            local current = db:GetCurrentProfile()
+            for _, name in ipairs(db:GetProfiles()) do
+                if includeCurrent or name ~= current then
+                    rootDescription:CreateRadio(name,
+                        function() return getValue() == name end,
+                        function() setValue(name) end)
+                end
             end
+        end)
+        refreshers[#refreshers + 1] = function()
+            dropdown:SetDefaultText(getValue() or defaultText)
         end
-    end
-    refillLists()
-
-    -- Active profile
-    local activeLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    activeLabel:SetText("Active Profile")
-    place(activeLabel, SELECT_LABEL_H + SELECT_GAP)
-
-    local activeDD = mini:Dropdown({
-        Parent = panel,
-        Items = currentList,
-        Width = 240,
-        GetValue = function() return db:GetCurrentProfile() end,
-        SetValue = function(value) db:SetProfile(value) end,
-    })
-    place(activeDD, SELECT_DD_H + SPACING * 2)
-
-    -- New profile. GetValue mirrors the box's own text so the commit-on-focus-loss
-    -- (fired when the Create button steals focus) keeps what the user typed.
-    local newBox
-    newBox = mini:EditBox({
-        Parent = panel,
-        LabelText = "New Profile",
-        Width = 240,
-        GetValue = function() return newBox and newBox.EditBox:GetText() or "" end,
-        SetValue = function() end,
-    })
-    newBox.Label:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
-    newBox.EditBox:SetPoint("TOPLEFT", newBox.Label, "BOTTOMLEFT", 0, -SELECT_GAP)
-    y = y - (SELECT_LABEL_H + SELECT_GAP + SELECT_DD_H)
-
-    local createBtn = mini:Button({
-        Parent = panel,
-        Text = "Create",
-        Width = 100,
-        OnClick = function()
-            local name = newBox.EditBox:GetText()
-            if name and name:match("%S") then
-                db:SetProfile(name)
-                newBox.EditBox:SetText("")
-                newBox.EditBox:ClearFocus()
-            end
-        end,
-    })
-    createBtn:SetPoint("TOPLEFT", newBox.EditBox, "BOTTOMLEFT", 0, -8)
-    y = y - (22 + SPACING * 2)
-
-    local divider = mini:Divider({ Parent = panel, Text = "Manage" })
-    divider:SetWidth(InnerWidth())
-    place(divider, DIVIDER_H + SPACING)
-
-    -- Copy from
-    local copyLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    copyLabel:SetText("Copy Settings From")
-    place(copyLabel, SELECT_LABEL_H + SELECT_GAP)
-    local copyDD
-    copyDD = mini:Dropdown({
-        Parent = panel,
-        Items = copyList,
-        Width = 240,
-        GetValue = function() return copyDD._value end,
-        SetValue = function(value) copyDD._value = value end,
-        GetText = function(value) return value or "Select a profile" end,
-    })
-    local copyBtn = mini:Button({
-        Parent = panel,
-        Text = "Copy",
-        Width = 100,
-        OnClick = function()
-            if copyDD._value then db:CopyProfile(copyDD._value) end
-        end,
-    })
-    copyBtn:SetPoint("LEFT", copyDD, "RIGHT", mini.HorizontalSpacing, 0)
-    place(copyDD, SELECT_DD_H + SPACING * 2)
-
-    -- Delete
-    local deleteLabel = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    deleteLabel:SetText("Delete Profile")
-    place(deleteLabel, SELECT_LABEL_H + SELECT_GAP)
-    local deleteDD
-    deleteDD = mini:Dropdown({
-        Parent = panel,
-        Items = deleteList,
-        Width = 240,
-        GetValue = function() return deleteDD._value end,
-        SetValue = function(value) deleteDD._value = value end,
-        GetText = function(value) return value or "Select a profile" end,
-    })
-    local deleteBtn = mini:Button({
-        Parent = panel,
-        Text = "Delete",
-        Width = 100,
-        Danger = true,
-        OnClick = function()
-            if deleteDD._value then
-                db:DeleteProfile(deleteDD._value)
-                deleteDD._value = nil
-            end
-        end,
-    })
-    deleteBtn:SetPoint("LEFT", deleteDD, "RIGHT", mini.HorizontalSpacing, 0)
-    place(deleteDD, SELECT_DD_H + SPACING * 2)
-
-    -- Reset
-    local resetBtn = mini:Button({
-        Parent = panel,
-        Text = "Reset Current Profile",
-        Width = 200,
-        Danger = true,
-        OnClick = function() db:ResetProfile() end,
-    })
-    resetBtn:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
-    y = y - (22 + SPACING)
-
-    local panelHeight = math.max(1, -y + 10)
-    panel:SetHeight(panelHeight)
-    -- Re-assert on show so the scroll range settles once frames are on screen.
-    panel:HookScript("OnShow", function() panel:SetHeight(panelHeight) end)
-
-    local function refresh()
-        refillLists()
-        if panel.MiniRefresh then panel:MiniRefresh() end
+        y = y - (SELECT_DD_H + SPACING * 2)
+        return dropdown
     end
 
-    return { relayout = function() end, refresh = refresh }
+    Header("Active Profile")
+    ProfileDropdown(function() return db:GetCurrentProfile() end,
+        function(name) db:SetProfile(name) end, true)
+
+    -- New profile
+    local newLabel = Header("New Profile")
+    local newBox = CreateFrame("EditBox", nil, panel, "InputBoxTemplate")
+    newBox:SetSize(240, 22)
+    newBox:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + 6, y)
+    newBox:SetAutoFocus(false)
+    y = y - (28 + SPACING)
+
+    local createButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    createButton:SetSize(120, BUTTON_H)
+    createButton:SetText("Create")
+    createButton:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
+    createButton:SetScript("OnClick", function()
+        local name = newBox:GetText()
+        if name and name:match("%S") then
+            db:SetProfile(name)
+            newBox:SetText("")
+            newBox:ClearFocus()
+        end
+    end)
+    y = y - (BUTTON_H + SPACING * 2)
+
+    -- Copy / delete
+    local copyTarget, deleteTarget
+    Header("Copy Settings From")
+    local copyDropdown = ProfileDropdown(function() return copyTarget end,
+        function(name) copyTarget = name; Perskan:RefreshConfig() end, false, "Select a profile")
+    local copyButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    copyButton:SetSize(120, BUTTON_H)
+    copyButton:SetText("Copy")
+    copyButton:SetPoint("LEFT", copyDropdown, "RIGHT", 8, 0)
+    copyButton:SetScript("OnClick", function()
+        if copyTarget then db:CopyProfile(copyTarget) end
+    end)
+
+    Header("Delete Profile")
+    local deleteDropdown = ProfileDropdown(function() return deleteTarget end,
+        function(name) deleteTarget = name; Perskan:RefreshConfig() end, false, "Select a profile")
+    local deleteButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    deleteButton:SetSize(120, BUTTON_H)
+    deleteButton:SetText("Delete")
+    deleteButton:SetPoint("LEFT", deleteDropdown, "RIGHT", 8, 0)
+    deleteButton:SetScript("OnClick", function()
+        if deleteTarget then
+            db:DeleteProfile(deleteTarget)
+            deleteTarget = nil
+            Perskan:RefreshConfig()
+        end
+    end)
+
+    local resetButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    resetButton:SetSize(200, BUTTON_H)
+    resetButton:SetText("Reset Current Profile")
+    resetButton:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, y)
+    resetButton:SetScript("OnClick", function() db:ResetProfile() end)
+    y = y - (BUTTON_H + SPACING)
+
+    panel:SetHeight(math.max(1, -y + 10))
+
+    local function Refresh()
+        for _, refresher in ipairs(refreshers) do refresher() end
+    end
+    Refresh()
+    panel:HookScript("OnShow", Refresh)
+
+    return { relayout = function() end, refresh = Refresh }
 end
 
 --------------------------------------------------------------------------------
--- Window assembly
+-- Window
 --------------------------------------------------------------------------------
 
 function Perskan:RequestReload()
     self._reloadPending = true
-    if self._reloadBanner then self._reloadBanner:Show() end
+    if self._reloadButton then self._reloadButton:Show() end
 end
 
 function Perskan:BuildConfig()
     if self._configBuilt then return end
     self._configBuilt = true
 
-    -- Rebrand the framework: a cooler blue accent, distinct from MiniAuras's crimson.
-    mini:SetCustomStyling(true)
-    mini:SetPalette({
-        Accent = { r = 0.16, g = 0.52, b = 0.82 },
-        AccentHi = { r = 0.30, g = 0.64, b = 0.94 },
-        TitleText = { r = 0.45, g = 0.72, b = 1.0 },
-    })
+    local version = C_AddOns and C_AddOns.GetAddOnMetadata
+        and C_AddOns.GetAddOnMetadata(addonName, "Version") or ""
 
-    local version = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addonName, "Version") or ""
-
-    local windowWidth, windowHeight = 720, 600
-    local contentPadding = 12
-    local tabStripWidth = 150
-    local tabHorizontalPadding = 12
-    local windowInset = 2 + contentPadding * 2 + 14
-    local contentWidth = windowWidth - windowInset - tabStripWidth - tabHorizontalPadding
-    mini.ContentWidth = contentWidth
-    mini.TextMaxWidth = contentWidth - windowInset
-
-    local window = mini:CreateStandaloneWindow({
-        Name = addonName .. "ConfigFrame",
-        Title = "Perskan's Pack",
-        Subtitle = version,
-        Width = windowWidth,
-        Height = windowHeight,
-    })
+    window = CreateFrame("Frame", addonName .. "ConfigFrame", UIParent, "ButtonFrameTemplate")
+    window:SetSize(760, 620)
+    window:SetPoint("CENTER")
+    window:SetMovable(true)
+    window:EnableMouse(true)
+    window:SetClampedToScreen(true)
+    window:RegisterForDrag("LeftButton")
+    window:SetScript("OnDragStart", window.StartMoving)
+    window:SetScript("OnDragStop", window.StopMovingOrSizing)
+    window:SetFrameStrata("HIGH")
+    window:Hide()
     self._configWindow = window
 
-    -- Recentre when re-opened from hidden.
-    local previouslyHidden = true
-    window:HookScript("OnHide", function() previouslyHidden = true end)
-    window:HookScript("OnShow", function(w)
-        if previouslyHidden then
-            previouslyHidden = false
-            w:ClearAllPoints()
-            w:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-        end
-        if self.RefreshConfig then self:RefreshConfig() end
-        if self._reloadPending and self._reloadBanner then self._reloadBanner:Show() end
-    end)
+    -- Escape closes it, the way every stock panel behaves.
+    tinsert(UISpecialFrames, window:GetName())
 
-    self._reloadBanner = BuildReloadBanner(window, tabStripWidth + contentPadding + 3)
-
-    -- Nav strip flush with the title bar's accent line and the window's left edge.
-    local tabsPanel = CreateFrame("Frame", nil, window)
-    tabsPanel:SetPoint("TOPLEFT", window.TitleBar, "BOTTOMLEFT", 0, -1)
-    tabsPanel:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -13, 1)
-
-    local refreshers = {}
-
-    local tabs = {
-        { Heading = "Settings" },
-    }
-    for _, category in ipairs(addon.configSchema) do
-        tabs[#tabs + 1] = {
-            Key = category.key,
-            Title = category.title,
-            Icon = category.icon,
-            Build = function(content)
-                refreshers[#refreshers + 1] = BuildCategoryPanel(content, category)
-            end,
-        }
+    if window.SetTitle then
+        window:SetTitle("Perskan's Pack" .. (version ~= "" and ("  |cff808080" .. version .. "|r") or ""))
     end
-    tabs[#tabs + 1] = { Heading = "Profile" }
-    tabs[#tabs + 1] = {
-        Key = "profiles",
-        Title = "Profiles",
-        Icon = "Interface\\Icons\\INV_Misc_Book_11",
-        Build = function(content)
-            refreshers[#refreshers + 1] = BuildProfilesPanel(content)
-        end,
-    }
+    if window.PortraitContainer and window.PortraitContainer.portrait then
+        window.PortraitContainer.portrait:SetTexture("Interface\\Icons\\ability_titankeeper_testofconfidence")
+    elseif window.portrait then
+        window.portrait:SetTexture("Interface\\Icons\\ability_titankeeper_testofconfidence")
+    end
 
-    mini:CreateTabs({
-        Parent = tabsPanel,
-        InitialKey = addon.configSchema[1] and addon.configSchema[1].key,
-        Vertical = true,
-        ScrollBody = true,
-        ScrollContentWidth = contentWidth,
-        ScrollContentHeight = 10, -- disable the auto-scan; panels set their own height
-        ContentInsets = { Top = 4 + contentPadding + 1, Bottom = 12 },
-        TabFitToParent = true,
-        StripWidth = tabStripWidth + contentPadding,
-        HorizontalPadding = tabHorizontalPadding,
-        TabIconSize = 22,
-        PageHeader = true,
-        Tabs = tabs,
-    })
+    -- Category list on the left, content on the right, both in stock insets.
+    local sidebar = CreateFrame("Frame", nil, window, "InsetFrameTemplate")
+    sidebar:SetPoint("TOPLEFT", window, "TOPLEFT", 8, -64)
+    sidebar:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", 8, 36)
+    sidebar:SetWidth(SIDEBAR_WIDTH)
 
-    -- Full refresh (values + disabled/hidden reflow) after profile swaps, window show.
+    local contentInset = CreateFrame("Frame", nil, window, "InsetFrameTemplate")
+    contentInset:SetPoint("TOPLEFT", sidebar, "TOPRIGHT", 6, 0)
+    contentInset:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -8, 36)
+
+    local scrollFrame = CreateFrame("ScrollFrame", nil, contentInset)
+    scrollFrame:SetPoint("TOPLEFT", contentInset, "TOPLEFT", 4, -4)
+    scrollFrame:SetPoint("BOTTOMRIGHT", contentInset, "BOTTOMRIGHT", -22, 4)
+
+    local scrollBar = CreateFrame("EventFrame", nil, contentInset, "MinimalScrollBar")
+    scrollBar:SetPoint("TOPLEFT", scrollFrame, "TOPRIGHT", 8, 0)
+    scrollBar:SetPoint("BOTTOMLEFT", scrollFrame, "BOTTOMRIGHT", 8, 0)
+    if ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar then
+        ScrollUtil.InitScrollFrameWithScrollBar(scrollFrame, scrollBar)
+    end
+
+    contentChild = CreateFrame("Frame", nil, scrollFrame)
+    contentChild:SetSize(ContentWidth(), 10)
+    scrollFrame:SetScrollChild(contentChild)
+
+    -- Reload prompt: a stock button that only appears once something asks for one.
+    local reloadButton = CreateFrame("Button", nil, window, "UIPanelButtonTemplate")
+    reloadButton:SetSize(160, 24)
+    reloadButton:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -10, 8)
+    reloadButton:SetText("Reload UI")
+    reloadButton:SetScript("OnClick", function() C_UI.Reload() end)
+    reloadButton:Hide()
+    AddTooltip(reloadButton, "Reload UI", "Some changes you made need a UI reload to take effect.")
+    self._reloadButton = reloadButton
+
+    --------------------------------------------------------------------------------
+    -- Pages and the category list
+    --------------------------------------------------------------------------------
+
+    local pages, refreshers, categoryButtons = {}, {}, {}
+
+    local function ShowPage(key)
+        for pageKey, page in pairs(pages) do
+            page:SetShown(pageKey == key)
+        end
+        for buttonKey, button in pairs(categoryButtons) do
+            button.Selected:SetShown(buttonKey == key)
+            button.Label:SetFontObject(buttonKey == key and "GameFontNormal" or "GameFontHighlight")
+        end
+        scrollFrame:SetVerticalScroll(0)
+        contentChild:SetHeight(pages[key] and pages[key]:GetHeight() or 10)
+    end
+
+    local listY = -8
+    local function AddCategory(key, title, icon, builder)
+        local page = CreateFrame("Frame", nil, contentChild)
+        page:SetPoint("TOPLEFT", contentChild, "TOPLEFT", 0, 0)
+        page:SetWidth(ContentWidth())
+        page:Hide()
+        pages[key] = page
+
+        local button = CreateFrame("Button", nil, sidebar)
+        button:SetSize(SIDEBAR_WIDTH - 12, 26)
+        button:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 6, listY)
+        listY = listY - 27
+
+        local highlight = button:CreateTexture(nil, "HIGHLIGHT")
+        highlight:SetAllPoints(button)
+        highlight:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight2")
+        highlight:SetBlendMode("ADD")
+        highlight:SetAlpha(0.5)
+
+        local selected = button:CreateTexture(nil, "BACKGROUND")
+        selected:SetAllPoints(button)
+        selected:SetTexture("Interface\\Buttons\\UI-Listbox-Highlight")
+        selected:SetBlendMode("ADD")
+        selected:SetAlpha(0.7)
+        selected:Hide()
+        button.Selected = selected
+
+        local iconTexture
+        if icon then
+            iconTexture = button:CreateTexture(nil, "ARTWORK")
+            iconTexture:SetSize(18, 18)
+            iconTexture:SetPoint("LEFT", button, "LEFT", 4, 0)
+            iconTexture:SetTexture(icon)
+            iconTexture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        end
+
+        local label = button:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        label:SetPoint("LEFT", iconTexture or button, iconTexture and "RIGHT" or "LEFT", 6, 0)
+        label:SetJustifyH("LEFT")
+        label:SetText(title)
+        button.Label = label
+
+        button:SetScript("OnClick", function()
+            ShowPage(key)
+            PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+        end)
+
+        categoryButtons[key] = button
+        refreshers[#refreshers + 1] = builder(page)
+        page:SetHeight(page:GetHeight())
+    end
+
+    for _, category in ipairs(addon.configSchema) do
+        AddCategory(category.key, category.title, category.icon, function(page)
+            return BuildCategoryPanel(page, category)
+        end)
+    end
+    listY = listY - 10
+    AddCategory("profiles", "Profiles", "Interface\\Icons\\INV_Misc_Book_11", BuildProfilesPanel)
+
     function self:RefreshConfig()
         for _, entry in ipairs(refreshers) do
             pcall(entry.refresh)
         end
+        for key, page in pairs(pages) do
+            if page:IsShown() then
+                contentChild:SetHeight(page:GetHeight())
+            end
+        end
     end
-    -- Lightweight reflow the live setters call so disabled/hidden states update in
-    -- place without re-syncing values (which would interrupt a toggle's animation).
+
     self._relayoutActive = function()
         for _, entry in ipairs(refreshers) do
             pcall(entry.relayout)
         end
+        for _, page in pairs(pages) do
+            if page:IsShown() then
+                contentChild:SetHeight(page:GetHeight())
+            end
+        end
     end
 
-    -- Blizzard AddOns redirect panel for discoverability.
-    local redirect = CreateFrame("Frame")
-    redirect.name = "Perskan's Pack"
-    local category = mini:AddCategory(redirect)
-    if category then
-        local title = redirect:CreateFontString(nil, "ARTWORK", "GameFontNormalHuge")
-        title:SetPoint("TOP", redirect, "TOP", 0, -60)
-        title:SetText("Perskan's Pack")
-        local msg = redirect:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-        msg:SetPoint("TOP", title, "BOTTOM", 0, -12)
-        msg:SetText("Type /perskan (or /pp) to open the settings window.")
-        local open = mini:Button({
-            Parent = redirect, Text = "Open Settings", Width = 200, Height = 30,
-            OnClick = function() Perskan:OpenConfig() end,
-        })
-        open:SetPoint("TOP", msg, "BOTTOM", 0, -20)
+    window:HookScript("OnShow", function()
+        self:RefreshConfig()
+        if self._reloadPending then reloadButton:Show() end
+    end)
+
+    ShowPage(addon.configSchema[1] and addon.configSchema[1].key or "profiles")
+
+    -- Discoverability: a stub in the game's AddOns options that opens this window.
+    local panel = CreateFrame("Frame")
+    panel.name = "Perskan's Pack"
+    local title = panel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", 16, -16)
+    title:SetText("Perskan's Pack")
+    local message = panel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    message:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -12)
+    message:SetText("Type /perskan (or /pp) to open the settings window.")
+    local open = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    open:SetSize(200, 26)
+    open:SetPoint("TOPLEFT", message, "BOTTOMLEFT", 0, -16)
+    open:SetText("Open Settings")
+    open:SetScript("OnClick", function() Perskan:OpenConfig() end)
+
+    if Settings and Settings.RegisterCanvasLayoutCategory then
+        local category = Settings.RegisterCanvasLayoutCategory(panel, panel.name)
+        category.ID = panel.name
+        Settings.RegisterAddOnCategory(category)
+    elseif InterfaceOptions_AddCategory then
+        InterfaceOptions_AddCategory(panel)
     end
 end
 
@@ -608,6 +727,6 @@ function Perskan:OpenConfig()
         self:BuildConfig()
     end
     if self._configWindow then
-        self._configWindow:Show()
+        self._configWindow:SetShown(not self._configWindow:IsShown())
     end
 end

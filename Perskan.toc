@@ -21,8 +21,6 @@ Libs\HereBeDragons\HereBeDragons-2.0.lua
 Libs\HereBeDragons\HereBeDragons-Pins-2.0.lua
 Libs\LibAppropriateItems-1.0\LibAppropriateItems-1.0.lua
 
-# Settings UI framework (embedded MiniFramework)
-Libs\MiniFramework\MiniFramework.xml
 
 # Core files
 Perskan.xml

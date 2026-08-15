@@ -1,7 +1,7 @@
 local addonName, addon = ...
 
 -- Data-driven description of the settings window. The renderer (Config/Window.lua)
--- walks this and builds MiniFramework widgets from it.
+-- walks this and builds the window from Blizzard's own templates.
 --
 -- Control fields:
 --   type      "toggle" | "range" | "select" | "divider"
@@ -360,10 +360,6 @@ addon.configSchema = {
             { type = "toggle", key = "anchorBuffBarsToWidgetFrame", name = "Anchor Buff Bars to Cast Bar",
               store = "bool", reload = true,
               desc = "Anchor BuffBarCooldownViewer above the cast bar. Requires a reload to take effect." },
-            { type = "toggle", key = "sortBuffBarsUpward", name = "Sort Bars Upward",
-              store = "bool",
-              desc = "Stack active tracked bars upward from the bottom of the viewer, without gaps.",
-              apply = function() P():ApplySortBuffBars() end },
         },
     },
     --------------------------------------------------------------------------------

@@ -1,22 +1,15 @@
 -- Copy chat text, and make URLs in chat clickable.
 --
 -- Ported from ChatCopyPaste 1.38 (Novaspark-Arugal / Venomisto-Frostmourne). The copy
--- window is rebuilt on MiniFramework so it matches the settings window instead of
--- carrying the original's own chrome; the chat-frame hover button, the URL linkifying
--- and the 12.x secret-value handling come across as they were.
+-- window is rebuilt on Blizzard's own templates rather than the original's hand-drawn
+-- chrome; the chat-frame hover button, the URL linkifying and the 12.x secret-value
+-- handling come across as they were.
 
 local addonName, addon = ...
-local mini = addon.Framework
 
 -- A stock icon rather than the original addon's bundled texture: no shipped art to go
 -- missing, and a sheet of parchment reads as "copy this text" at 20px.
 local COPY_ICON = "Interface\\Icons\\INV_Misc_Note_01"
-
-local BUTTON_BACKDROP = {
-    bgFile = "Interface\\Buttons\\WHITE8X8",
-    edgeFile = "Interface\\Buttons\\WHITE8X8",
-    edgeSize = 1,
-}
 
 local copyWindow, copyEditBox
 
@@ -74,64 +67,64 @@ end
 local function BuildCopyWindow()
     if copyWindow then return copyWindow end
 
-    local window = mini:CreateStandaloneWindow({
-        Name = addonName .. "ChatCopyFrame",
-        Title = "Copy Chat",
-        Subtitle = "Ctrl-C to copy",
-        Width = 660,
-        Height = 440,
-    })
+    local frame = CreateFrame("Frame", addonName .. "ChatCopyFrame", UIParent, "ButtonFrameTemplate")
+    frame:SetSize(660, 440)
+    frame:SetPoint("CENTER")
+    frame:SetMovable(true)
+    frame:EnableMouse(true)
+    frame:SetClampedToScreen(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetScript("OnDragStart", frame.StartMoving)
+    frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
+    frame:SetFrameStrata("DIALOG")
+    frame:Hide()
+    tinsert(UISpecialFrames, frame:GetName())
 
-    -- Blizzard's scrolling input frame does the heavy lifting; its parchment art is
-    -- dropped so only the window's own flat styling shows.
-    local scroll = CreateFrame("ScrollFrame", nil, window, "InputScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", window.TitleBar, "BOTTOMLEFT", 14, -14)
-    scroll:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -22, 44)
+    if frame.SetTitle then
+        frame:SetTitle("Copy Chat")
+    end
+    if ButtonFrameTemplate_HidePortrait then
+        ButtonFrameTemplate_HidePortrait(frame)
+    end
+
+    -- Blizzard's scrolling input frame does the heavy lifting.
+    local scroll = CreateFrame("ScrollFrame", nil, frame, "InputScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", frame, "TOPLEFT", 14, -34)
+    scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -32, 40)
     scroll.maxLetters = 0
     if scroll.CharCount then scroll.CharCount:Hide() end
-    for _, region in ipairs({ scroll:GetRegions() }) do
-        if region.GetObjectType and region:GetObjectType() == "Texture" then
-            region:Hide()
-        end
-    end
 
     local editBox = scroll.EditBox
     editBox:SetFontObject("ChatFontNormal")
     editBox:SetAutoFocus(false)
-    editBox:SetScript("OnEscapePressed", function() window:Hide() end)
+    editBox:SetScript("OnEscapePressed", function() frame:Hide() end)
 
-    -- The scroll frame has no width until its anchors resolve on first show, so the
-    -- edit box is sized from whatever the frame actually measures, not at build time.
+    -- The scroll frame has no width until its anchors resolve on first show, so the edit
+    -- box is sized from what the frame actually measures, not at build time.
     local function FitEditBox()
         editBox:SetWidth(math.max(100, scroll:GetWidth() - 20))
     end
 
-    local selectAll = mini:Button({
-        Parent = window,
-        Text = "Select All",
-        Width = 110,
-        Height = 22,
-        OnClick = function()
-            editBox:SetFocus()
-            editBox:HighlightText()
-        end,
-    })
-    selectAll:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", 14, 12)
+    local selectAll = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    selectAll:SetSize(120, 24)
+    selectAll:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 12, 8)
+    selectAll:SetText("Select All")
+    selectAll:SetScript("OnClick", function()
+        editBox:SetFocus()
+        editBox:HighlightText()
+    end)
 
-    local close = mini:Button({
-        Parent = window,
-        Text = "Close",
-        Width = 110,
-        Height = 22,
-        OnClick = function() window:Hide() end,
-    })
-    close:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -14, 12)
+    local close = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    close:SetSize(120, 24)
+    close:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -12, 8)
+    close:SetText("Close")
+    close:SetScript("OnClick", function() frame:Hide() end)
 
-    window:HookScript("OnSizeChanged", FitEditBox)
-    window:HookScript("OnShow", FitEditBox)
+    frame:HookScript("OnSizeChanged", FitEditBox)
+    frame:HookScript("OnShow", FitEditBox)
 
-    copyWindow, copyEditBox = window, editBox
-    return window
+    copyWindow, copyEditBox = frame, editBox
+    return frame
 end
 
 -- Fills the window with either a single URL or the tail of a chat frame's history.
@@ -197,7 +190,7 @@ local function AttachCopyButton(index)
     local chatFrame = _G["ChatFrame" .. index]
     if not chatFrame or chatFrame.perskanCopyButton then return end
 
-    local button = CreateFrame("Button", nil, chatFrame, mini.GUI.BackdropTemplate)
+    local button = CreateFrame("Button", nil, chatFrame)
     button:SetSize(20, 20)
     button:SetPoint("BOTTOMRIGHT", -2, -3)
     -- Relative to the chat frame, not a fixed level: a fixed 7 (as the original addon
@@ -209,22 +202,15 @@ local function AttachCopyButton(index)
     button:EnableMouse(true)
     button:Hide()
 
-    -- Same flat field as the settings window's controls, so it reads as one of ours.
-    local accent = mini.GUI.Accent
-    mini.GUI.ApplyBackdrop(button, BUTTON_BACKDROP,
-        0.09, 0.08, 0.08, 0.9,
-        mini.GUI.LineIdle.r, mini.GUI.LineIdle.g, mini.GUI.LineIdle.b, 1)
-
     local texture = button:CreateTexture(nil, "ARTWORK")
+    texture:SetAllPoints(button)
     texture:SetTexture(COPY_ICON)
-    texture:SetPoint("TOPLEFT", button, "TOPLEFT", 2, -2)
-    texture:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -2, 2)
-    -- Crop the icon's built-in border.
     texture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
     local highlight = button:CreateTexture(nil, "HIGHLIGHT")
     highlight:SetAllPoints(button)
-    highlight:SetColorTexture(accent.r, accent.g, accent.b, 0.25)
+    highlight:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
+    highlight:SetBlendMode("ADD")
 
     button:SetScript("OnClick", function()
         if copyWindow and copyWindow:IsVisible() then
