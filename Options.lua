@@ -54,10 +54,6 @@ local defaults = {
         chatUrlColor = { r = 0, g = 0.678, b = 1 },
         -- Key Bindings
         bindPadEnabled = true,
-        -- Vendor
-        extendedVendor = true,
-        vendorColumns = 3,
-        vendorRows = 6,
         -- World Map
         showDelvesOnContinentMap = true,
         delvesBountifulOnly = false,

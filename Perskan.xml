@@ -15,7 +15,6 @@
   <Script file="Modules\BuffBars.lua" />
   <Script file="Modules\DelveMap.lua" />
   <Script file="Modules\ChatCopyPaste.lua" />
-  <Script file="Modules\Vendor.lua" />
   <Script file="Modules\KeyBindings.lua" />
   <Script file="Modules\BindPadSkin.lua" />
   <Script file="Modules\ItemLevel.lua" />

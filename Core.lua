@@ -43,7 +43,6 @@ local LIVE_APPLIERS = {
     "ApplyDelveMapPins",
     "ApplyChatCopyButton",
     "ApplyChatFade",
-    "ApplyVendorLayout",
     "ApplyHideSocialButton",
     "ApplyHideBagsBar",
     "ApplyTargetFocusAuraSize",
