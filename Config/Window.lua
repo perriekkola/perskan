@@ -198,7 +198,10 @@ local function BuildRange(parent, control, get, set)
     slider.Low:SetText(tostring(control.min))
     slider.High:SetText(tostring(control.max))
 
-    -- Name on the line above the bar, as Blizzard's own sliders do.
+    -- Name on the line above the bar, as Blizzard's own sliders do. SLIDER_ABOVE
+    -- reserves the room for it.
+    slider.Text:SetFontObject("GameFontHighlight")
+    slider.Text:SetText(control.name)
     slider.Text:ClearAllPoints()
     slider.Text:SetPoint("BOTTOMLEFT", slider, "TOPLEFT", 0, 4)
     slider.Text:SetJustifyH("LEFT")

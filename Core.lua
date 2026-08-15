@@ -31,6 +31,7 @@ local LIVE_APPLIERS = {
     "ApplyCVars",
     "ApplyNameplateSize",
     "ApplyNameplateHealthbarHeight",
+    "ApplyNameplateCastbarHeight",
     "ApplyNameplateNameOutline",
     "ApplyEncounterBarScale",
     "ApplyXpBarScale",

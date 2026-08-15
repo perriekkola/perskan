@@ -85,3 +85,10 @@ Settings are stored in `PerskanDB` SavedVariable using AceDB-3.0 profiles.
 ## Releasing
 
 Push a tag matching `v*` (e.g., `v1.1`) to trigger the GitHub Actions workflow that packages and releases a zip file.
+
+**Always ask which version the work is going out as before opening a pull request**, and set
+`## Version` in `Perskan.toc` to that number as part of the same PR. The settings window shows
+this value (`C_AddOns.GetAddOnMetadata`), so it is what the user sees in game, and it should
+match the tag the change ships under. Don't infer the next version from the current toc value —
+it has drifted from the tags before (the `v1.1.32` tag ships a toc reading `1.2.0`); check
+`git tag --sort=-v:refname` for the real release line and confirm the number with the user.
