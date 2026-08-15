@@ -20,8 +20,11 @@ built on the embedded **MiniFramework** widget toolkit (`Libs/MiniFramework/`), 
   registry and exposes live-apply methods on `Perskan` (e.g. `Perskan:ApplyXpBarScale()`).
   Modules read `Perskan.db.profile` live (never cache it — AceDB repoints the table on a
   profile switch). Files: `CVars`, `FrameScaling`, `ActionBars`, `GreyOnCooldown`,
-  `HideElements`, `Auras`, `Nameplates`, `DamageMeter` (gated on
-  `enableDamageMeterCustomization`), `BuffBars`.
+  `RangeColoring`, `HideElements`, `Auras`, `Nameplates`, `DamageMeter` (gated on
+  `enableDamageMeterCustomization`), `BuffBars`, `DelveMap`.
+- **Action button visuals** are split by property so features stack rather than fight:
+  `GreyOnCooldown` owns desaturation (cooldowns), `RangeColoring` owns vertex colour
+  (range/resources).
 - **Retail 12.x note**: unit-frame and raid-frame auras are engine-owned
   (`AuraContainer`/`AuraButton`, private auras). Individual aura icons and their
   cooldowns are not reachable from an addon; the only public knobs are the container's
@@ -35,6 +38,8 @@ built on the embedded **MiniFramework** widget toolkit (`Libs/MiniFramework/`), 
 - **Core.lua**: Lifecycle glue. `OnEnable` iterates the registry (each module in a `pcall`
   so one failure can't abort the rest); `PLAYER_ENTERING_WORLD` re-asserts CVars;
   `ApplyProfileSettings` re-applies live settings after a profile switch.
+- **Libs/HereBeDragons/**: Embedded map/pin library (BSD), used by `Modules/DelveMap.lua`
+  to place pins on the world map canvas.
 - **Libs/MiniFramework/**: Embedded UI toolkit (widgets, standalone window, tabs). Storage-
   agnostic (get/set callbacks) and rebranded via `M:SetPalette` in Window.lua.
 - **Perskan.xml**: Load order — Options → Modules → Config → Core.

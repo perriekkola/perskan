@@ -149,6 +149,40 @@ addon.configSchema = {
               desc = "Apply the same greying to pet action buttons.",
               disabled = function() return not profile().greyOnCooldown end,
               apply = function() P():ApplyGreyOnCooldown() end },
+
+            { type = "divider", name = "Range & Resources" },
+            { type = "toggle", key = "rangeColoring", name = "Colour By Range And Resources",
+              store = "bool",
+              desc = "Tint action icons red when the target is out of range and blue when "
+                  .. "you're short on power. Replaces the tullaRange addon.",
+              apply = function() P():ApplyRangeColoring() end },
+            { type = "toggle", key = "rangeColoringHotkeys", name = "Colour Hotkey Text",
+              store = "bool", desc = "Tint the hotkey text red as well when out of range.",
+              disabled = function() return not profile().rangeColoring end,
+              apply = function() P():ApplyRangeColoring() end },
+            { type = "toggle", key = "rangeColoringPetBar", name = "Include Pet Bar",
+              store = "bool", desc = "Apply the same colouring to pet action buttons.",
+              disabled = function() return not profile().rangeColoring end,
+              apply = function() P():ApplyRangeColoring() end },
+        },
+    },
+    --------------------------------------------------------------------------------
+    {
+        key = "map",
+        title = "Map",
+        icon = "Interface\\Icons\\INV_Misc_Map02",
+        controls = {
+            { type = "toggle", key = "showDelvesOnContinentMap", name = "Show Delves On Continent Map",
+              store = "bool",
+              desc = "Roll every zone's delve entrances up onto the continent map. Blizzard's "
+                  .. "own Delves map filter still applies.",
+              apply = function() P():ApplyDelveMapPins() end },
+            { type = "toggle", key = "delvesBountifulOnly", name = "Bountiful Delves Only",
+              store = "bool",
+              desc = "Only show bountiful delves. Same setting as the checkbox in the map's "
+                  .. "tracking menu.",
+              disabled = function() return not profile().showDelvesOnContinentMap end,
+              apply = function() P():ApplyDelveMapPins() end },
         },
     },
     --------------------------------------------------------------------------------

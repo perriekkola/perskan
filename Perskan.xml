@@ -7,11 +7,13 @@
   <Script file="Modules\FrameScaling.lua" />
   <Script file="Modules\ActionBars.lua" />
   <Script file="Modules\GreyOnCooldown.lua" />
+  <Script file="Modules\RangeColoring.lua" />
   <Script file="Modules\HideElements.lua" />
   <Script file="Modules\Auras.lua" />
   <Script file="Modules\Nameplates.lua" />
   <Script file="Modules\DamageMeter.lua" />
   <Script file="Modules\BuffBars.lua" />
+  <Script file="Modules\DelveMap.lua" />
 
   <!-- Settings window (built in OnInitialize). -->
   <Script file="Config\Schema.lua" />

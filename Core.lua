@@ -39,6 +39,8 @@ local LIVE_APPLIERS = {
     "ApplyHideHotkeys",
     "ApplyHideMacroText",
     "ApplyGreyOnCooldown",
+    "ApplyRangeColoring",
+    "ApplyDelveMapPins",
     "ApplyHideSocialButton",
     "ApplyHideBagsBar",
     "ApplyTargetFocusAuraSize",

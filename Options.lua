@@ -43,6 +43,12 @@ local defaults = {
         greyOnCooldownUnusable = true,
         greyOnCooldownNoResources = false,
         greyOnCooldownPetBar = true,
+        rangeColoring = true,
+        rangeColoringHotkeys = true,
+        rangeColoringPetBar = true,
+        -- World Map
+        showDelvesOnContinentMap = true,
+        delvesBountifulOnly = false,
         -- Unit Frame Auras
         targetFocusAuraSize = 20,
         -- Hide UI Elements
