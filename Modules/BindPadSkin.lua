@@ -140,6 +140,14 @@ local function SkinCloseButton(button, anchorTo)
     if not button or button._perskanSkinned then return end
     button._perskanSkinned = true
 
+    -- Sweep the regions rather than naming the four texture slots: a close button's art
+    -- can sit in extra pieces (borders, icons) that survive hiding just Normal/Pushed,
+    -- which is what left a stock red X sitting on the panel.
+    for _, region in ipairs({ button:GetRegions() }) do
+        if region.GetObjectType and region:GetObjectType() == "Texture" then
+            region:Hide()
+        end
+    end
     HideAll(button:GetNormalTexture(), button:GetPushedTexture(), button:GetDisabledTexture(),
         button:GetHighlightTexture())
 
@@ -365,7 +373,26 @@ local function SkinBindPad()
     mini.GUI.SetGradientH(accentLine, accent.r, accent.g, accent.b, 0.9, accent.r, accent.g, accent.b, 0.04)
 
     SkinScrollBar()
-    SkinCloseButton(BindPadFrame.CloseButton or _G["BindPadFrameCloseButton"], BindPadFrame)
+    -- The panel's own close button, then any other close button anywhere beneath it -
+    -- looking up a single one left a second, unskinned stock X sitting on the frame.
+    -- Only the primary one is repositioned; the rest just lose their art.
+    local primaryClose = BindPadFrame.CloseButton or _G["BindPadFrameCloseButton"]
+    SkinCloseButton(primaryClose, BindPadFrame)
+
+    local function SkinCloseButtonsIn(frame, depth)
+        if depth > 4 then return end
+        for _, child in ipairs({ frame:GetChildren() }) do
+            local childName = child.GetName and child:GetName()
+            if child ~= primaryClose and childName and childName:match("CloseButton$") then
+                SkinCloseButton(child)
+            end
+            SkinCloseButtonsIn(child, depth + 1)
+        end
+    end
+    SkinCloseButtonsIn(BindPadFrame, 1)
+
+    SkinCloseButton(_G["BindPadBindFrameCloseButton"])
+    SkinCloseButton(_G["BindPadMacroFrameCloseButton"])
     SkinTextButton(_G["BindPadFrameExitButton"])
 
     for name, icon in pairs(SHORTCUT_ICONS) do
