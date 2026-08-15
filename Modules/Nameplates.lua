@@ -129,6 +129,12 @@ local function PlainNumber(value)
     return value
 end
 
+-- Every nameplate is laid out from the same shared NamePlateSetupOptions, so a
+-- baseline read off one plate describes all of them. Keeping a copy here is what
+-- lets a plate whose own measurements come back secret still take the setting -
+-- otherwise those plates silently keep Blizzard's height while the rest change.
+local sharedBase = {}
+
 -- Remember what Blizzard sized things to, so our offset is always applied to its
 -- values rather than compounding on top of a height we set ourselves. A measurement
 -- we can't read keeps the previous baseline rather than replacing it with a partial
@@ -145,11 +151,18 @@ local function CaptureCastbarBaseline(container, castBar)
     if castBar.Spark then
         castBar._perskanBaseSpark = PlainNumber(castBar.Spark:GetHeight()) or castBar._perskanBaseSpark
     end
+
+    sharedBase.bar = barHeight
+    sharedBase.container = containerHeight
+    sharedBase.spark = castBar._perskanBaseSpark
     return true
 end
 
 local function SetCastbarHeight(container, castBar)
-    local baseBar = castBar._perskanBaseBar
+    -- Fall back to the shared baseline for plates we could never measure ourselves.
+    local baseBar = castBar._perskanBaseBar or sharedBase.bar
+    local baseContainer = castBar._perskanBaseContainer or sharedBase.container
+    local baseSpark = castBar._perskanBaseSpark or sharedBase.spark
     if not baseBar or baseBar <= 0 then return end
 
     -- Zero means "leave Blizzard's height alone", so the setting is inert until used.
@@ -160,12 +173,12 @@ local function SetCastbarHeight(container, castBar)
 
     -- The container carries the icon strip in styles that put the spell name outside
     -- the bar, so shift it by the delta instead of setting it to the bar height.
-    if container and castBar._perskanBaseContainer then
-        container:SetHeight(math.max(1, castBar._perskanBaseContainer + delta))
+    if container and baseContainer then
+        container:SetHeight(math.max(1, baseContainer + delta))
     end
     castBar:SetHeight(target)
-    if castBar.Spark and castBar._perskanBaseSpark then
-        castBar.Spark:SetHeight(math.max(1, castBar._perskanBaseSpark + delta))
+    if castBar.Spark and baseSpark then
+        castBar.Spark:SetHeight(math.max(1, baseSpark + delta))
     end
 end
 
@@ -202,8 +215,10 @@ local function ApplyCastbarHeight(nameplate)
         end
     end
 
-    if castBar._perskanBaseBar == nil and not CaptureCastbarBaseline(container, castBar) then
-        return
+    -- A failed capture is not fatal: the shared baseline still gets this plate to the
+    -- right height, and a later pass re-measures it.
+    if castBar._perskanBaseBar == nil then
+        CaptureCastbarBaseline(container, castBar)
     end
     SetCastbarHeight(container, castBar)
 end
