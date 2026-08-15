@@ -190,6 +190,32 @@ addon.configSchema = {
     },
     --------------------------------------------------------------------------------
     {
+        key = "vendor",
+        title = "Vendor",
+        icon = "Interface\\Icons\\INV_Misc_Coin_01",
+        controls = {
+            { type = "toggle", key = "extendedVendor", name = "Bigger Merchant Window",
+              store = "bool",
+              desc = "Show more of a vendor's stock at once instead of Blizzard's ten items "
+                  .. "per page.",
+              apply = function() P():ApplyVendorLayout() end },
+            { type = "range", key = "vendorColumns", name = "Columns",
+              desc = "Columns of items. Blizzard's default is 2.", min = 2, max = 6, step = 1,
+              disabled = function() return not profile().extendedVendor end,
+              apply = function() P():ApplyVendorLayout() end },
+            { type = "range", key = "vendorRows", name = "Rows",
+              desc = "Rows of items. Blizzard's default is 5.", min = 5, max = 10, step = 1,
+              disabled = function() return not profile().extendedVendor end,
+              apply = function() P():ApplyVendorLayout() end },
+            { type = "toggle", key = "vendorSearch", name = "Search Box", store = "bool",
+              desc = "Add a search box to the merchant window. Items that don't match dim "
+                  .. "rather than disappear, so buying stays exactly as Blizzard handles it.",
+              disabled = function() return not profile().extendedVendor end,
+              apply = function() P():ApplyVendorLayout() end },
+        },
+    },
+    --------------------------------------------------------------------------------
+    {
         key = "itemlevel",
         title = "Item Levels",
         icon = "Interface\\Icons\\INV_Chest_Plate04",
