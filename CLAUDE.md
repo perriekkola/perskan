@@ -21,7 +21,15 @@ built on the embedded **MiniFramework** widget toolkit (`Libs/MiniFramework/`), 
   Modules read `Perskan.db.profile` live (never cache it — AceDB repoints the table on a
   profile switch). Files: `CVars`, `FrameScaling`, `ActionBars`, `GreyOnCooldown`,
   `RangeColoring`, `HideElements`, `Auras`, `Nameplates`, `DamageMeter` (gated on
-  `enableDamageMeterCustomization`), `BuffBars`, `DelveMap`.
+  `enableDamageMeterCustomization`), `BuffBars`, `DelveMap`, `ChatCopyPaste`,
+  `KeyBindings`, `ItemLevel`.
+- **Vendored addons**: `Modules/BindPad/` (BindPad, Tageshi) and
+  `Modules/SimpleItemLevel/` (Simple Item Level, Kemayo) are third-party addons carried
+  whole, each with its own saved variable listed in the toc. Every deviation from
+  upstream is marked `[Perskan]` in-file, and there are only a handful: a feature gate in
+  BindPad, and namespace/saved-variable pinning in Simple Item Level (files loaded from
+  another addon's toc otherwise receive *its* name and private table from `...`). Thin
+  glue modules - `KeyBindings.lua`, `ItemLevel.lua` - expose them to the settings window.
 - **Action button visuals** are split by property so features stack rather than fight:
   `GreyOnCooldown` owns desaturation (cooldowns), `RangeColoring` owns vertex colour
   (range/resources).
@@ -30,8 +38,9 @@ built on the embedded **MiniFramework** widget toolkit (`Libs/MiniFramework/`), 
   cooldowns are not reachable from an addon; the only public knobs are the container's
   `SetSmallAuraSize`/`SetLargeAuraSize`, which is what `Modules/Auras.lua` drives.
 - **Config/Schema.lua**: Data-driven description of the settings window — categories and
-  controls (`toggle`/`range`/`select`/`divider`) with `cvar`, `apply`, `reload`, `hidden`,
-  `disabled` flags. Adding a setting is mostly a schema edit.
+  controls (`toggle`/`range`/`select`/`color`/`button`/`divider`) with `cvar`, `apply`,
+  `reload`, `hidden`, `disabled` flags, plus optional `get`/`set` for settings that don't
+  live in the profile. Adding a setting is mostly a schema edit.
 - **Config/Window.lua**: Renders the schema into a MiniFramework standalone window with a
   left sidebar, styled widgets, a non-blocking reload banner, and a Profiles panel. Exposes
   `Perskan:OpenConfig()` / `RequestReload()` / `RefreshConfig()`.

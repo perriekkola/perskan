@@ -30,6 +30,28 @@ local function damageMeterCustomizationOff()
     return not profile().enableDamageMeterCustomization
 end
 
+-- Simple Item Level keeps its own account-wide saved variables (see Modules/ItemLevel.lua),
+-- so its controls read and write there instead of the profile. Options that have never been
+-- changed resolve to upstream's defaults, which is what keeps this identical to running the
+-- standalone addon.
+local function ilvl(control)
+    control.get = function() return P():GetItemLevelOption(control.key) end
+    control.set = function(value) P():SetItemLevelOption(control.key, value) end
+    return control
+end
+
+local ILVL_POSITIONS = {
+    { value = "TOPLEFT", text = "Top Left" },
+    { value = "TOP", text = "Top" },
+    { value = "TOPRIGHT", text = "Top Right" },
+    { value = "LEFT", text = "Left" },
+    { value = "CENTER", text = "Center" },
+    { value = "RIGHT", text = "Right" },
+    { value = "BOTTOMLEFT", text = "Bottom Left" },
+    { value = "BOTTOM", text = "Bottom" },
+    { value = "BOTTOMRIGHT", text = "Bottom Right" },
+}
+
 -- Anchor point/offsets only mean anything once the window is pinned to the screen.
 local function damageMeterAnchorOff()
     return damageMeterCustomizationOff() or not profile().damageMeterAnchorEnabled
@@ -164,6 +186,85 @@ addon.configSchema = {
               store = "bool", desc = "Apply the same colouring to pet action buttons.",
               disabled = function() return not profile().rangeColoring end,
               apply = function() P():ApplyRangeColoring() end },
+        },
+    },
+    --------------------------------------------------------------------------------
+    {
+        key = "itemlevel",
+        title = "Item Levels",
+        icon = "Interface\\Icons\\INV_Chest_Plate04",
+        controls = {
+            { type = "divider", name = "Where To Show" },
+            ilvl{ type = "toggle", key = "bags", name = "Bags", store = "bool" },
+            ilvl{ type = "toggle", key = "character", name = "Character Frame", store = "bool" },
+            ilvl{ type = "toggle", key = "character_inset", name = "Inside The Character Frame",
+                  store = "bool", desc = "Place the level inside the frame instead of over the item.",
+                  disabled = function() return not P():GetItemLevelOption("character") end },
+            ilvl{ type = "toggle", key = "flyout", name = "Equipment Flyouts", store = "bool" },
+            ilvl{ type = "toggle", key = "inspect", name = "Inspect Frame", store = "bool" },
+            ilvl{ type = "toggle", key = "inspect_inset", name = "Inside The Inspect Frame",
+                  store = "bool", desc = "Place the level inside the frame instead of over the item.",
+                  disabled = function() return not P():GetItemLevelOption("inspect") end },
+            ilvl{ type = "toggle", key = "loot", name = "Loot Windows", store = "bool" },
+            ilvl{ type = "toggle", key = "tooltip", name = "Item Tooltips", store = "bool",
+                  desc = "Add the item level to tooltips." },
+            ilvl{ type = "toggle", key = "characteravg", name = "Character Average Item Level",
+                  store = "bool" },
+            ilvl{ type = "toggle", key = "inspectavg", name = "Inspect Average Item Level",
+                  store = "bool" },
+
+            { type = "divider", name = "Which Items" },
+            ilvl{ type = "toggle", key = "equipment", name = "Equippable Items", store = "bool" },
+            ilvl{ type = "toggle", key = "battlepets", name = "Battle Pets", store = "bool" },
+            ilvl{ type = "toggle", key = "reagents", name = "Crafting Reagents", store = "bool" },
+            ilvl{ type = "toggle", key = "misc", name = "Anything Else", store = "bool" },
+            ilvl{ type = "select", key = "quality", name = "Minimum Item Quality",
+                  desc = "Items below this quality are left alone.",
+                  values = {
+                      { value = 0, text = "Poor" },
+                      { value = 1, text = "Common" },
+                      { value = 2, text = "Uncommon" },
+                      { value = 3, text = "Rare" },
+                      { value = 4, text = "Epic" },
+                      { value = 5, text = "Legendary" },
+                      { value = 6, text = "Artifact" },
+                      { value = 7, text = "Heirloom" },
+                  } },
+
+            { type = "divider", name = "What To Show" },
+            ilvl{ type = "toggle", key = "itemlevel", name = "Item Level", store = "bool" },
+            ilvl{ type = "toggle", key = "upgrades", name = "Flag Upgrades", store = "bool" },
+            ilvl{ type = "toggle", key = "missinggems", name = "Flag Missing Gems", store = "bool" },
+            ilvl{ type = "toggle", key = "missingenchants", name = "Flag Missing Enchants",
+                  store = "bool" },
+            ilvl{ type = "toggle", key = "missingcharacter", name = "Only On The Character Frame",
+                  store = "bool", desc = "Restrict the missing gem/enchant flags to the character frame." },
+            ilvl{ type = "toggle", key = "bound", name = "Flag Soulbound Items", store = "bool",
+                  desc = "Only on items you control: bags and the character frame." },
+            ilvl{ type = "toggle", key = "color", name = "Colour By Item Quality", store = "bool" },
+
+            { type = "divider", name = "Appearance" },
+            ilvl{ type = "select", key = "font", name = "Font",
+                  values = {
+                      { value = "NumberNormal", text = "Number" },
+                      { value = "NumberNormalSmall", text = "Number (Small)" },
+                      { value = "HighlightSmall", text = "Highlight (Small)" },
+                      { value = "Normal", text = "Normal" },
+                      { value = "Large", text = "Large" },
+                      { value = "Huge", text = "Huge" },
+                  } },
+            ilvl{ type = "select", key = "position", name = "Item Level Position",
+                  values = ILVL_POSITIONS },
+            ilvl{ type = "select", key = "positionup", name = "Upgrade Flag Position",
+                  values = ILVL_POSITIONS },
+            ilvl{ type = "range", key = "scaleup", name = "Upgrade Flag Size",
+                  min = 0.5, max = 3, step = 0.1 },
+            ilvl{ type = "select", key = "positionmissing", name = "Missing Flag Position",
+                  values = ILVL_POSITIONS },
+            ilvl{ type = "select", key = "positionbound", name = "Soulbound Flag Position",
+                  values = ILVL_POSITIONS },
+            ilvl{ type = "range", key = "scalebound", name = "Soulbound Flag Size",
+                  min = 0.5, max = 3, step = 0.1 },
         },
     },
     --------------------------------------------------------------------------------

@@ -5,7 +5,7 @@
 ## Version: 1.2.0
 ## IconTexture: Interface\Icons\ability_titankeeper_testofconfidence
 
-## SavedVariables: PerskanDB, BindPadVars
+## SavedVariables: PerskanDB, BindPadVars, SimpleItemLevelDB
 
 # Library files
 Libs\LibStub\LibStub.lua
@@ -19,6 +19,7 @@ Libs\AceConsole-3.0\AceConsole-3.0.xml
 Libs\AceConfig-3.0\AceConfig-3.0.xml
 Libs\HereBeDragons\HereBeDragons-2.0.lua
 Libs\HereBeDragons\HereBeDragons-Pins-2.0.lua
+Libs\LibAppropriateItems-1.0\LibAppropriateItems-1.0.lua
 
 # Settings UI framework (embedded MiniFramework)
 Libs\MiniFramework\MiniFramework.xml

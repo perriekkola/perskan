@@ -16,6 +16,12 @@
   <Script file="Modules\DelveMap.lua" />
   <Script file="Modules\ChatCopyPaste.lua" />
   <Script file="Modules\KeyBindings.lua" />
+  <Script file="Modules\ItemLevel.lua" />
+
+  <!-- Vendored Simple Item Level: own namespace and saved variable, see Namespace.lua. -->
+  <Script file="Modules\SimpleItemLevel\Namespace.lua" />
+  <Script file="Modules\SimpleItemLevel\addon.lua" />
+  <Script file="Modules\SimpleItemLevel\api.lua" />
 
   <!-- Vendored BindPad: its own frames, saved variables and slash commands, gated by
        the two [Perskan] guards in Modules\BindPad\BindPad.lua. -->
