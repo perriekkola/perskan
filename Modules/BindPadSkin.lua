@@ -291,12 +291,11 @@ end
 -- What's left is rebuilt to the settings window's scrollbar: a 10px flat track with an
 -- 8px grey thumb and no arrow buttons. The stock slider keeps doing the scrolling - only
 -- its art is replaced - so the wheel, the drag and the range all behave as they did.
--- Two bars were showing: the panel draws its own art (old character-sheet scrollbar
--- pieces) on top of the template's, and the template's own bar is the dated
--- UIPanelScrollFrameTemplate slider. The decorative art is hidden, the legacy slider is
--- parked in a hidden holder - reparenting rather than alpha, since the scroll template
--- resets a scrollbar's alpha on range changes and mouse-over - and Blizzard's current
--- MinimalScrollBar takes over, wired up by ScrollUtil exactly as retail's own panels do.
+-- The panel drew its own scrollbar art (old character-sheet pieces) on top of the
+-- template's dated slider, and naming that slider to hide it didn't find it - which is
+-- how a second bar survived alongside the replacement. Every scrollbar the scroll frame
+-- owns is swept into a hidden holder instead, and Blizzard's current MinimalScrollBar
+-- takes over, wired up by ScrollUtil exactly as retail's own panels do.
 local function SkinScrollBar()
     HideAll(_G["BindPadScrollFrameTop"], _G["BindPadScrollFrameMiddle"], _G["BindPadScrollFrameBottom"])
 
@@ -305,11 +304,26 @@ local function SkinScrollBar()
     if not (ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar) then return end
     scrollFrame._perskanScrollSkinned = true
 
-    local stockBar = _G["BindPadScrollFrameScrollBar"] or scrollFrame.ScrollBar or scrollFrame.scrollBar
-    if stockBar then
-        local holder = CreateFrame("Frame", nil, BindPadFrame)
-        holder:Hide()
-        stockBar:SetParent(holder)
+    -- Reparenting rather than hiding in place: the scroll template re-shows and re-alphas
+    -- its bar as the range changes. Nothing under a hidden frame is ever drawn.
+    local holder = CreateFrame("Frame", nil, BindPadFrame)
+    holder:Hide()
+
+    local function Park(bar)
+        if bar then
+            bar:SetParent(holder)
+            bar:Hide()
+        end
+    end
+    Park(_G["BindPadScrollFrameScrollBar"])
+    Park(scrollFrame.ScrollBar)
+    Park(scrollFrame.scrollBar)
+    for _, child in ipairs({ scrollFrame:GetChildren() }) do
+        local childName = child.GetName and child:GetName()
+        local isSlider = child.GetObjectType and child:GetObjectType() == "Slider"
+        if isSlider or (childName and childName:match("ScrollBar")) then
+            Park(child)
+        end
     end
 
     local ok, scrollBar = pcall(CreateFrame, "EventFrame", nil, BindPadFrame, "MinimalScrollBar")
@@ -317,6 +331,7 @@ local function SkinScrollBar()
 
     scrollBar:SetPoint("TOPLEFT", scrollFrame, "TOPRIGHT", 8, 0)
     scrollBar:SetPoint("BOTTOMLEFT", scrollFrame, "BOTTOMRIGHT", 8, 0)
+    -- ScrollUtil takes over the wheel as well, so parking the old bar costs nothing.
     pcall(ScrollUtil.InitScrollFrameWithScrollBar, scrollFrame, scrollBar)
 end
 
