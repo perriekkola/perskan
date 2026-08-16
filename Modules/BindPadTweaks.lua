@@ -30,7 +30,7 @@ end
 -- vertical scroll rather than from the slider - even the icon picker, whose faux paging
 -- derives its row offset inside OnVerticalScroll - so ScrollUtil can drive them with the
 -- old slider out of the picture.
-local function ReplaceScrollBar(scrollFrame, barParent, barBottom)
+local function ReplaceScrollBar(scrollFrame, barParent, barBottom, onVerticalScroll)
     if not scrollFrame or scrollFrame._perskanScrollDone then return end
     if not (ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar) then return end
     scrollFrame._perskanScrollDone = true
@@ -47,7 +47,15 @@ local function ReplaceScrollBar(scrollFrame, barParent, barBottom)
             -- being the scroll frame, and FauxScrollFrame_* still calls SetValue on it.
             -- Left alone it would either error against the holder or fight ScrollUtil
             -- over the scroll position.
-            if bar.SetScript then bar:SetScript("OnValueChanged", nil) end
+            --
+            -- Asked rather than assumed, because the two frames genuinely differ. The
+            -- pad calls ScrollFrame_OnLoad, which reassigns .ScrollBar to an EventFrame
+            -- MinimalScrollBar of Blizzard's own; the picker does not, so its .ScrollBar
+            -- is still the template's Slider. An EventFrame has no OnValueChanged, and
+            -- SetScript rejects the name outright even when the handler is nil.
+            if bar.HasScript and bar:HasScript("OnValueChanged") then
+                bar:SetScript("OnValueChanged", nil)
+            end
             bar:SetParent(holder)
             bar:Hide()
         end
@@ -77,11 +85,9 @@ local function ReplaceScrollBar(scrollFrame, barParent, barBottom)
     scrollBar:SetPoint("BOTTOMLEFT", barBottom or scrollFrame, "BOTTOMRIGHT", 8, 0)
 
     -- ScrollUtil takes the wheel over as well, so the parked bar isn't needed for
-    -- anything. It also SetScripts OnVerticalScroll rather than hooking it, which would
-    -- drop the icon picker's own handler on the floor - and that handler is the entire
-    -- mechanism by which the grid repaints, so scrolling would move nothing at all.
-    -- Saved across the call and hooked back on after.
-    local onVerticalScroll = scrollFrame:GetScript("OnVerticalScroll")
+    -- anything. It SetScripts OnVerticalScroll rather than hooking it, though, so any
+    -- caller that needs a handler of its own has to hand it over to be put back - see
+    -- the picker, where that handler is the entire mechanism by which the grid repaints.
     pcall(ScrollUtil.InitScrollFrameWithScrollBar, scrollFrame, scrollBar)
     if onVerticalScroll then
         scrollFrame:HookScript("OnVerticalScroll", onVerticalScroll)
@@ -98,7 +104,11 @@ local function ModernizeScrollBar()
 end
 
 local function ModernizeMacroPopupScrollBar()
-    ReplaceScrollBar(BindPadMacroPopupScrollFrame, BindPadMacroPopupFrame, BindPadMacroPopupButton20)
+    -- Named rather than read back off the frame: the handler is BindPad's, declared in
+    -- the picker's XML, and naming it keeps this independent of whatever happens to be
+    -- attached by the time the popup first opens.
+    ReplaceScrollBar(BindPadMacroPopupScrollFrame, BindPadMacroPopupFrame,
+        BindPadMacroPopupButton20, BindPadMacroPopupFrame_OnScroll)
 end
 
 --------------------------------------------------------------------------------
