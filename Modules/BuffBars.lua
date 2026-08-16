@@ -240,11 +240,40 @@ local function SameOrder(a, b)
     return true
 end
 
--- Runs straight after the viewer's grid layout, while the visible bars still sit in the
--- slots the grid just handed out.
+-- The offsets the grid handed out, in the order the bars read on screen. Which end of the
+-- list comes first is taken from the viewer's own layout settings rather than from the order
+-- the frames happen to be anchored in: Blizzard's Layout skips its work while the viewer is
+-- hidden (GridLayoutFrameMixin:ShouldUpdateLayout), so the bars can already be carrying a
+-- previous pass's positions. Reading the slots geometrically makes this idempotent - running
+-- it over already-reordered bars yields the same slots instead of permuting a permutation.
+local function CollectSlots(viewer, frames)
+    local slots = {}
+    for i, itemFrame in ipairs(frames) do
+        local point, relativeTo, relativePoint, x, y = itemFrame:GetPoint(1)
+        if not point then return nil end
+        slots[i] = { point = point, relativeTo = relativeTo, relativePoint = relativePoint, x = x, y = y }
+    end
+
+    -- Horizontal grids grow along x, vertical ones along y; the direction flags say from
+    -- which end. Bars are vertical and grow downwards unless the viewer says otherwise.
+    local horizontal = viewer.isHorizontal and true or false
+    local firstIsLowest = horizontal and (viewer.layoutFramesGoingRight and true or false)
+        or (not horizontal and (viewer.layoutFramesGoingUp and true or false))
+
+    table.sort(slots, function(a, b)
+        local left = horizontal and a.x or a.y
+        local right = horizontal and b.x or b.y
+        if firstIsLowest then return left < right end
+        return left > right
+    end)
+
+    return slots
+end
+
+-- Runs after the viewer's grid layout, and again from the ticker as timers cross over.
 local function ApplyBarOrder()
     local viewer = BuffBarCooldownViewer
-    if not viewer or type(viewer.GetItemFrames) ~= "function" then return end
+    if not viewer or type(viewer.GetItemFrames) ~= "function" or not viewer:IsShown() then return end
 
     local frames = viewer:GetItemFrames()
     if not frames or #frames == 0 then
@@ -253,27 +282,29 @@ local function ApplyBarOrder()
     end
 
     local ok, order = pcall(ComputeOrder, frames)
-    if not ok then
+    if not ok then return end
+
+    if not order then
+        -- Sorting is off, or the timers can't be read: Blizzard's own order is what shows.
         stack.appliedOrder = frames
         return
     end
 
-    stack.appliedOrder = order or frames
-    if not order or #order < 2 then return end
+    if #order > 1 then
+        local slots = CollectSlots(viewer, frames)
+        -- No anchors yet (frames fresh out of the pool); the next layout brings them.
+        if not slots then return end
 
-    -- Reuse the grid's own offsets rather than recomputing bar heights and padding.
-    local slots = {}
-    for i, itemFrame in ipairs(frames) do
-        local point, relativeTo, relativePoint, x, y = itemFrame:GetPoint(1)
-        if not point then return end
-        slots[i] = { point, relativeTo, relativePoint, x, y }
+        for i, itemFrame in ipairs(order) do
+            local slot = slots[i]
+            itemFrame:ClearAllPoints()
+            itemFrame:SetPoint(slot.point, slot.relativeTo, slot.relativePoint, slot.x, slot.y)
+        end
     end
 
-    for i, itemFrame in ipairs(order) do
-        local slot = slots[i]
-        itemFrame:ClearAllPoints()
-        itemFrame:SetPoint(slot[1], slot[2], slot[3], slot[4], slot[5])
-    end
+    -- Only once the order is actually on screen, so a bail-out above leaves the ticker
+    -- looking at a stale order and trying again.
+    stack.appliedOrder = order
 end
 
 local function RelayoutBars()
@@ -329,11 +360,12 @@ local function SortTick(self, elapsed)
     if not frames or #frames < 2 then return end
 
     local ok, order = pcall(ComputeOrder, frames)
-    if not ok then return end
+    if not ok or not order then return end
 
-    -- Only relayout when the timers have actually crossed over.
-    if order and not SameOrder(order, stack.appliedOrder) then
-        RelayoutBars()
+    -- Only move bars when the timers have actually crossed over. Nothing has shown or
+    -- hidden, so the slots are unchanged and this needs no full layout pass.
+    if not SameOrder(order, stack.appliedOrder) then
+        pcall(ApplyBarOrder)
     end
 end
 
@@ -357,10 +389,17 @@ local function EnsureStackingHooks()
         if StackingOn() then pcall(ApplyBarOrder) end
     end)
 
-    -- A relayout releases and re-acquires the item frames; pick up any new ones.
+    -- A relayout releases and re-acquires the item frames; any new one arrives holding its
+    -- slot the way the template says, so prepare it and lay the bars out once more.
     if type(viewer.RefreshLayout) == "function" then
-        hooksecurefunc(viewer, "RefreshLayout", PrepareItemFrames)
+        hooksecurefunc(viewer, "RefreshLayout", function()
+            PrepareItemFrames()
+            ScheduleRelayout()
+        end)
     end
+
+    -- Blizzard's Layout does nothing while the viewer is hidden, so redo it on the way back.
+    viewer:HookScript("OnShow", ScheduleRelayout)
 
     PrepareItemFrames()
 end
