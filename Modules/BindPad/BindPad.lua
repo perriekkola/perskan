@@ -183,6 +183,20 @@ function BindPadFrame_OnMouseDown(self, button)
     end
 end
 
+-- [Perskan] The Spellbook shortcut used to call ShowUIPanel(SpellBookFrame). That global
+-- is gone in retail - the spellbook lives inside PlayerSpellsFrame now - so the button
+-- was erroring out rather than opening anything. Tried newest first, so an older client
+-- still lands on the API it has.
+function BindPadFrame_OpenSpellBook()
+    if PlayerSpellsUtil and PlayerSpellsUtil.ToggleSpellBookFrame then
+        PlayerSpellsUtil.ToggleSpellBookFrame()
+    elseif ToggleSpellBook then
+        ToggleSpellBook(BOOKTYPE_SPELL or "spell")
+    elseif SpellBookFrame then
+        ShowUIPanel(SpellBookFrame)
+    end
+end
+
 function BindPadFrame_OnEnter(self)
     BindPadCore.UpdateCursor()
 end
@@ -610,7 +624,11 @@ function BindPadSlot_UpdateState(self)
         end
 
         if TYPE_BPMACRO == padSlot.type then
-            self.border:SetVertexColor(0, 1.0, 0, 0.35)
+            -- [Perskan] Full alpha now: this used to tint a soft 62x62 glow behind a 36px
+            -- button, where 0.35 was about right. It is the action bar's own icon-frame
+            -- border today - a thin line the width of the button - and green at a third
+            -- alpha on it is invisible.
+            self.border:SetVertexColor(0, 1.0, 0, 1.0)
             self.border:Show()
         else
             self.border:Hide()
@@ -2240,9 +2258,12 @@ function BindPadCore.CreateBindPadSlot(usenum)
             if i == 1 then
                 button:SetPoint("TOPLEFT", BindPadSlotButtonContainer, "TOPLEFT", 6, -6)
             elseif mod(i, NUM_SLOTS_PER_ROW) == 1 then
-                button:SetPoint("TOP", "BindPadSlot" .. (i - NUM_SLOTS_PER_ROW), "BOTTOM", 0, -10)
+                -- [Perskan] Tighter than the 13/10 upstream used. That spacing was sized
+                -- around the old quickslot bevel, which spilled 15px past the button on
+                -- every side; the current frame art stops at the button's edge.
+                button:SetPoint("TOP", "BindPadSlot" .. (i - NUM_SLOTS_PER_ROW), "BOTTOM", 0, -8)
             else
-                button:SetPoint("LEFT", "BindPadSlot" .. (i - 1), "RIGHT", 13, 0)
+                button:SetPoint("LEFT", "BindPadSlot" .. (i - 1), "RIGHT", 8, 0)
             end
             button:Enable()
             button:Show()

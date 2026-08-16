@@ -30,10 +30,11 @@ was deliberately moved away from.
 - **Vendored addons**: `Modules/BindPad/` (BindPad, Tageshi) and
   `Modules/SimpleItemLevel/` (Simple Item Level, Kemayo) are third-party addons carried
   whole, each with its own saved variable listed in the toc. Every deviation from
-  upstream is marked `[Perskan]` in-file, and there are only a handful: a feature gate in
-  BindPad, and namespace/saved-variable pinning in Simple Item Level (files loaded from
-  another addon's toc otherwise receive *its* name and private table from `...`). Thin
-  glue modules - `KeyBindings.lua`, `ItemLevel.lua` - expose them to the settings window.
+  upstream is marked `[Perskan]` in-file: a feature gate in BindPad, BindPad's widget art
+  moved onto Blizzard's current templates and atlases (`BindPad.xml`), and
+  namespace/saved-variable pinning in Simple Item Level (files loaded from another
+  addon's toc otherwise receive *its* name and private table from `...`). Thin glue
+  modules - `KeyBindings.lua`, `ItemLevel.lua` - expose them to the settings window.
 - **Action button visuals** are split by property so features stack rather than fight:
   `GreyOnCooldown` owns desaturation (cooldowns), `RangeColoring` owns vertex colour
   (range/resources).

@@ -1,9 +1,9 @@
--- Two fixes to the vendored BindPad's window. Its own look is left alone: the panel is
--- Blizzard's ButtonFrameTemplate already, and repainting it only meant fighting the
--- game's art piece by piece.
+-- Two fixes to the vendored BindPad's window, both of which have to happen at runtime.
+-- The window's art is not one of them - the buttons, checkboxes and slot frames were
+-- moved onto Blizzard's current templates and atlases in BindPad.xml itself, where the
+-- widgets are declared, each change marked [Perskan] there.
 --
--- What is worth changing is the parts built on assets the game has moved on from, and
--- the panel behaviour:
+-- What is left here is the parts XML can't reach:
 --
 --   * The scroll frame is a UIPanelScrollFrameTemplate, whose slider is the old
 --     arrows-and-thumb bar, and the panel draws its own character-sheet scrollbar art on
