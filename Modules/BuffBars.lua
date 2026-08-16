@@ -1,11 +1,13 @@
 -- BuffBarCooldownViewer positioning + ExtraQuestButton anchoring.
 --
--- Two related settings live here because they share the cast-bar anchor:
+-- Settings that live here:
 --   * anchorBuffBarsToWidgetFrame - park the viewer above the cast bar
---   * anchorExtraQuestButton       - park ExtraQuestButton above the cast bar
+--   * anchorExtraQuestButton      - park ExtraQuestButton above the cast bar
+--   * collapseTrackedBarGaps      - close the holes inactive bars leave behind
+--   * trackedBarSortMode          - order the visible bars by time remaining
 --
--- A third, stacking the bars upward without gaps, is gone: the cooldown viewer's layout
--- no longer leaves an addon's anchoring in place on current patches.
+-- The first two share the cast-bar anchor; the last two share the viewer's layout pass
+-- (see the "Tracked bar stacking" section below).
 --
 -- The old code installed the cast-bar SetPoint hook and the login init twice (once
 -- per anchor feature); this consolidates them into a single event frame and a single
@@ -61,7 +63,401 @@ local function RepositionAll()
     RepositionBuffBarsAboveWidget()
 end
 
+--------------------------------------------------------------------------------
+-- Tracked bar stacking: gap removal + duration sorting
+--------------------------------------------------------------------------------
+-- Blizzard hides a bar as soon as its aura drops (CooldownViewerItemMixin:UpdateShownState)
+-- but only re-runs the viewer's grid layout when the *number* of configured bars changes
+-- (CooldownViewerMixin:RefreshLayout). Every bar still on screen therefore keeps the anchor
+-- it was given by the last layout pass, which is why an inactive bar leaves a hole and each
+-- bar keeps a fixed slot in the list.
+--
+-- A hidden bar keeps its slot on purpose: CooldownViewerBuffBarItemTemplate sets
+-- includeAsLayoutChildWhenHidden, the one flag that makes BaseLayoutMixin:AddLayoutChildren
+-- collect a region that isn't shown. Clearing it on the item frames is what actually closes
+-- the gaps - the layout engine then walks only the bars still on screen - and asking the
+-- viewer to lay itself out again whenever a bar shows or hides is what keeps it current.
+-- No bar is anchored by hand, which is what makes this survive Blizzard's own refreshes; the
+-- addon's earlier attempt anchored the bars itself and lost that race on every relayout.
+--
+-- Sorting rides on the same pass. Right after a layout the visible bars occupy the slots the
+-- grid produced, so ordering them by time remaining is a permutation of those slot offsets.
+-- layoutIndex is deliberately left alone: RefreshData maps cooldownIDs by it, so renumbering
+-- it would shuffle which aura each bar displays.
+--
+-- Only unprotected frames are touched (the item frames come from the viewer's frame pool),
+-- so unlike the anchoring above this needs no combat guard - which matters, because bars come
+-- and go mostly in combat.
+
+local SORT_INTERVAL = 0.2
+
+local stack = {
+    hooked = false,
+    relayoutPending = false,
+    appliedOrder = nil,
+    ticker = nil,
+}
+
+local function GapsCollapsed()
+    return Perskan.db.profile.collapseTrackedBarGaps
+end
+
+local function SortMode()
+    return Perskan.db.profile.trackedBarSortMode or "default"
+end
+
+local function SortingOn()
+    return GapsCollapsed() and SortMode() ~= "default"
+end
+
+local function StackingOn()
+    return GapsCollapsed()
+end
+
+--------------------------------------------------------------------------------
+-- Reading a bar's timer
+--------------------------------------------------------------------------------
+-- 12.x hides a good deal of aura data from addons (aura instance IDs are secret, and the
+-- values derived from them can be too), so the timer is read from whichever of these still
+-- answers with a plain number. They are tried in order and one source is used for the whole
+-- pass, so the numbers being compared are always on the same scale.
+
+-- What Blizzard's own item code uses.
+local function ExpirationFromCooldownValues(itemFrame)
+    if type(itemFrame.GetCooldownValues) ~= "function" then return nil end
+
+    local expirationTime = itemFrame:GetCooldownValues()
+    if type(expirationTime) ~= "number" or expirationTime <= 0 then return nil end
+    return expirationTime
+end
+
+-- The swipe timer on the item's cooldown frame.
+local function ExpirationFromCooldownFrame(itemFrame)
+    if type(itemFrame.GetCooldownFrame) ~= "function" then return nil end
+
+    local cooldownFrame = itemFrame:GetCooldownFrame()
+    if not cooldownFrame or type(cooldownFrame.GetCooldownTimes) ~= "function" then return nil end
+
+    local startTimeMs, durationMs = cooldownFrame:GetCooldownTimes()
+    if type(startTimeMs) ~= "number" or type(durationMs) ~= "number" or durationMs <= 0 then
+        return nil
+    end
+    return (startTimeMs + durationMs) / 1000
+end
+
+local TEXT_UNITS = { h = 3600, m = 60, s = 1 }
+
+-- Last resort: the countdown the bar itself prints.
+local function ExpirationFromDurationText(itemFrame)
+    if type(itemFrame.GetDurationFontString) ~= "function" then return nil end
+
+    local fontString = itemFrame:GetDurationFontString()
+    local text = fontString and fontString:GetText()
+    if type(text) ~= "string" then return nil end
+
+    local remaining
+    local minutes, seconds = text:match("^(%d+):(%d+)$")
+    if minutes then
+        remaining = tonumber(minutes) * 60 + tonumber(seconds)
+    else
+        local value, unit = text:match("^([%d%.]+)%s*(%a?)")
+        remaining = tonumber(value)
+        if remaining and unit ~= "" then
+            remaining = remaining * (TEXT_UNITS[unit:lower()] or 1)
+        end
+    end
+
+    if not remaining or remaining <= 0 then return nil end
+    return GetTime() + remaining
+end
+
+local TIME_SOURCES = {
+    ExpirationFromCooldownValues,
+    ExpirationFromCooldownFrame,
+    ExpirationFromDurationText,
+}
+
+-- Expiration time per bar from the first source that can read any of them, or nil when the
+-- timers are unreadable and the bars have to stay in Blizzard's order.
+local function ExpirationTimes(frames)
+    for _, source in ipairs(TIME_SOURCES) do
+        local times, found = {}, false
+        for _, itemFrame in ipairs(frames) do
+            local ok, expirationTime = pcall(source, itemFrame)
+            if ok and expirationTime then
+                times[itemFrame] = expirationTime
+                found = true
+            end
+        end
+        if found then return times end
+    end
+
+    return nil
+end
+
+-- The order the visible bars should appear in, or nil to leave Blizzard's order alone.
+local function ComputeOrder(frames)
+    if not SortingOn() then return nil end
+
+    local times = ExpirationTimes(frames)
+    if not times then return nil end
+
+    local now = GetTime()
+    local shortestFirst = SortMode() ~= "longest"
+    local remaining, order = {}, {}
+    for i, itemFrame in ipairs(frames) do
+        order[i] = itemFrame
+
+        local expirationTime = times[itemFrame]
+        local secondsLeft = expirationTime and (expirationTime - now)
+        -- Timerless auras and anything already expired have no place in a duration sort.
+        remaining[itemFrame] = (secondsLeft and secondsLeft > 0) and secondsLeft or nil
+    end
+
+    table.sort(order, function(a, b)
+        local left, right = remaining[a], remaining[b]
+
+        -- Bars without a timer sit at the end in both directions, in the order the
+        -- Cooldown Manager lists them.
+        if (left ~= nil) ~= (right ~= nil) then return left ~= nil end
+        if left == nil or left == right then
+            -- Ties keep that order too, so equal timers don't swap places.
+            return (a.layoutIndex or 0) < (b.layoutIndex or 0)
+        end
+
+        if shortestFirst then return left < right end
+        return left > right
+    end)
+
+    return order
+end
+
+local function SameOrder(a, b)
+    if not a or not b or #a ~= #b then return false end
+    for i = 1, #a do
+        if a[i] ~= b[i] then return false end
+    end
+    return true
+end
+
+-- The offsets the grid handed out, in the order the bars read on screen. Which end of the
+-- list comes first is taken from the viewer's own layout settings rather than from the order
+-- the frames happen to be anchored in: Blizzard's Layout skips its work while the viewer is
+-- hidden (GridLayoutFrameMixin:ShouldUpdateLayout), so the bars can already be carrying a
+-- previous pass's positions. Reading the slots geometrically makes this idempotent - running
+-- it over already-reordered bars yields the same slots instead of permuting a permutation.
+local function CollectSlots(viewer, frames)
+    local slots = {}
+    for i, itemFrame in ipairs(frames) do
+        local point, relativeTo, relativePoint, x, y = itemFrame:GetPoint(1)
+        if not point then return nil end
+        slots[i] = { point = point, relativeTo = relativeTo, relativePoint = relativePoint, x = x, y = y }
+    end
+
+    -- Horizontal grids grow along x, vertical ones along y; the direction flags say from
+    -- which end. Bars are vertical and grow downwards unless the viewer says otherwise.
+    local horizontal = viewer.isHorizontal and true or false
+    local firstIsLowest = horizontal and (viewer.layoutFramesGoingRight and true or false)
+        or (not horizontal and (viewer.layoutFramesGoingUp and true or false))
+
+    table.sort(slots, function(a, b)
+        local left = horizontal and a.x or a.y
+        local right = horizontal and b.x or b.y
+        if firstIsLowest then return left < right end
+        return left > right
+    end)
+
+    return slots
+end
+
+-- Runs after the viewer's grid layout, and again from the ticker as timers cross over.
+local function ApplyBarOrder()
+    local viewer = BuffBarCooldownViewer
+    if not viewer or type(viewer.GetItemFrames) ~= "function" or not viewer:IsShown() then return end
+
+    local frames = viewer:GetItemFrames()
+    if not frames or #frames == 0 then
+        stack.appliedOrder = nil
+        return
+    end
+
+    local ok, order = pcall(ComputeOrder, frames)
+    if not ok then return end
+
+    if not order then
+        -- Sorting is off, or the timers can't be read: Blizzard's own order is what shows.
+        stack.appliedOrder = frames
+        return
+    end
+
+    if #order > 1 then
+        local slots = CollectSlots(viewer, frames)
+        -- No anchors yet (frames fresh out of the pool); the next layout brings them.
+        if not slots then return end
+
+        for i, itemFrame in ipairs(order) do
+            local slot = slots[i]
+            itemFrame:ClearAllPoints()
+            itemFrame:SetPoint(slot.point, slot.relativeTo, slot.relativePoint, slot.x, slot.y)
+        end
+    end
+
+    -- Only once the order is actually on screen, so a bail-out above leaves the ticker
+    -- looking at a stale order and trying again.
+    stack.appliedOrder = order
+end
+
+local function RelayoutBars()
+    local viewer = BuffBarCooldownViewer
+    if not viewer or type(viewer.Layout) ~= "function" or not viewer:IsShown() then return end
+
+    -- Blizzard's Layout compacts the visible bars; the hook below then reorders them.
+    pcall(viewer.Layout, viewer)
+end
+
+-- Several bars can change visibility in the same aura update, so coalesce into one pass.
+local function ScheduleRelayout()
+    if not StackingOn() or stack.relayoutPending then return end
+
+    stack.relayoutPending = true
+    C_Timer.After(0, function()
+        stack.relayoutPending = false
+        RelayoutBars()
+    end)
+end
+
+-- Hook every item frame's visibility and set whether a hidden one still holds its slot.
+-- Both have to be redone after a RefreshLayout, which hands out frames from the pool afresh.
+local function PrepareItemFrames()
+    local viewer = BuffBarCooldownViewer
+    local pool = viewer and viewer.itemFramePool
+    if not pool or type(pool.EnumerateActive) ~= "function" then return end
+
+    local keepSlot = not StackingOn()
+    for itemFrame in pool:EnumerateActive() do
+        -- CooldownViewerBuffBarItemTemplate ships this as true, which is exactly what
+        -- reserves an empty slot for a bar whose aura isn't up.
+        itemFrame.includeAsLayoutChildWhenHidden = keepSlot
+
+        -- Frames are pooled and reused, so each one only ever needs hooking once.
+        if not itemFrame.perskanStackHooked then
+            itemFrame.perskanStackHooked = true
+            itemFrame:HookScript("OnShow", ScheduleRelayout)
+            itemFrame:HookScript("OnHide", ScheduleRelayout)
+        end
+    end
+end
+
+local function SortTick(self, elapsed)
+    self.elapsed = (self.elapsed or 0) + elapsed
+    if self.elapsed < SORT_INTERVAL then return end
+    self.elapsed = 0
+
+    local viewer = BuffBarCooldownViewer
+    if not viewer or type(viewer.GetItemFrames) ~= "function" or not viewer:IsShown() then return end
+
+    local frames = viewer:GetItemFrames()
+    if not frames or #frames < 2 then return end
+
+    local ok, order = pcall(ComputeOrder, frames)
+    if not ok or not order then return end
+
+    -- Only move bars when the timers have actually crossed over. Nothing has shown or
+    -- hidden, so the slots are unchanged and this needs no full layout pass.
+    if not SameOrder(order, stack.appliedOrder) then
+        pcall(ApplyBarOrder)
+    end
+end
+
+local function UpdateSortTicker()
+    if not stack.ticker then return end
+
+    if SortingOn() then
+        stack.ticker.elapsed = 0
+        stack.ticker:SetScript("OnUpdate", SortTick)
+    else
+        stack.ticker:SetScript("OnUpdate", nil)
+    end
+end
+
+local function EnsureStackingHooks()
+    local viewer = BuffBarCooldownViewer
+    if stack.hooked or not viewer or type(viewer.Layout) ~= "function" then return end
+    stack.hooked = true
+
+    hooksecurefunc(viewer, "Layout", function()
+        if StackingOn() then pcall(ApplyBarOrder) end
+    end)
+
+    -- A relayout releases and re-acquires the item frames; any new one arrives holding its
+    -- slot the way the template says, so prepare it and lay the bars out once more.
+    if type(viewer.RefreshLayout) == "function" then
+        hooksecurefunc(viewer, "RefreshLayout", function()
+            PrepareItemFrames()
+            ScheduleRelayout()
+        end)
+    end
+
+    -- Blizzard's Layout does nothing while the viewer is hidden, so redo it on the way back.
+    viewer:HookScript("OnShow", ScheduleRelayout)
+
+    PrepareItemFrames()
+end
+
+-- /pp bars - what the addon can actually see of the viewer right now. Which timer source
+-- answers (if any) decides whether sorting by duration is possible on a given patch, and
+-- that isn't something the addon can know without asking the live client.
+function Perskan:DumpTrackedBars()
+    local viewer = BuffBarCooldownViewer
+    if not viewer then
+        print("|cff33bbffPerskan|r: BuffBarCooldownViewer does not exist.")
+        return
+    end
+
+    local frames = type(viewer.GetItemFrames) == "function" and viewer:GetItemFrames() or {}
+    print(("|cff33bbffPerskan|r tracked bars: shown=%s hooked=%s gaps=%s order=%s layoutChildren=%d")
+        :format(tostring(viewer:IsShown()), tostring(stack.hooked), tostring(GapsCollapsed()),
+                SortMode(), #frames))
+
+    local pool = viewer.itemFramePool
+    if not pool or type(pool.EnumerateActive) ~= "function" then
+        print("  no item frame pool")
+        return
+    end
+
+    local function Describe(source, itemFrame)
+        local ok, value = pcall(source, itemFrame)
+        if not ok then return "error" end
+        if value == nil then return "nil" end
+        return ("%.1fs"):format(value - GetTime())
+    end
+
+    local index = 0
+    for itemFrame in pool:EnumerateActive() do
+        index = index + 1
+        local name = type(itemFrame.GetNameFontString) == "function"
+            and itemFrame:GetNameFontString() and itemFrame:GetNameFontString():GetText()
+        print(("  %d. %s  layoutIndex=%s shown=%s keepsSlot=%s | values=%s cooldown=%s text=%s")
+            :format(index, tostring(name), tostring(itemFrame.layoutIndex),
+                    tostring(itemFrame:IsShown()), tostring(itemFrame.includeAsLayoutChildWhenHidden),
+                    Describe(ExpirationFromCooldownValues, itemFrame),
+                    Describe(ExpirationFromCooldownFrame, itemFrame),
+                    Describe(ExpirationFromDurationText, itemFrame)))
+    end
+end
+
+-- Live apply. Turning the options off hands the slots back to Blizzard, so the fixed
+-- positions (gaps and all) return on the spot.
+function Perskan:ApplyTrackedBarLayout()
+    EnsureStackingHooks()
+    PrepareItemFrames()
+    UpdateSortTicker()
+    RelayoutBars()
+end
+
 Perskan:RegisterModule("BuffBars", function(self)
+    stack.ticker = CreateFrame("Frame")
+
     local eventFrame = CreateFrame("Frame")
     eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     eventFrame:RegisterEvent("ADDON_LOADED")
@@ -100,8 +496,20 @@ Perskan:RegisterModule("BuffBars", function(self)
             RepositionAll()
         end
 
+        -- The cooldown viewer can come up after the first event fires, and its item frames
+        -- are pooled, so both are (re)checked on every event rather than once at login.
+        if BuffBarCooldownViewer then
+            EnsureStackingHooks()
+            UpdateSortTicker()
+            PrepareItemFrames()
+        end
+
         if event == "PLAYER_REGEN_ENABLED" or event == "EDIT_MODE_LAYOUTS_UPDATED" then
             RepositionAll()
+        end
+
+        if event == "PLAYER_ENTERING_WORLD" then
+            ScheduleRelayout()
         end
     end)
 end)
