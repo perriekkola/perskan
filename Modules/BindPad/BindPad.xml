@@ -87,19 +87,19 @@
              visibly short of the tab art behind it. Oversized a touch, and the two
              hover/selected overlays follow it so they still frame the icon. -->
         <NormalTexture>
-            <Size x="38" y="38" />
+            <Size x="34" y="34" />
             <Anchors>
                 <Anchor point="CENTER" />
             </Anchors>
         </NormalTexture>
         <HighlightTexture file="Interface\Buttons\ButtonHilight-Square" alphaMode="ADD">
-            <Size x="38" y="38" />
+            <Size x="34" y="34" />
             <Anchors>
                 <Anchor point="CENTER" />
             </Anchors>
         </HighlightTexture>
         <CheckedTexture file="Interface\Buttons\CheckButtonHilight" alphaMode="ADD">
-            <Size x="38" y="38" />
+            <Size x="34" y="34" />
             <Anchors>
                 <Anchor point="CENTER" />
             </Anchors>
@@ -121,8 +121,12 @@
                 <Texture parentKey="SlotBackground" atlas="UI-HUD-ActionBar-IconFrame-Background" setAllPoints="true" />
                 <Texture parentKey="SlotArt" atlas="ui-hud-actionbar-iconframe-slot" setAllPoints="true" />
                 <Texture name="$parentIcon" parentKey="icon" />
+                <!-- 1.5x the icon, the ratio Blizzard uses everywhere it sizes this
+                     mask (52 icon / 76 mask on the extra action button, 32 / 48 in the
+                     Perks list). The atlas is roughly two thirds opaque, so a mask cut
+                     to the icon's own size crops the icon to about 29px. -->
                 <MaskTexture parentKey="IconMask" atlas="UI-HUD-ActionBar-IconFrame-Mask" hWrapMode="CLAMPTOBLACKADDITIVE" vWrapMode="CLAMPTOBLACKADDITIVE">
-                    <Size x="44" y="44" />
+                    <Size x="66" y="66" />
                     <Anchors>
                         <Anchor point="CENTER" relativeKey="$parent.icon" />
                     </Anchors>
@@ -179,7 +183,7 @@
                  original interface - tucked into the slot's top-left corner. Now the
                  current flat plus glyph, centred in the empty slot. -->
             <Button name="$parentAddButton" parentKey="addbutton" alpha="0.6">
-                <Size x="14" y="14" />
+                <Size x="11" y="11" />
                 <Anchors>
                     <Anchor point="BOTTOMLEFT" x="4" y="4" />
                 </Anchors>
@@ -577,7 +581,7 @@
             <Button name="$parentOpenSpellBookButton" inherits="BindPadUIPanelButtonTemplate" text="BINDPAD_TEXT_SPELLBOOK">
                 <Size x="84" y="22" />
                 <Anchors>
-                    <Anchor point="BOTTOMLEFT" x="6" y="2" />
+                    <Anchor point="BOTTOMLEFT" x="6" y="3" />
                 </Anchors>
                 <KeyValues>
                     <KeyValue key="tooltipText" value="BINDPAD_TOOLTIP_OPENSPELLBOOK" type="global" />
@@ -620,7 +624,7 @@
             <Button name="$parentExitButton" inherits="MagicButtonTemplate" text="BINDPAD_TEXT_EXIT">
                 <Size x="80" y="22" />
                 <Anchors>
-                    <Anchor point="BOTTOMRIGHT" x="-6" y="2" />
+                    <Anchor point="BOTTOMRIGHT" x="-6" y="3" />
                 </Anchors>
                 <Scripts>
                     <OnClick>
