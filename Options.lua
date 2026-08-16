@@ -142,6 +142,16 @@ function Perskan:OnInitialize()
 end
 
 function Perskan:SlashCommand(msg)
+    -- "/pp bars" prints what the addon can see of the tracked bar viewer; everything else
+    -- opens the settings window.
+    local command = type(msg) == "string" and string.lower(strtrim and strtrim(msg) or msg) or ""
+    if command == "bars" then
+        if self.DumpTrackedBars then
+            self:DumpTrackedBars()
+        end
+        return
+    end
+
     if self.OpenConfig then
         self:OpenConfig()
     end
