@@ -140,6 +140,12 @@ local sharedBase = {}
 -- values rather than compounding on top of a height we set ourselves. A measurement
 -- we can't read keeps the previous baseline rather than replacing it with a partial
 -- one - the plate then keeps the height it already had.
+local function CaptureSparkBaseline(castBar)
+    if not castBar.Spark then return end
+    castBar._perskanBaseSpark = PlainNumber(castBar.Spark:GetHeight()) or castBar._perskanBaseSpark
+    sharedBase.spark = castBar._perskanBaseSpark or sharedBase.spark
+end
+
 local function CaptureCastbarBaseline(container, castBar)
     local barHeight = PlainNumber(castBar:GetHeight())
     if not barHeight then return false end
@@ -149,79 +155,131 @@ local function CaptureCastbarBaseline(container, castBar)
 
     castBar._perskanBaseBar = barHeight
     castBar._perskanBaseContainer = containerHeight
-    if castBar.Spark then
-        castBar._perskanBaseSpark = PlainNumber(castBar.Spark:GetHeight()) or castBar._perskanBaseSpark
-    end
+    CaptureSparkBaseline(castBar)
 
     sharedBase.bar = barHeight
     sharedBase.container = containerHeight
-    sharedBase.spark = castBar._perskanBaseSpark
     return true
+end
+
+-- Blizzard hands ApplyFrameOptions and ApplyStyleAndAnchoring the same NamePlateSetupOptions
+-- table it laid the plate out from, which beats measuring the frames: it is still Blizzard's
+-- own baseline once one of our heights is on the frame, and it says outright whether this
+-- nameplate style draws the spell name inside the bar.
+local function CaptureSetupOptions(castBar, setupOptions)
+    if type(setupOptions) ~= "table" then return end
+
+    local barHeight = PlainNumber(setupOptions.castBarHeight)
+    local iconHeight = PlainNumber(setupOptions.castIconHeight)
+    local nameInside = setupOptions.spellNameInsideCastBar and true or false
+
+    castBar._perskanNameInside = nameInside
+    sharedBase.nameInside = nameInside
+
+    if iconHeight then
+        castBar._perskanBaseIcon = iconHeight
+        sharedBase.icon = iconHeight
+    end
+
+    if barHeight then
+        castBar._perskanBaseBar = barHeight
+        sharedBase.bar = barHeight
+
+        -- The container is sized bar + icon when the spell name hangs below the bar, and
+        -- bar alone when it is inside it (Blizzard_NamePlateUnitFrame.lua).
+        local containerHeight = nameInside and barHeight or (iconHeight and barHeight + iconHeight)
+        if containerHeight then
+            castBar._perskanBaseContainer = containerHeight
+            sharedBase.container = containerHeight
+        end
+    end
+end
+
+-- ApplyStyleAndAnchoring hard-codes the pip's size, so the spark needs re-asserting after
+-- every relayout or it snaps back to Blizzard's height and looks stranded on a taller bar.
+local function SetCastbarSparkHeight(castBar)
+    local spark = castBar.Spark
+    if not spark then return end
+
+    local baseBar = castBar._perskanBaseBar or sharedBase.bar
+    local baseSpark = castBar._perskanBaseSpark or sharedBase.spark
+    if not baseBar or baseBar <= 0 or not baseSpark then return end
+
+    local target = Perskan.db.profile.nameplateCastbarHeight or 0
+    if target <= 0 then target = baseBar end
+
+    spark:SetHeight(math.max(1, baseSpark + (target - baseBar)))
 end
 
 local function SetCastbarHeight(container, castBar)
     -- Fall back to the shared baseline for plates we could never measure ourselves.
     local baseBar = castBar._perskanBaseBar or sharedBase.bar
     local baseContainer = castBar._perskanBaseContainer or sharedBase.container
-    local baseSpark = castBar._perskanBaseSpark or sharedBase.spark
     if not baseBar or baseBar <= 0 then return end
 
     -- Zero means "leave Blizzard's height alone", so the setting is inert until used.
     local target = Perskan.db.profile.nameplateCastbarHeight or 0
     if target <= 0 then target = baseBar end
 
-    local delta = target - baseBar
-
     -- The container carries the icon strip in styles that put the spell name outside
     -- the bar, so shift it by the delta instead of setting it to the bar height.
     if container and baseContainer then
-        container:SetHeight(math.max(1, baseContainer + delta))
+        container:SetHeight(math.max(1, baseContainer + (target - baseBar)))
     end
     castBar:SetHeight(target)
-    if castBar.Spark and baseSpark then
-        castBar.Spark:SetHeight(math.max(1, baseSpark + delta))
-    end
+    SetCastbarSparkHeight(castBar)
 end
 
 --------------------------------------------------------------------------------
 -- Castbar spell name and icon placement
 --------------------------------------------------------------------------------
 
+-- Height of the icon/name strip Blizzard reserves under the bar, which is also how far the
+-- bar sits above the container's bottom edge. Preferably Blizzard's own castIconHeight; the
+-- container is sized to bar + icon, so the two baselines can stand in for it.
+local function CastBarNameStripHeight(castBar)
+    -- This plate's own numbers first, in both cases: a shared baseline stands in for a
+    -- plate we could never read, not a second opinion to prefer over one we could. Taking
+    -- them in the wrong order lets a leftover icon height claim there is a strip under a
+    -- bar whose own measurements say there isn't one.
+    local strip = castBar._perskanBaseIcon
+    if not strip and castBar._perskanBaseBar and castBar._perskanBaseContainer then
+        strip = castBar._perskanBaseContainer - castBar._perskanBaseBar
+    end
+
+    if not strip then
+        strip = sharedBase.icon
+        if not strip and sharedBase.bar and sharedBase.container then
+            strip = sharedBase.container - sharedBase.bar
+        end
+    end
+
+    if not strip or strip <= 0 then return nil end
+    return strip
+end
+
 -- Blizzard lays the cast bar out one of two ways (Blizzard_NamePlateCastingBar.lua):
 -- either the spell name and icon sit inside the bar, or they hang below it in their own
 -- strip and the bar is anchored to the icon's top edge. The styles that already put them
 -- inside - Blocky Bars, Blocky Cast and Legacy Red - are exactly what this option is
 -- asking for, so they are left untouched.
-local function SpellNameAlreadyInsideCastBar()
-    local styles = Enum and Enum.NamePlateStyle
-    if not styles then return true end
+local function NameHangsBelowCastBar(castBar)
+    -- Legacy Red has its own layout entirely, and it already draws the name in the bar.
+    if castBar.classicStyleCastBar then return false end
 
-    local style = C_CVar and C_CVar.GetCVar and tonumber(C_CVar.GetCVar("nameplateStyle"))
-    if not style then return true end
+    local inside = castBar._perskanNameInside
+    if inside == nil then inside = sharedBase.nameInside end
+    if inside then return false end
 
-    return style == styles.Block or style == styles.CastFocus or style == styles.Classic
-end
-
--- Height of the icon/name strip Blizzard reserves under the bar, which is also how far
--- the bar sits above the container's bottom edge. The container is sized to bar + icon,
--- so the difference of the two baselines is the strip - and a strip of nothing means the
--- name is already inside the bar, whatever the style CVar says.
-local function CastBarNameStripHeight(castBar)
-    local baseBar = castBar._perskanBaseBar or sharedBase.bar
-    local baseContainer = castBar._perskanBaseContainer or sharedBase.container
-    if not baseBar or not baseContainer then return nil end
-
-    local strip = baseContainer - baseBar
-    if strip <= 0 then return nil end
-    return strip
+    -- No strip reserved under the bar means the name is already in it, whatever we
+    -- were told - which is also the answer before Blizzard has handed us setupOptions.
+    return CastBarNameStripHeight(castBar) ~= nil
 end
 
 local function SetCastbarNamePlacement(container, castBar)
     local icon = castBar.Icon
     if not container or not icon then return end
-
-    -- Legacy Red has its own layout entirely, and it already draws the name in the bar.
-    if castBar.classicStyleCastBar or SpellNameAlreadyInsideCastBar() then return end
+    if not NameHangsBelowCastBar(castBar) then return end
 
     local strip = CastBarNameStripHeight(castBar)
     if not strip then return end
@@ -272,23 +330,47 @@ local function ApplyCastbarLayout(nameplate)
     if not castBar._perskanHeightHooked then
         castBar._perskanHeightHooked = true
 
+        if castBar.ApplyStyleAndAnchoring then
+            -- The one function that clears and rebuilds every cast bar anchor, and it
+            -- hard-codes the spark's size while it is at it. UpdateAnchors calls it from
+            -- both ApplyFrameOptions and UpdateShowOnlyName, so hooking the relayout itself
+            -- is what catches every path - hanging off the callers misses the second one
+            -- and the plate quietly snaps back to Blizzard's layout.
+            hooksecurefunc(castBar, "ApplyStyleAndAnchoring", function(self, setupOptions)
+                -- Runs inside Blizzard's own setup path, so keep any surprise here from
+                -- turning into an error message per nameplate.
+                pcall(CaptureSetupOptions, self, setupOptions)
+                pcall(CaptureSparkBaseline, self)
+                pcall(SetCastbarSparkHeight, self)
+                -- Everything we moved is back where Blizzard wants it, so the flag has to
+                -- go with it or the restore path would be skipped when the option is
+                -- turned off later.
+                self._perskanNameMoved = nil
+                pcall(SetCastbarNamePlacement, self:GetParent(), self)
+            end)
+
+            -- Belt and braces: the bar is shown at the start of every cast, which is the
+            -- one moment the placement has to be right. Re-asserting here costs a couple
+            -- of SetPoints per cast and covers anything that re-anchors on the way up.
+            hooksecurefunc(castBar, "Show", function(self)
+                pcall(SetCastbarNamePlacement, self:GetParent(), self)
+            end)
+        end
+
         if frame.ApplyFrameOptions then
-            -- Blizzard rebuilds the whole cast bar layout here (style change, nameplate
-            -- size CVar, plate reuse). Re-baseline off its fresh values, then re-apply.
-            hooksecurefunc(frame, "ApplyFrameOptions", function(self)
+            -- Where Blizzard sizes the bar and its container (style change, nameplate size
+            -- CVar, plate reuse). Re-baseline off its fresh values, then re-apply.
+            hooksecurefunc(frame, "ApplyFrameOptions", function(self, setupOptions)
                 local hookedContainer, hookedBar = GetCastBarParts(self)
                 if not hookedBar then return end
-                -- Runs inside Blizzard's own setup path, so keep any surprise here
-                -- from turning into an error message per nameplate.
-                pcall(CaptureCastbarBaseline, hookedContainer, hookedBar)
+                pcall(CaptureSetupOptions, hookedBar, setupOptions)
+                if hookedBar._perskanBaseBar == nil then
+                    pcall(CaptureCastbarBaseline, hookedContainer, hookedBar)
+                end
                 pcall(SetCastbarHeight, hookedContainer, hookedBar)
-                -- Blizzard has just re-anchored everything, so anything we moved is back
-                -- where it started; the flag has to go with it or the restore path below
-                -- would be skipped next time the option is turned off.
-                hookedBar._perskanNameMoved = nil
                 pcall(SetCastbarNamePlacement, hookedContainer, hookedBar)
             end)
-        else
+        elseif not castBar.ApplyStyleAndAnchoring then
             -- Pre-12.x: no ApplyFrameOptions to hang off, so re-assert on SetHeight
             -- (guarded against our own re-entrant call).
             hooksecurefunc(castBar, "SetHeight", function(self)
