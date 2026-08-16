@@ -1,7 +1,7 @@
--- Two fixes to the vendored BindPad's window, both of which have to happen at runtime.
--- The window's art is not one of them - the buttons, checkboxes and slot frames were
--- moved onto Blizzard's current templates and atlases in BindPad.xml itself, where the
--- widgets are declared, each change marked [Perskan] there.
+-- Fixes to the vendored BindPad's window that have to happen at runtime. The window's
+-- art is not among them - the buttons, checkboxes and slot frames were moved onto
+-- Blizzard's current templates and atlases in BindPad.xml itself, where the widgets are
+-- declared, each change marked [Perskan] there.
 --
 -- What is left here is the parts XML can't reach:
 --
@@ -11,6 +11,8 @@
 --     Blizzard's current MinimalScrollBar.
 --   * The window was a managed UI panel, so it got shoved aside to make room for other
 --     windows and hidden when enough were open. It floats and drags instead.
+--   * Which leaves it with no position at all, because the panel system was the only
+--     thing that ever gave it one. See the Position section.
 --
 -- Every lookup is guarded: these are another addon's frame names, and a rename should
 -- cost a tweak, never an error inside BindPad.
@@ -112,6 +114,44 @@ local function ModernizeMacroPopupScrollBar()
 end
 
 --------------------------------------------------------------------------------
+-- Position
+--------------------------------------------------------------------------------
+
+-- BindPadFrame declares no anchors of its own, and ButtonFrameTemplate supplies none:
+-- every position it ever had came from the UIPanel system, which the setup below
+-- unregisters it from. A frame with no points has no rect and never draws, so Show()
+-- quietly succeeds and nothing appears - and because whatever stale layout state stood
+-- in for a position is per character, the panel opened on some characters and not
+-- others. It gets a real position here, and remembers where it was dragged to.
+--
+-- Placed without an InCombatLockdown guard, unlike the Blizzard frames this addon moves:
+-- BindPadFrame is an ordinary addon frame, so anchoring it is not a protected call.
+
+-- Read out of the profile on each call rather than captured once: AceDB repoints the
+-- profile table on a switch.
+local function RestorePosition()
+    local saved = Perskan.db.profile.bindPadPosition
+    BindPadFrame:ClearAllPoints()
+    if saved and saved.point then
+        BindPadFrame:SetPoint(saved.point, UIParent, saved.relativePoint or saved.point,
+            saved.x or 0, saved.y or 0)
+    else
+        BindPadFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    end
+end
+
+local function SavePosition()
+    local point, _, relativePoint, x, y = BindPadFrame:GetPoint(1)
+    if not point then return end
+    Perskan.db.profile.bindPadPosition = {
+        point = point,
+        relativePoint = relativePoint,
+        x = x,
+        y = y,
+    }
+end
+
+--------------------------------------------------------------------------------
 -- Setup
 --------------------------------------------------------------------------------
 
@@ -132,8 +172,16 @@ Perskan:RegisterModule("BindPadTweaks", function(self)
     BindPadFrame:SetClampedToScreen(true)
     BindPadFrame:RegisterForDrag("LeftButton")
     BindPadFrame:HookScript("OnDragStart", function(frame) frame:StartMoving() end)
-    BindPadFrame:HookScript("OnDragStop", function(frame) frame:StopMovingOrSizing() end)
+    BindPadFrame:HookScript("OnDragStop", function(frame)
+        frame:StopMovingOrSizing()
+        SavePosition()
+    end)
 
+    -- Placed now and re-placed on every show. The second is not redundant: it is what
+    -- makes the panel self-healing if anything ever strips its points again, which is
+    -- the failure this guards against in the first place.
+    RestorePosition()
+    BindPadFrame:HookScript("OnShow", RestorePosition)
     BindPadFrame:HookScript("OnShow", ModernizeScrollBar)
     if BindPadMacroPopupFrame then
         BindPadMacroPopupFrame:HookScript("OnShow", ModernizeMacroPopupScrollBar)
