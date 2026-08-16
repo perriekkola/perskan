@@ -954,7 +954,7 @@ function BindPadProfileTab_OnEnter(self, motion)
         GameTooltip:AddLine(format(BINDPAD_TOOLTIP_PROFILE_CURRENTLY1, BindPadCore.GetTalentSpec(spec1)), 0.8, 0.8, 1.0)
     end
 
-    local specIndex = GetSpecialization()
+    local specIndex = BindPadCore.GetSpecIndex()
     if profileNum ~= BindPadCore.GetProfileForSpec(specIndex) then
         GameTooltip:AddLine(format(BINDPAD_TOOLTIP_PROFILE_CLICK_FOR, profileNum, BindPadCore.GetTalentSpec(specIndex)), 0.8, 1.0, 0.8)
     end
@@ -1145,6 +1145,16 @@ function BindPadCore.CheckCorruptedSlot(padSlot)
     return true
 end
 
+-- [Perskan] GetSpecialization() returns nil for a character that has no specialization
+-- yet, and BindPad feeds the result straight into profileForTalentGroup as a table key.
+-- Assigning to t[nil] is a hard error in Lua - not a silent no-op - so on such a
+-- character InitProfile blew up at login, before BindPad had claimed any of its
+-- bindings. Falls back to the first slot: the value only records which BindPad profile a
+-- spec maps to, and a character with no spec has exactly one to record.
+function BindPadCore.GetSpecIndex()
+    return GetSpecialization() or 1
+end
+
 function BindPadCore.GetCurrentProfileNum()
     if not BindPadCore.profileNum then
         BindPadCore.profileNum = 1
@@ -1173,7 +1183,7 @@ function BindPadCore.GetSpecsForProfile(profileNum)
         return nil
     end
 
-    local specIndex = GetSpecialization()
+    local specIndex = BindPadCore.GetSpecIndex()
     if BindPadVars[character].profileForTalentGroup[specIndex] == profileNum then
         spec1 = specIndex
     end
@@ -1226,7 +1236,7 @@ function BindPadCore.SwitchProfile(newProfileNum, force)
 
     BindPadCore.profileNum = newProfileNum
 
-    local specIndex = GetSpecialization()
+    local specIndex = BindPadCore.GetSpecIndex()
     BindPadVars[character].profileForTalentGroup[specIndex] = newProfileNum
 
     -- Create new profile if not available
@@ -1542,7 +1552,7 @@ function BindPadCore.InitProfile()
         BindPadVars[character].profileForTalentGroup = {}
     end
 
-    local newActiveTalentGroup = GetSpecialization()
+    local newActiveTalentGroup = BindPadCore.GetSpecIndex()
     local profileNum = BindPadCore.GetProfileForSpec(newActiveTalentGroup)
 
     -- Make sure profileNum tab is set for current talent group.
@@ -1702,7 +1712,7 @@ function BindPadCore.PlayerTalentUpdate()
     -- Reset cache for morphing spells
     BindPadCore.morphingSpellCache = nil
 
-    local newActiveSpec = GetSpecialization()
+    local newActiveSpec = BindPadCore.GetSpecIndex()
     local profileNum = BindPadCore.GetProfileForSpec(newActiveSpec)
 
     BindPadCore.SwitchProfile(profileNum)
