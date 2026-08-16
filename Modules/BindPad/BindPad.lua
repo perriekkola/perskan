@@ -183,6 +183,20 @@ function BindPadFrame_OnMouseDown(self, button)
     end
 end
 
+-- [Perskan] The Spellbook shortcut used to call ShowUIPanel(SpellBookFrame). That global
+-- is gone in retail - the spellbook lives inside PlayerSpellsFrame now - so the button
+-- was erroring out rather than opening anything. Tried newest first, so an older client
+-- still lands on the API it has.
+function BindPadFrame_OpenSpellBook()
+    if PlayerSpellsUtil and PlayerSpellsUtil.ToggleSpellBookFrame then
+        PlayerSpellsUtil.ToggleSpellBookFrame()
+    elseif ToggleSpellBook then
+        ToggleSpellBook(BOOKTYPE_SPELL or "spell")
+    elseif SpellBookFrame then
+        ShowUIPanel(SpellBookFrame)
+    end
+end
+
 function BindPadFrame_OnEnter(self)
     BindPadCore.UpdateCursor()
 end
@@ -610,7 +624,11 @@ function BindPadSlot_UpdateState(self)
         end
 
         if TYPE_BPMACRO == padSlot.type then
-            self.border:SetVertexColor(0, 1.0, 0, 0.35)
+            -- [Perskan] Full alpha now: this used to tint a soft 62x62 glow behind a 36px
+            -- button, where 0.35 was about right. It is the action bar's own icon-frame
+            -- border today - a thin line the width of the button - and green at a third
+            -- alpha on it is invisible.
+            self.border:SetVertexColor(0, 1.0, 0, 1.0)
             self.border:Show()
         else
             self.border:Hide()
@@ -2224,6 +2242,14 @@ end
 hooksecurefunc("CreateFrame", BindPadCore.CreateFrameHook)
 
 BindPadCore.useBindPadSlot = 0
+
+-- [Perskan] Grid metrics, kept together because the scroll child's height is derived
+-- from them below. SLOT_GAP is tighter than the 13/10 upstream used: that spacing was
+-- sized around the old quickslot bevel, which spilled 15px past the button on every
+-- side, while the current frame art stops at the button's edge.
+local SLOT_INSET = 6
+local SLOT_GAP = 5
+
 function BindPadCore.CreateBindPadSlot(usenum)
     local NUM_SLOTS_PER_ROW
     if isRetail then
@@ -2238,11 +2264,11 @@ function BindPadCore.CreateBindPadSlot(usenum)
         end
         if i <= usenum then
             if i == 1 then
-                button:SetPoint("TOPLEFT", BindPadSlotButtonContainer, "TOPLEFT", 6, -6)
+                button:SetPoint("TOPLEFT", BindPadSlotButtonContainer, "TOPLEFT", SLOT_INSET, -SLOT_INSET)
             elseif mod(i, NUM_SLOTS_PER_ROW) == 1 then
-                button:SetPoint("TOP", "BindPadSlot" .. (i - NUM_SLOTS_PER_ROW), "BOTTOM", 0, -10)
+                button:SetPoint("TOP", "BindPadSlot" .. (i - NUM_SLOTS_PER_ROW), "BOTTOM", 0, -SLOT_GAP)
             else
-                button:SetPoint("LEFT", "BindPadSlot" .. (i - 1), "RIGHT", 13, 0)
+                button:SetPoint("LEFT", "BindPadSlot" .. (i - 1), "RIGHT", SLOT_GAP, 0)
             end
             button:Enable()
             button:Show()
@@ -2254,6 +2280,19 @@ function BindPadCore.CreateBindPadSlot(usenum)
     end
 
     BindPadScrollFrameFooter:SetPoint("TOPLEFT", "BindPadSlot" .. (floor((usenum - 1) / NUM_SLOTS_PER_ROW) * NUM_SLOTS_PER_ROW + 1), "BOTTOMLEFT", 0, 0)
+
+    -- [Perskan] Keep the scroll child's height in step with the grid. Upstream left it
+    -- at the 10px placeholder the XML declares, which only ever worked because the
+    -- default 49 slots happened to fit the visible area outright - ask for more and the
+    -- extra rows drew past the bottom with no scroll range to reach them.
+    local firstSlot = _G["BindPadSlot1"]
+    if firstSlot then
+        local rows = ceil(usenum / NUM_SLOTS_PER_ROW)
+        local rowPitch = firstSlot:GetHeight() + SLOT_GAP
+        BindPadSlotButtonContainer:SetHeight(
+            SLOT_INSET + rows * rowPitch - SLOT_GAP + BindPadScrollFrameFooter:GetHeight()
+        )
+    end
 
     BindPadCore.useBindPadSlot = usenum
     BindPadScrollFrameNumber:SetFormattedText(BINDPAD_TEXT_SLOTS_SHOWN, usenum)

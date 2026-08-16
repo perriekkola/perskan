@@ -31,6 +31,11 @@ BINDPAD_TEXT_CONFIRM_CONVERT = "Are you sure you want to convert this %s \"%s\" 
 BINDPAD_TEXT_SHOW_HOTKEY = "Show Hotkeys";
 BINDPAD_TEXT_SAVE_ALL_KEYS = "Save All Keys";
 BINDPAD_TEXT_FOR_ALL_CHARACTERS = "For all characters";
+-- [Perskan] Labels for the three footer shortcuts. They were unlabelled micro-menu
+-- buttons; the tooltips below already carried the wording, these are the short form.
+BINDPAD_TEXT_SPELLBOOK = "Spellbook";
+BINDPAD_TEXT_MACROS = "Macros";
+BINDPAD_TEXT_BAGS = "Bags";
 BINDPAD_TEXT_ERR_UNIQUENAME = "You must enter unique name for BindPadMacro.";
 BINDPAD_TEXT_ERR_SPELL_INCOMBAT = "Cannot pickup spell icon while in combat.";
 BINDPAD_TEXT_ERR_MACRO_INCOMBAT = "Cannot pickup macro icon while in combat.";

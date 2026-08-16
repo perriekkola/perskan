@@ -3,16 +3,31 @@
     <Script file="BindPad.lua" />
     <Button name="BindPadMacro" inherits="SecureActionButtonTemplate" />
     <Button name="BindPadKey" inherits="SecureActionButtonTemplate" />
-    <Button name="BindPadUIPanelButtonTemplate" virtual="true">
-        <ButtonText name="$parentText" />
-        <NormalFont style="GameFontNormal" />
-        <HighlightFont style="GameFontHighlight" />
-        <DisabledFont style="GameFontDisable" />
-        <NormalTexture inherits="UIPanelButtonUpTexture" />
-        <PushedTexture inherits="UIPanelButtonDownTexture" />
-        <DisabledTexture inherits="UIPanelButtonDisabledTexture" />
-        <HighlightTexture inherits="UIPanelButtonHighlightTexture" />
-    </Button>
+    <!-- [Perskan] Was a hand-rolled copy of the pre-Dragonflight panel button, pinned to
+         UI-Panel-Button-Up. Blizzard's own template carries whatever the current button
+         art is (the gold three-slice today), so the window ages with the game. -->
+    <Button name="BindPadUIPanelButtonTemplate" inherits="UIPanelButtonTemplate" virtual="true" />
+
+    <!-- [Perskan] The current checkbox art. Written out rather than inherited from
+         MinimalCheckboxTemplate so the box can be sized down to fit the panel footer;
+         the atlases are the ones that template uses. -->
+    <CheckButton name="BindPadCheckButtonTemplate" virtual="true">
+        <Size x="24" y="24" />
+        <Layers>
+            <Layer level="ARTWORK">
+                <FontString name="$parentText" parentKey="Text" inherits="GameFontHighlight" justifyH="LEFT">
+                    <Anchors>
+                        <Anchor point="LEFT" relativePoint="RIGHT" x="4" y="0" />
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+        <NormalTexture parentKey="NormalTexture" atlas="checkbox-minimal" />
+        <PushedTexture parentKey="PushedTexture" atlas="checkbox-minimal" />
+        <HighlightTexture parentKey="HighlightTexture" atlas="checkbox-minimal" alphaMode="ADD" />
+        <CheckedTexture parentKey="CheckedTexture" atlas="checkmark-minimal" />
+        <DisabledCheckedTexture parentKey="DisabledCheckedTexture" atlas="checkmark-minimal-disabled" />
+    </CheckButton>
     <CheckButton name="BindPadProfileTabTemplate" virtual="true" hidden="true">
         <Size x="32" y="32" />
         <Layers>
@@ -68,86 +83,109 @@
                 BindPadProfileTab_OnShow(self)
             </OnShow>
         </Scripts>
-        <NormalTexture />
-        <HighlightTexture file="Interface\Buttons\ButtonHilight-Square" alphaMode="ADD" />
-        <CheckedTexture file="Interface\Buttons\CheckButtonHilight" alphaMode="ADD" />
+        <!-- [Perskan] The spec icon used to fill the 32x32 button exactly, leaving it
+             visibly short of the tab art behind it. Oversized a touch, and the two
+             hover/selected overlays follow it so they still frame the icon. -->
+        <NormalTexture>
+            <Size x="34" y="34" />
+            <Anchors>
+                <Anchor point="CENTER" />
+            </Anchors>
+        </NormalTexture>
+        <HighlightTexture file="Interface\Buttons\ButtonHilight-Square" alphaMode="ADD">
+            <Size x="34" y="34" />
+            <Anchors>
+                <Anchor point="CENTER" />
+            </Anchors>
+        </HighlightTexture>
+        <CheckedTexture file="Interface\Buttons\CheckButtonHilight" alphaMode="ADD">
+            <Size x="34" y="34" />
+            <Anchors>
+                <Anchor point="CENTER" />
+            </Anchors>
+        </CheckedTexture>
     </CheckButton>
+    <!-- [Perskan] Rebuilt on the current action-button art. It used to draw the
+         pre-Dragonflight quickslot: a 66x66 bevel around a 36x36 button, with a
+         36x36 ButtonHilight-Square on hover - which is why the highlight read as a
+         second, smaller button sitting inside the first. Every region here now
+         matches the size of the button itself, and the layer stack is the one
+         Blizzard's ActionButtonTemplate uses. -->
     <Button name="BindPadIconTemplate" virtual="true">
-        <Size>
-            <AbsDimension x="36" y="36" />
-        </Size>
+        <Size x="44" y="44" />
         <Layers>
             <Layer level="BACKGROUND">
+                <!-- The empty-slot art is declared first so it stays behind the icon.
+                     Blizzard's own template has it after, and hides it from code when
+                     the slot fills; here the icon simply covers it. -->
+                <Texture parentKey="SlotBackground" atlas="UI-HUD-ActionBar-IconFrame-Background" setAllPoints="true" />
+                <Texture parentKey="SlotArt" atlas="ui-hud-actionbar-iconframe-slot" setAllPoints="true" />
                 <Texture name="$parentIcon" parentKey="icon" />
-            </Layer>
-            <Layer level="ARTWORK">
-                <FontString name="$parentHotKey" inherits="NumberFontNormalSmallGray" parentKey="hotkey" justifyH="RIGHT">
-                    <Size>
-                        <AbsDimension x="40" y="10" />
-                    </Size>
+                <!-- 1.5x the icon, the ratio Blizzard uses everywhere it sizes this
+                     mask (52 icon / 76 mask on the extra action button, 32 / 48 in the
+                     Perks list). The atlas is roughly two thirds opaque, so a mask cut
+                     to the icon's own size crops the icon to about 29px. -->
+                <MaskTexture parentKey="IconMask" atlas="UI-HUD-ActionBar-IconFrame-Mask" hWrapMode="CLAMPTOBLACKADDITIVE" vWrapMode="CLAMPTOBLACKADDITIVE">
+                    <Size x="66" y="66" />
                     <Anchors>
-                        <Anchor point="TOPLEFT">
-                            <Offset>
-                                <AbsDimension x="-1" y="-3" />
-                            </Offset>
-                        </Anchor>
+                        <Anchor point="CENTER" relativeKey="$parent.icon" />
                     </Anchors>
-                </FontString>
+                    <MaskedTextures>
+                        <MaskedTexture childKey="icon" />
+                    </MaskedTextures>
+                </MaskTexture>
             </Layer>
             <Layer level="OVERLAY">
                 <FontString name="$parentName" inherits="GameFontHighlightSmallOutline" parentKey="name">
-                    <Size>
-                        <AbsDimension x="40" y="10" />
-                    </Size>
+                    <Size x="44" y="10" />
                     <Anchors>
-                        <Anchor point="BOTTOM">
-                            <Offset>
-                                <AbsDimension x="0" y="2" />
-                            </Offset>
-                        </Anchor>
+                        <Anchor point="BOTTOM" x="0" y="2" />
                     </Anchors>
                 </FontString>
-                <Texture name="$parentBorder" file="Interface\Buttons\UI-ActionButton-Border" parentKey="border" hidden="true" alphaMode="ADD">
-                    <Size>
-                        <AbsDimension x="62" y="62" />
-                    </Size>
+                <!-- Anchored top-right at the button's own width, like the action bar's
+                     hotkey. It used to hang off the left edge to clear the old bevel. -->
+                <FontString name="$parentHotKey" inherits="NumberFontNormalSmallGray" parentKey="hotkey" justifyH="RIGHT">
+                    <Size x="40" y="10" />
                     <Anchors>
-                        <Anchor point="CENTER">
-                            <Offset>
-                                <AbsDimension x="0" y="0" />
-                            </Offset>
-                        </Anchor>
+                        <Anchor point="TOPRIGHT" x="-3" y="-3" />
+                    </Anchors>
+                </FontString>
+                <Texture name="$parentBorder" parentKey="border" atlas="UI-HUD-ActionBar-IconFrame-Border" hidden="true">
+                    <Size x="45" y="44" />
+                    <Anchors>
+                        <Anchor point="CENTER" />
                     </Anchors>
                 </Texture>
             </Layer>
         </Layers>
-        <NormalTexture name="$parentNormalTexture" file="Interface\Buttons\UI-Quickslot2">
-            <Size>
-                <AbsDimension x="66" y="66" />
-            </Size>
+        <NormalTexture name="$parentNormalTexture" parentKey="NormalTexture" atlas="UI-HUD-ActionBar-IconFrame">
+            <Size x="45" y="44" />
             <Anchors>
-                <Anchor point="CENTER">
-                    <Offset>
-                        <AbsDimension x="0" y="-1" />
-                    </Offset>
-                </Anchor>
+                <Anchor point="CENTER" />
             </Anchors>
         </NormalTexture>
-        <PushedTexture file="Interface\Buttons\UI-Quickslot-Depress" />
-        <HighlightTexture alphaMode="ADD" file="Interface\Buttons\ButtonHilight-Square" />
+        <PushedTexture parentKey="PushedTexture" atlas="UI-HUD-ActionBar-IconFrame-Down">
+            <Size x="45" y="44" />
+            <Anchors>
+                <Anchor point="CENTER" />
+            </Anchors>
+        </PushedTexture>
+        <HighlightTexture parentKey="HighlightTexture" atlas="UI-HUD-ActionBar-IconFrame-Mouseover">
+            <Size x="48" y="47" />
+            <Anchors>
+                <Anchor point="CENTER" />
+            </Anchors>
+        </HighlightTexture>
     </Button>
     <Button name="BindPadSlotTemplate" inherits="BindPadIconTemplate" virtual="true">
         <Frames>
-            <Button name="$parentAddButton" parentKey="addbutton" alpha="0.7">
-                <Size>
-                    <AbsDimension x="16" y="16" />
-                </Size>
+            <!-- [Perskan] Was the UI-PlusButton-* set - a raised bevelled square from the
+                 original interface - tucked into the slot's top-left corner. Now the
+                 current flat plus glyph, centred in the empty slot. -->
+            <Button name="$parentAddButton" parentKey="addbutton" alpha="0.6">
+                <Size x="11" y="11" />
                 <Anchors>
-                    <Anchor point="TOPLEFT">
-                        <Offset>
-                            <AbsDimension x="0" y="-0" />
-                        </Offset>
-                    </Anchor>
+                    <Anchor point="BOTTOMLEFT" x="4" y="4" />
                 </Anchors>
                 <Scripts>
                     <OnLoad>
@@ -169,10 +207,10 @@
                         GameTooltip:Hide()
                     </OnLeave>
                 </Scripts>
-                <NormalTexture file="Interface\Buttons\UI-PlusButton-Up" />
-                <PushedTexture file="Interface\Buttons\UI-PlusButton-Down" />
-                <DisabledTexture file="Interface\Buttons\UI-PlusButton-Disabled" />
-                <HighlightTexture file="Interface\Buttons\UI-PlusButton-Hilight" alphaMode="ADD" />
+                <NormalTexture atlas="common-icon-plus" />
+                <PushedTexture atlas="common-icon-plus" />
+                <DisabledTexture atlas="common-icon-plus" />
+                <HighlightTexture atlas="common-icon-plus" alphaMode="ADD" />
             </Button>
         </Frames>
         <Scripts>
@@ -201,9 +239,12 @@
             </OnEvent>
         </Scripts>
     </Button>
+    <!-- [Perskan] 32px taller than upstream: the three option checkboxes now sit in one
+         column above the footer instead of being scattered around it, and the shortcut
+         buttons moved down into the footer strip beside Exit. -->
     <Frame name="BindPadFrame" toplevel="true" movable="true" parent="UIParent" enableMouse="true" hidden="true" inherits="ButtonFrameTemplate">
         <Size>
-            <AbsDimension x="400" y="518" />
+            <AbsDimension x="400" y="564" />
         </Size>
         <Layers>
             <Layer level="OVERLAY" textureSubLevel="-1">
@@ -217,7 +258,7 @@
         </Layers>
         <Frames>
             <ScrollFrame name="BindPadScrollFrame" inherits="UIPanelScrollFrameTemplate">
-                <Size x="350" y="370" />
+                <Size x="350" y="384" />
                 <Anchors>
                     <Anchor point="TOPLEFT" x="13" y="-68"/>
                 </Anchors>
@@ -255,13 +296,13 @@
                 </Scripts>
                 <ScrollChild>
                     <Frame name="BindPadSlotButtonContainer">
-                        <Size x="285" y="10" />
+                        <Size x="350" y="10" />
                         <Anchors>
                             <Anchor point="TOPLEFT" />
                         </Anchors>
                         <Frames>
                             <Frame name="BindPadScrollFrameFooter">
-                                <Size x="285" y="36" />
+                                <Size x="338" y="36" />
                                 <Layers>
                                     <Layer level="ARTWORK">
                                         <FontString name="BindPadScrollFrameNumber" inherits="GameFontNormal" justifyH="RIGHT" text="49 Slots shown">
@@ -276,9 +317,9 @@
                                 </Layers>
                                 <Frames>
                                     <Button name="BindPadShowLessSlotButton">
-                                        <Size x="32" y="32" />
+                                        <Size x="24" y="24" />
                                         <Anchors>
-                                            <Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="-32" y="0" />
+                                            <Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="-28" y="4" />
                                         </Anchors>
                                         <Scripts>
                                             <OnClick function="BindPadShowLessSlotButton_OnClick" />
@@ -290,15 +331,15 @@
                                                 GameTooltip:Hide()
                                             </OnLeave>
                                         </Scripts>
-                                        <NormalTexture file="Interface\Buttons\UI-SpellbookIcon-PrevPage-Up" />
-                                        <PushedTexture file="Interface\Buttons\UI-SpellbookIcon-PrevPage-Down" />
-                                        <DisabledTexture file="Interface\Buttons\UI-SpellbookIcon-PrevPage-Disabled" />
-                                        <HighlightTexture file="Interface\Buttons\UI-Common-MouseHilight" alphaMode="ADD" />
+                                        <NormalTexture atlas="ui-hud-actionbar-pageuparrow-up" />
+                                        <PushedTexture atlas="ui-hud-actionbar-pageuparrow-down" />
+                                        <DisabledTexture atlas="ui-hud-actionbar-pageuparrow-disabled" />
+                                        <HighlightTexture atlas="ui-hud-actionbar-pageuparrow-mouseover" alphaMode="ADD" />
                                     </Button>
                                     <Button name="BindPadShowMoreSlotButton">
-                                        <Size x="32" y="32" />
+                                        <Size x="24" y="24" />
                                         <Anchors>
-                                            <Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="0" y="0" />
+                                            <Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT" x="0" y="4" />
                                         </Anchors>
                                         <Scripts>
                                             <OnClick function="BindPadShowMoreSlotButton_OnClick" />
@@ -310,10 +351,10 @@
                                                 GameTooltip:Hide()
                                             </OnLeave>
                                         </Scripts>
-                                        <NormalTexture file="Interface\Buttons\UI-SpellbookIcon-NextPage-Up" />
-                                        <PushedTexture file="Interface\Buttons\UI-SpellbookIcon-NextPage-Down" />
-                                        <DisabledTexture file="Interface\Buttons\UI-SpellbookIcon-NextPage-Disabled" />
-                                        <HighlightTexture file="Interface\Buttons\UI-Common-MouseHilight" alphaMode="ADD" />
+                                        <NormalTexture atlas="ui-hud-actionbar-pagedownarrow-up" />
+                                        <PushedTexture atlas="ui-hud-actionbar-pagedownarrow-down" />
+                                        <DisabledTexture atlas="ui-hud-actionbar-pagedownarrow-disabled" />
+                                        <HighlightTexture atlas="ui-hud-actionbar-pagedownarrow-mouseover" alphaMode="ADD" />
                                     </Button>
                                 </Frames>
                             </Frame>
@@ -454,18 +495,31 @@
                     </Anchor>
                 </Anchors>
             </CheckButton>
-            <CheckButton name="$parentCharacterButton" inherits="UICheckButtonTemplate">
-                <Size>
-                    <AbsDimension x="20" y="20" />
-                </Size>
+            <!-- [Perskan] The bottom of the panel, rebuilt.
+
+                 The three option checkboxes are now one left-aligned column. The
+                 character-specific one used to float alone over on the right with no
+                 label at all, while the other two sat stacked beside the shortcut
+                 buttons.
+
+                 The Spellbook / Macros / Bags shortcuts moved down into the footer
+                 strip as ordinary panel buttons. They were micro-menu buttons drawn
+                 from Interface\Buttons\UI-MicroButton-*, art the game retired years
+                 ago and no longer ships an equivalent of - the retail micro menu has
+                 no spellbook, macro or bag icon left to borrow - and one of the three
+                 wore the quest-log icon to mean "bags". Labelled buttons say what they
+                 do and are stock current art. -->
+            <CheckButton name="$parentCharacterButton" inherits="BindPadCheckButtonTemplate">
                 <Anchors>
-                    <Anchor point="BOTTOMRIGHT">
-                        <Offset>
-                            <AbsDimension x="-150" y="54" />
-                        </Offset>
-                    </Anchor>
+                    <Anchor point="BOTTOMLEFT" x="16" y="82" />
                 </Anchors>
+                <HitRectInsets>
+                    <AbsInset left="0" right="-150" top="0" bottom="0" />
+                </HitRectInsets>
                 <Scripts>
+                    <OnLoad>
+                        self.Text:SetText(CHARACTER_SPECIFIC_KEYBINDINGS)
+                    </OnLoad>
                     <OnClick>
                         BindPadFrame_ChangeBindingProfile()
                     </OnClick>
@@ -478,140 +532,20 @@
                     </OnLeave>
                 </Scripts>
             </CheckButton>
-            <!-- Bottom Right "Exit" Button -->
-            <Button name="$parentExitButton" inherits="BindPadUIPanelButtonTemplate, MagicButtonTemplate" text="BINDPAD_TEXT_EXIT">
-                <Size>
-                    <AbsDimension x="80" y="22" />
-                </Size>
+            <CheckButton name="$parentSaveAllKeysButton" inherits="BindPadCheckButtonTemplate">
                 <Anchors>
-                    <Anchor point="BOTTOMRIGHT" />
-                </Anchors>
-                <Scripts>
-                    <OnLoad function="MagicButton_OnLoad" />
-                    <OnClick>
-                        HideUIPanel(self:GetParent())
-                    </OnClick>
-                </Scripts>
-            </Button>
-            <Button name="$parentOpenSpellBookButton" inherits="BindPadUIPanelButtonTemplate">
-                <Size>
-                    <AbsDimension x="29" y="58" />
-                </Size>
-                <HitRectInsets>
-                    <AbsInset left="0" right="0" top="18" bottom="0" />
-                </HitRectInsets>
-                <Anchors>
-                    <Anchor point="BOTTOMLEFT" relativeTo="$parent" relativePoint="BOTTOMLEFT">
-                        <Offset>
-                            <AbsDimension x="16" y="36" />
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <NormalTexture file="Interface\Buttons\UI-MicroButton-Spellbook-Up" />
-                <PushedTexture file="Interface\Buttons\UI-MicroButton-Spellbook-Down" />
-                <DisabledTexture file="Interface\Buttons\UI-MicroButton-Spellbook-Disabled" />
-                <HighlightTexture file="Interface\Buttons\UI-MicroButton-Hilight" />
-                <Scripts>
-                    <OnClick>
-                        ShowUIPanel(SpellBookFrame)
-                    </OnClick>
-                    <OnEnter>
-                        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                        GameTooltip:SetText(BINDPAD_TOOLTIP_OPENSPELLBOOK, 1.0, 1.0, 1.0)
-                        GameTooltip:Show()
-                    </OnEnter>
-                    <OnLeave>
-                        GameTooltip:Hide()
-                    </OnLeave>
-                </Scripts>
-            </Button>
-            <Button name="$parentOpenMacroButton" inherits="BindPadUIPanelButtonTemplate">
-                <Size>
-                    <AbsDimension x="29" y="58" />
-                </Size>
-                <HitRectInsets>
-                    <AbsInset left="0" right="0" top="18" bottom="0" />
-                </HitRectInsets>
-                <Anchors>
-                    <Anchor point="BOTTOMLEFT" relativeTo="$parentOpenSpellBookButton" relativePoint="BOTTOMRIGHT">
-                        <Offset>
-                            <AbsDimension x="0" y="0" />
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <NormalTexture file="Interface\Buttons\UI-MicroButton-MainMenu-Up" />
-                <PushedTexture file="Interface\Buttons\UI-MicroButton-MainMenu-Down" />
-                <DisabledTexture file="Interface\Buttons\UI-MicroButton-MainMenu-Disabled" />
-                <HighlightTexture file="Interface\Buttons\UI-MicroButton-Hilight" />
-                <Scripts>
-                    <OnClick>
-                        ShowMacroFrame()
-                    </OnClick>
-                    <OnEnter>
-                        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                        GameTooltip:SetText(BINDPAD_TOOLTIP_OPENMACRO, 1.0, 1.0, 1.0)
-                        GameTooltip:Show()
-                    </OnEnter>
-                    <OnLeave>
-                        GameTooltip:Hide()
-                    </OnLeave>
-                </Scripts>
-            </Button>
-            <Button name="$parentOpenBagButton" inherits="BindPadUIPanelButtonTemplate">
-                <Size>
-                    <AbsDimension x="29" y="58" />
-                </Size>
-                <HitRectInsets>
-                    <AbsInset left="0" right="0" top="18" bottom="0" />
-                </HitRectInsets>
-                <Anchors>
-                    <Anchor point="BOTTOMLEFT" relativeTo="$parentOpenMacroButton" relativePoint="BOTTOMRIGHT">
-                        <Offset>
-                            <AbsDimension x="0" y="0" />
-                        </Offset>
-                    </Anchor>
-                </Anchors>
-                <NormalTexture file="Interface\Buttons\UI-MicroButton-Quest-Up" />
-                <PushedTexture file="Interface\Buttons\UI-MicroButton-Quest-Down" />
-                <DisabledTexture file="Interface\Buttons\UI-MicroButton-Quest-Disabled" />
-                <HighlightTexture file="Interface\Buttons\UI-MicroButton-Hilight" />
-                <Scripts>
-                    <OnClick>
-                        OpenAllBags()
-                    </OnClick>
-                    <OnEnter>
-                        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-                        GameTooltip:SetText(BINDPAD_TOOLTIP_OPENBAG, 1.0, 1.0, 1.0)
-                        GameTooltip:Show()
-                    </OnEnter>
-                    <OnLeave>
-                        GameTooltip:Hide()
-                    </OnLeave>
-                </Scripts>
-            </Button>
-            <CheckButton name="$parentSaveAllKeysButton" inherits="UICheckButtonTemplate">
-                <Size>
-                    <AbsDimension x="20" y="20" />
-                </Size>
-                <Anchors>
-                    <Anchor point="BOTTOMLEFT" relativeTo="$parentOpenBagButton" relativePoint="BOTTOMRIGHT">
-                        <Offset>
-                            <AbsDimension x="8" y="16" />
-                        </Offset>
-                    </Anchor>
+                    <Anchor point="TOPLEFT" relativeTo="$parentCharacterButton" relativePoint="BOTTOMLEFT" x="0" y="-2" />
                 </Anchors>
                 <HitRectInsets>
-                    <AbsInset left="0" right="-70" top="0" bottom="0" />
+                    <AbsInset left="0" right="-150" top="0" bottom="0" />
                 </HitRectInsets>
                 <Scripts>
+                    <OnLoad>
+                        self.Text:SetText(BINDPAD_TEXT_SAVE_ALL_KEYS)
+                    </OnLoad>
                     <OnClick>
                         BindPadFrame_SaveAllKeysToggle(self)
                     </OnClick>
-                    <OnLoad>
-                        local text = _G[self:GetName().."Text"]
-                        text:SetText(BINDPAD_TEXT_SAVE_ALL_KEYS)
-                        text:SetPoint("LEFT", self, "RIGHT", 2, 1)
-                    </OnLoad>
                     <OnEnter>
                         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                         GameTooltip:SetText(BINDPAD_TOOLTIP_SAVE_ALL_KEYS, nil, nil, nil, nil, 1)
@@ -621,29 +555,20 @@
                     </OnLeave>
                 </Scripts>
             </CheckButton>
-            <CheckButton name="$parentShowHotkeyButton" inherits="UICheckButtonTemplate">
-                <Size>
-                    <AbsDimension x="20" y="20" />
-                </Size>
+            <CheckButton name="$parentShowHotkeyButton" inherits="BindPadCheckButtonTemplate">
                 <Anchors>
-                    <Anchor point="BOTTOMLEFT" relativeTo="$parentOpenBagButton" relativePoint="BOTTOMRIGHT">
-                        <Offset>
-                            <AbsDimension x="8" y="0" />
-                        </Offset>
-                    </Anchor>
+                    <Anchor point="TOPLEFT" relativeTo="$parentSaveAllKeysButton" relativePoint="BOTTOMLEFT" x="0" y="-2" />
                 </Anchors>
                 <HitRectInsets>
-                    <AbsInset left="0" right="-70" top="0" bottom="0" />
+                    <AbsInset left="0" right="-150" top="0" bottom="0" />
                 </HitRectInsets>
                 <Scripts>
+                    <OnLoad>
+                        self.Text:SetText(BINDPAD_TEXT_SHOW_HOTKEY)
+                    </OnLoad>
                     <OnClick>
                         BindPadFrame_ShowHotkeyToggle(self)
                     </OnClick>
-                    <OnLoad>
-                        local text = _G[self:GetName().."Text"]
-                        text:SetText(BINDPAD_TEXT_SHOW_HOTKEY)
-                        text:SetPoint("LEFT", self, "RIGHT", 2, 1)
-                    </OnLoad>
                     <OnEnter>
                         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                         GameTooltip:SetText(BINDPAD_TOOLTIP_SHOW_HOTKEY, nil, nil, nil, nil, 1)
@@ -653,6 +578,60 @@
                     </OnLeave>
                 </Scripts>
             </CheckButton>
+            <Button name="$parentOpenSpellBookButton" inherits="BindPadUIPanelButtonTemplate" text="BINDPAD_TEXT_SPELLBOOK">
+                <Size x="84" y="22" />
+                <Anchors>
+                    <Anchor point="BOTTOMLEFT" x="6" y="3" />
+                </Anchors>
+                <KeyValues>
+                    <KeyValue key="tooltipText" value="BINDPAD_TOOLTIP_OPENSPELLBOOK" type="global" />
+                </KeyValues>
+                <Scripts>
+                    <OnClick>
+                        BindPadFrame_OpenSpellBook()
+                    </OnClick>
+                </Scripts>
+            </Button>
+            <Button name="$parentOpenMacroButton" inherits="BindPadUIPanelButtonTemplate" text="BINDPAD_TEXT_MACROS">
+                <Size x="84" y="22" />
+                <Anchors>
+                    <Anchor point="LEFT" relativeTo="$parentOpenSpellBookButton" relativePoint="RIGHT" x="2" y="0" />
+                </Anchors>
+                <KeyValues>
+                    <KeyValue key="tooltipText" value="BINDPAD_TOOLTIP_OPENMACRO" type="global" />
+                </KeyValues>
+                <Scripts>
+                    <OnClick>
+                        ShowMacroFrame()
+                    </OnClick>
+                </Scripts>
+            </Button>
+            <Button name="$parentOpenBagButton" inherits="BindPadUIPanelButtonTemplate" text="BINDPAD_TEXT_BAGS">
+                <Size x="84" y="22" />
+                <Anchors>
+                    <Anchor point="LEFT" relativeTo="$parentOpenMacroButton" relativePoint="RIGHT" x="2" y="0" />
+                </Anchors>
+                <KeyValues>
+                    <KeyValue key="tooltipText" value="BINDPAD_TOOLTIP_OPENBAG" type="global" />
+                </KeyValues>
+                <Scripts>
+                    <OnClick>
+                        OpenAllBags()
+                    </OnClick>
+                </Scripts>
+            </Button>
+            <!-- Bottom Right "Exit" Button -->
+            <Button name="$parentExitButton" inherits="MagicButtonTemplate" text="BINDPAD_TEXT_EXIT">
+                <Size x="80" y="22" />
+                <Anchors>
+                    <Anchor point="BOTTOMRIGHT" x="-6" y="3" />
+                </Anchors>
+                <Scripts>
+                    <OnClick>
+                        HideUIPanel(self:GetParent())
+                    </OnClick>
+                </Scripts>
+            </Button>
         </Frames>
         <Scripts>
             <OnLoad>
@@ -792,28 +771,23 @@
                     </OnClick>
                 </Scripts>
             </Button>
-            <CheckButton name="$parentForAllCharacterButton" inherits="UICheckButtonTemplate">
-                <Size>
-                    <AbsDimension x="20" y="20" />
-                </Size>
+            <CheckButton name="$parentForAllCharacterButton" inherits="BindPadCheckButtonTemplate">
                 <Anchors>
                     <Anchor point="BOTTOMLEFT" relativeTo="$parent" relativePoint="BOTTOMLEFT">
                         <Offset>
-                            <AbsDimension x="12" y="9" />
+                            <AbsDimension x="12" y="10" />
                         </Offset>
                     </Anchor>
                 </Anchors>
                 <HitRectInsets>
-                    <AbsInset left="0" right="-70" top="0" bottom="0" />
+                    <AbsInset left="0" right="-150" top="0" bottom="0" />
                 </HitRectInsets>
                 <Scripts>
                     <OnClick>
                         BindPadFrame_ForAllCharactersToggle(self)
                     </OnClick>
                     <OnLoad>
-                        local text = _G[self:GetName().."Text"]
-                        text:SetText(BINDPAD_TEXT_FOR_ALL_CHARACTERS)
-                        text:SetPoint("LEFT", self, "RIGHT", 2, 1)
+                        self.Text:SetText(BINDPAD_TEXT_FOR_ALL_CHARACTERS)
                     </OnLoad>
                     <OnEnter>
                         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -847,15 +821,48 @@
             </OnMouseWheel>
         </Scripts>
     </Button>
-    <CheckButton name="BindPadMacroPopupButtonTemplate" inherits="BindPadUIPanelButtonTemplate" virtual="true">
-        <Size>
-            <AbsDimension x="36" y="36"/>
-        </Size>
-        <NormalTexture name="$parentIcon" parentKey="Icon">
-            <Size>
-                <AbsDimension x="36" y="36"/>
-            </Size>
+    <!-- [Perskan] The icon-picker grid, rebuilt on the same slot art as the pad. It
+         used to sit on the old panel-button art with the icon painted straight over the
+         normal texture, so hover and selection were a grey bevel and there was no frame
+         around the icon at all. The icon is a plain region now and the frame art is the
+         normal texture, which is also what lets the corner mask apply to it. -->
+    <CheckButton name="BindPadMacroPopupButtonTemplate" virtual="true">
+        <Size x="36" y="36" />
+        <Layers>
+            <Layer level="BACKGROUND">
+                <Texture parentKey="SlotBackground" atlas="UI-HUD-ActionBar-IconFrame-Background" setAllPoints="true" />
+                <Texture parentKey="SlotArt" atlas="ui-hud-actionbar-iconframe-slot" setAllPoints="true" />
+                <Texture name="$parentIcon" parentKey="Icon" setAllPoints="true" />
+                <!-- 1.5x the icon; see the note on the pad's own slot template. -->
+                <MaskTexture parentKey="IconMask" atlas="UI-HUD-ActionBar-IconFrame-Mask" hWrapMode="CLAMPTOBLACKADDITIVE" vWrapMode="CLAMPTOBLACKADDITIVE">
+                    <Size x="54" y="54" />
+                    <Anchors>
+                        <Anchor point="CENTER" relativeKey="$parent.Icon" />
+                    </Anchors>
+                    <MaskedTextures>
+                        <MaskedTexture childKey="Icon" />
+                    </MaskedTextures>
+                </MaskTexture>
+            </Layer>
+        </Layers>
+        <NormalTexture parentKey="NormalTexture" atlas="UI-HUD-ActionBar-IconFrame">
+            <Size x="37" y="36" />
+            <Anchors>
+                <Anchor point="CENTER" />
+            </Anchors>
         </NormalTexture>
+        <HighlightTexture parentKey="HighlightTexture" atlas="UI-HUD-ActionBar-IconFrame-Mouseover">
+            <Size x="40" y="39" />
+            <Anchors>
+                <Anchor point="CENTER" />
+            </Anchors>
+        </HighlightTexture>
+        <CheckedTexture parentKey="CheckedTexture" atlas="UI-HUD-ActionBar-IconFrame-Mouseover">
+            <Size x="40" y="39" />
+            <Anchors>
+                <Anchor point="CENTER" />
+            </Anchors>
+        </CheckedTexture>
         <Scripts>
             <OnClick>
                 BindPadMacroPopupButton_OnClick(self)
@@ -881,7 +888,7 @@
                 <Anchors>
                     <Anchor point="TOPLEFT">
                         <Offset>
-                            <AbsDimension x="29" y="-35" />
+                            <AbsDimension x="30" y="-35" />
                         </Offset>
                     </Anchor>
                 </Anchors>
@@ -907,16 +914,15 @@
                 </Scripts>
                 <FontString inherits="ChatFontNormal" />
             </EditBox>
+            <!-- [Perskan] Sized and placed over the icon grid it scrolls. It used to be
+                 296 wide inside a 297 wide frame, anchored from the right by -39, which
+                 left its scrollbar stranded in the middle of the panel with nothing
+                 beside it. The frame itself draws nothing - the icon buttons are not its
+                 children - so this only decides where the bar lands. -->
             <ScrollFrame name="BindPadMacroPopupScrollFrame" inherits="FauxScrollFrameTemplate">
-                <Size>
-                    <AbsDimension x="296" y="195" />
-                </Size>
+                <Size x="220" y="144" />
                 <Anchors>
-                    <Anchor point="TOPRIGHT" relativeTo="BindPadMacroPopupFrame" relativePoint="TOPRIGHT">
-                        <Offset>
-                            <AbsDimension x="-39" y="-67" />
-                        </Offset>
-                    </Anchor>
+                    <Anchor point="TOPLEFT" relativeTo="BindPadMacroPopupFrame" relativePoint="TOPLEFT" x="30" y="-85" />
                 </Anchors>
                 <Scripts>
                     <OnVerticalScroll>
@@ -928,7 +934,7 @@
                 <Anchors>
                     <Anchor point="TOPLEFT">
                         <Offset>
-                            <AbsDimension x="24" y="-85" />
+                            <AbsDimension x="30" y="-85" />
                         </Offset>
                     </Anchor>
                 </Anchors>
@@ -1104,7 +1110,7 @@
                     </Anchor>
                 </Anchors>
             </CheckButton>
-            <Button name="BindPadMacroPopupCancelButton" inherits="BindPadUIPanelButtonTemplate, MagicButtonTemplate" text="CANCEL">
+            <Button name="BindPadMacroPopupCancelButton" inherits="MagicButtonTemplate" text="CANCEL">
                 <Size>
                     <AbsDimension x="78" y="22" />
                 </Size>
@@ -1118,7 +1124,7 @@
                     </OnClick>
                 </Scripts>
             </Button>
-            <Button name="BindPadMacroPopupOkayButton" inherits="BindPadUIPanelButtonTemplate, MagicButtonTemplate" text="OKAY">
+            <Button name="BindPadMacroPopupOkayButton" inherits="MagicButtonTemplate" text="OKAY">
                 <Size>
                     <AbsDimension x="78" y="22" />
                 </Size>
