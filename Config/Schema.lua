@@ -93,6 +93,17 @@ addon.configSchema = {
               desc = "Height of the cast bar on nameplates. 0 keeps Blizzard's own height, "
                   .. "which varies with nameplate style and size.", min = 0, max = 40, step = 0.5,
               apply = function() P():ApplyNameplateCastbarHeight() end },
+            { type = "toggle", key = "nameplateCastbarNameInside", name = "Spell Name Inside Castbar",
+              store = "bool",
+              desc = "Move the spell name and icon up into the cast bar instead of leaving "
+                  .. "them below it. The Blocky Bars, Blocky Cast and Legacy Red nameplate "
+                  .. "styles already draw them inside the bar, so this has no effect there.",
+              apply = function() P():ApplyNameplateCastbarNamePlacement() end },
+            { type = "range", key = "nameplateCastbarNameInset", name = "Spell Name Inset",
+              desc = "How far in from the cast bar's left edge the spell icon and name sit.",
+              min = 0, max = 30, step = 0.5,
+              disabled = function() return not profile().nameplateCastbarNameInside end,
+              apply = function() P():ApplyNameplateCastbarNamePlacement() end },
             { type = "toggle", key = "nameplateNameOutline", name = "Name Outline", store = "bool",
               desc = "Add an outline to nameplate names for readability.",
               apply = function() P():ApplyNameplateNameOutline() end },

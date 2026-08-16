@@ -1,4 +1,5 @@
--- Nameplate tweaks: name outline, custom healthbar height and custom castbar height.
+-- Nameplate tweaks: name outline, custom healthbar height, custom castbar height and
+-- moving the castbar's spell name/icon up into the bar.
 --
 -- The hooks are installed unconditionally at login and gated internally by the
 -- profile, so every setting can be changed live without a reload. Each exposes an
@@ -182,7 +183,86 @@ local function SetCastbarHeight(container, castBar)
     end
 end
 
-local function ApplyCastbarHeight(nameplate)
+--------------------------------------------------------------------------------
+-- Castbar spell name and icon placement
+--------------------------------------------------------------------------------
+
+-- Blizzard lays the cast bar out one of two ways (Blizzard_NamePlateCastingBar.lua):
+-- either the spell name and icon sit inside the bar, or they hang below it in their own
+-- strip and the bar is anchored to the icon's top edge. The styles that already put them
+-- inside - Blocky Bars, Blocky Cast and Legacy Red - are exactly what this option is
+-- asking for, so they are left untouched.
+local function SpellNameAlreadyInsideCastBar()
+    local styles = Enum and Enum.NamePlateStyle
+    if not styles then return true end
+
+    local style = C_CVar and C_CVar.GetCVar and tonumber(C_CVar.GetCVar("nameplateStyle"))
+    if not style then return true end
+
+    return style == styles.Block or style == styles.CastFocus or style == styles.Classic
+end
+
+-- Height of the icon/name strip Blizzard reserves under the bar, which is also how far
+-- the bar sits above the container's bottom edge. The container is sized to bar + icon,
+-- so the difference of the two baselines is the strip - and a strip of nothing means the
+-- name is already inside the bar, whatever the style CVar says.
+local function CastBarNameStripHeight(castBar)
+    local baseBar = castBar._perskanBaseBar or sharedBase.bar
+    local baseContainer = castBar._perskanBaseContainer or sharedBase.container
+    if not baseBar or not baseContainer then return nil end
+
+    local strip = baseContainer - baseBar
+    if strip <= 0 then return nil end
+    return strip
+end
+
+local function SetCastbarNamePlacement(container, castBar)
+    local icon = castBar.Icon
+    if not container or not icon then return end
+
+    -- Legacy Red has its own layout entirely, and it already draws the name in the bar.
+    if castBar.classicStyleCastBar or SpellNameAlreadyInsideCastBar() then return end
+
+    local strip = CastBarNameStripHeight(castBar)
+    if not strip then return end
+
+    if Perskan.db.profile.nameplateCastbarNameInside then
+        -- Blizzard hangs the bar off the icon's top edge, so the bar has to be re-anchored
+        -- to the container first - otherwise moving the icon would drag the bar with it.
+        -- Pinning the bar's bottom `strip` above the container bottom leaves it exactly
+        -- where it was.
+        castBar:ClearAllPoints()
+        PixelUtil.SetPoint(castBar, "BOTTOMLEFT", container, "BOTTOMLEFT", 0, strip)
+        PixelUtil.SetPoint(castBar, "BOTTOMRIGHT", container, "BOTTOMRIGHT", 0, strip)
+
+        -- Anchoring the icon to the bar's left edge is what Blizzard's own inside-the-bar
+        -- styles do. The spell name and the interrupt shield hang off the icon and so come
+        -- along, and a LEFT-to-LEFT anchor keeps the whole row centred on the bar whatever
+        -- height the castbar height setting lands on.
+        icon:ClearAllPoints()
+        PixelUtil.SetPoint(icon, "LEFT", castBar, "LEFT",
+            Perskan.db.profile.nameplateCastbarNameInset or 0, 0)
+
+        castBar._perskanNameMoved = true
+    elseif castBar._perskanNameMoved then
+        castBar._perskanNameMoved = nil
+
+        -- Put back what ApplyStyleAndAnchoring lays down for the styles we touch.
+        icon:ClearAllPoints()
+        PixelUtil.SetPoint(icon, "BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0)
+
+        castBar:ClearAllPoints()
+        PixelUtil.SetPoint(castBar, "BOTTOM", icon, "TOP", 0, 0)
+        PixelUtil.SetPoint(castBar, "LEFT", container, "BOTTOMLEFT", 0, 0)
+        PixelUtil.SetPoint(castBar, "RIGHT", container, "BOTTOMRIGHT", 0, 0)
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Castbar layout pass
+--------------------------------------------------------------------------------
+
+local function ApplyCastbarLayout(nameplate)
     local frame = nameplate and nameplate.UnitFrame
     if not frame or frame:IsForbidden() then return end
 
@@ -202,6 +282,11 @@ local function ApplyCastbarHeight(nameplate)
                 -- from turning into an error message per nameplate.
                 pcall(CaptureCastbarBaseline, hookedContainer, hookedBar)
                 pcall(SetCastbarHeight, hookedContainer, hookedBar)
+                -- Blizzard has just re-anchored everything, so anything we moved is back
+                -- where it started; the flag has to go with it or the restore path below
+                -- would be skipped next time the option is turned off.
+                hookedBar._perskanNameMoved = nil
+                pcall(SetCastbarNamePlacement, hookedContainer, hookedBar)
             end)
         else
             -- Pre-12.x: no ApplyFrameOptions to hang off, so re-assert on SetHeight
@@ -221,13 +306,22 @@ local function ApplyCastbarHeight(nameplate)
         CaptureCastbarBaseline(container, castBar)
     end
     SetCastbarHeight(container, castBar)
+    SetCastbarNamePlacement(container, castBar)
+end
+
+local function ForEachCastBar()
+    if not C_NamePlate or not C_NamePlate.GetNamePlates then return end
+    for _, nameplate in pairs(C_NamePlate.GetNamePlates()) do
+        pcall(ApplyCastbarLayout, nameplate)
+    end
 end
 
 function Perskan:ApplyNameplateCastbarHeight()
-    if not C_NamePlate or not C_NamePlate.GetNamePlates then return end
-    for _, nameplate in pairs(C_NamePlate.GetNamePlates()) do
-        pcall(ApplyCastbarHeight, nameplate)
-    end
+    ForEachCastBar()
+end
+
+function Perskan:ApplyNameplateCastbarNamePlacement()
+    ForEachCastBar()
 end
 
 --------------------------------------------------------------------------------
@@ -245,7 +339,7 @@ Perskan:RegisterModule("Nameplates", function(self)
         local nameplate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit(unit)
         if not nameplate then return end
         ApplyHealthbarHeight(nameplate)
-        ApplyCastbarHeight(nameplate)
+        ApplyCastbarLayout(nameplate)
         local frame = nameplate.UnitFrame
         if frame and not frame:IsForbidden() then
             HookNameplateName(frame)
