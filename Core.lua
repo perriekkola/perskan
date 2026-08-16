@@ -47,6 +47,7 @@ local LIVE_APPLIERS = {
     "ApplyHideSocialButton",
     "ApplyHideBagsBar",
     "ApplyTargetFocusAuraSize",
+    "ApplyTrackedBarLayout",
 }
 
 function Perskan:ApplyProfileSettings()

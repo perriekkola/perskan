@@ -66,6 +66,8 @@ local defaults = {
         -- Tracked Bars
         anchorBuffBarsToWidgetFrame = true,
         anchorExtraQuestButton = false,
+        collapseTrackedBarGaps = true,
+        trackedBarSortMode = "default",
         -- Damage Meter
         enableDamageMeterCustomization = false,
         damageMeterWidth = 200,

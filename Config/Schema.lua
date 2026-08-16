@@ -364,6 +364,22 @@ addon.configSchema = {
             { type = "toggle", key = "anchorBuffBarsToWidgetFrame", name = "Anchor Buff Bars to Cast Bar",
               store = "bool", reload = true,
               desc = "Anchor BuffBarCooldownViewer above the cast bar. Requires a reload to take effect." },
+
+            { type = "divider", name = "Stacking" },
+            { type = "toggle", key = "collapseTrackedBarGaps", name = "Remove Gaps Between Bars",
+              store = "bool",
+              desc = "Blizzard keeps a fixed slot for every tracked bar, so an inactive one leaves an empty gap. "
+                  .. "This closes the gaps and keeps the active bars stacked together.",
+              apply = function() P():ApplyTrackedBarLayout() end },
+            { type = "select", key = "trackedBarSortMode", name = "Bar Order",
+              desc = "Order the visible bars by time remaining instead of the order set in the Cooldown Manager.",
+              disabled = function() return not profile().collapseTrackedBarGaps end,
+              values = {
+                  { value = "default", text = "Cooldown Manager Order" },
+                  { value = "shortest", text = "Time Remaining (Shortest First)" },
+                  { value = "longest", text = "Time Remaining (Longest First)" },
+              },
+              apply = function() P():ApplyTrackedBarLayout() end },
         },
     },
     --------------------------------------------------------------------------------
