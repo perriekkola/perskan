@@ -5,9 +5,10 @@
 --
 -- What is left here is the parts XML can't reach:
 --
---   * The scroll frame is a UIPanelScrollFrameTemplate, whose slider is the old
---     arrows-and-thumb bar, and the panel draws its own character-sheet scrollbar art on
---     top of it. Both go, replaced by Blizzard's current MinimalScrollBar.
+--   * Both scroll frames - the pad and the icon picker - are UIPanelScrollFrameTemplates,
+--     whose slider is the old arrows-and-thumb bar, and the pad draws its own
+--     character-sheet scrollbar art on top of that. All of it goes, replaced by
+--     Blizzard's current MinimalScrollBar.
 --   * The window was a managed UI panel, so it got shoved aside to make room for other
 --     windows and hidden when enough were open. It floats and drags instead.
 --
@@ -19,32 +20,41 @@ local function Hide(region)
 end
 
 --------------------------------------------------------------------------------
--- Scrollbar
+-- Scrollbars
 --------------------------------------------------------------------------------
 
-local function ModernizeScrollBar()
-    -- BindPad's own scrollbar art, drawn on top of the template's.
-    Hide(_G["BindPadScrollFrameTop"])
-    Hide(_G["BindPadScrollFrameMiddle"])
-    Hide(_G["BindPadScrollFrameBottom"])
-
-    local scrollFrame = BindPadScrollFrame
+-- Swaps a UIPanelScrollFrameTemplate's arrows-and-thumb slider for Blizzard's current
+-- MinimalScrollBar.
+--
+-- Both of BindPad's scroll frames read their position from the scroll frame's own
+-- vertical scroll rather than from the slider - even the icon picker, whose faux paging
+-- derives its row offset inside OnVerticalScroll - so ScrollUtil can drive them with the
+-- old slider out of the picture.
+local function ReplaceScrollBar(scrollFrame, barParent, barBottom)
     if not scrollFrame or scrollFrame._perskanScrollDone then return end
     if not (ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar) then return end
     scrollFrame._perskanScrollDone = true
 
     -- Reparenting rather than hiding in place: the scroll template re-shows and re-alphas
     -- its bar as the range changes, and nothing under a hidden frame is ever drawn.
-    local holder = CreateFrame("Frame", nil, BindPadFrame)
+    local holder = CreateFrame("Frame", nil, barParent)
     holder:Hide()
 
     local function Park(bar)
         if bar then
+            -- Cleared before the reparent, and load bearing on the icon picker: the
+            -- slider's own handler scrolls self:GetParent(), which is about to stop
+            -- being the scroll frame, and FauxScrollFrame_* still calls SetValue on it.
+            -- Left alone it would either error against the holder or fight ScrollUtil
+            -- over the scroll position.
+            if bar.SetScript then bar:SetScript("OnValueChanged", nil) end
             bar:SetParent(holder)
             bar:Hide()
         end
     end
-    Park(_G["BindPadScrollFrameScrollBar"])
+
+    local name = scrollFrame.GetName and scrollFrame:GetName()
+    if name then Park(_G[name .. "ScrollBar"]) end
     Park(scrollFrame.ScrollBar)
     Park(scrollFrame.scrollBar)
     -- Swept rather than named: the template's bar isn't under the same key on every
@@ -57,13 +67,38 @@ local function ModernizeScrollBar()
         end
     end
 
-    local ok, scrollBar = pcall(CreateFrame, "EventFrame", nil, BindPadFrame, "MinimalScrollBar")
+    local ok, scrollBar = pcall(CreateFrame, "EventFrame", nil, barParent, "MinimalScrollBar")
     if not ok or not scrollBar then return end
 
+    -- barBottom lets the bar run the full height of what is on screen where that is
+    -- taller than the scroll frame: the icon picker's frame is sized to the scroll range
+    -- its faux paging expects, which is a row short of the grid it sits over.
     scrollBar:SetPoint("TOPLEFT", scrollFrame, "TOPRIGHT", 8, 0)
-    scrollBar:SetPoint("BOTTOMLEFT", scrollFrame, "BOTTOMRIGHT", 8, 0)
-    -- ScrollUtil takes the wheel over as well, so the parked bar isn't needed for anything.
+    scrollBar:SetPoint("BOTTOMLEFT", barBottom or scrollFrame, "BOTTOMRIGHT", 8, 0)
+
+    -- ScrollUtil takes the wheel over as well, so the parked bar isn't needed for
+    -- anything. It also SetScripts OnVerticalScroll rather than hooking it, which would
+    -- drop the icon picker's own handler on the floor - and that handler is the entire
+    -- mechanism by which the grid repaints, so scrolling would move nothing at all.
+    -- Saved across the call and hooked back on after.
+    local onVerticalScroll = scrollFrame:GetScript("OnVerticalScroll")
     pcall(ScrollUtil.InitScrollFrameWithScrollBar, scrollFrame, scrollBar)
+    if onVerticalScroll then
+        scrollFrame:HookScript("OnVerticalScroll", onVerticalScroll)
+    end
+end
+
+local function ModernizeScrollBar()
+    -- BindPad's own scrollbar art, drawn on top of the template's.
+    Hide(_G["BindPadScrollFrameTop"])
+    Hide(_G["BindPadScrollFrameMiddle"])
+    Hide(_G["BindPadScrollFrameBottom"])
+
+    ReplaceScrollBar(BindPadScrollFrame, BindPadFrame)
+end
+
+local function ModernizeMacroPopupScrollBar()
+    ReplaceScrollBar(BindPadMacroPopupScrollFrame, BindPadMacroPopupFrame, BindPadMacroPopupButton20)
 end
 
 --------------------------------------------------------------------------------
@@ -90,4 +125,7 @@ Perskan:RegisterModule("BindPadTweaks", function(self)
     BindPadFrame:HookScript("OnDragStop", function(frame) frame:StopMovingOrSizing() end)
 
     BindPadFrame:HookScript("OnShow", ModernizeScrollBar)
+    if BindPadMacroPopupFrame then
+        BindPadMacroPopupFrame:HookScript("OnShow", ModernizeMacroPopupScrollBar)
+    end
 end, "bindPadEnabled")

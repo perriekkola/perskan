@@ -153,7 +153,7 @@
                 <Texture name="$parentBorder" parentKey="border" atlas="UI-HUD-ActionBar-IconFrame-Border" hidden="true">
                     <Size x="45" y="44" />
                     <Anchors>
-                        <Anchor point="TOPLEFT" />
+                        <Anchor point="CENTER" />
                     </Anchors>
                 </Texture>
             </Layer>
@@ -161,19 +161,19 @@
         <NormalTexture name="$parentNormalTexture" parentKey="NormalTexture" atlas="UI-HUD-ActionBar-IconFrame">
             <Size x="45" y="44" />
             <Anchors>
-                <Anchor point="TOPLEFT" />
+                <Anchor point="CENTER" />
             </Anchors>
         </NormalTexture>
         <PushedTexture parentKey="PushedTexture" atlas="UI-HUD-ActionBar-IconFrame-Down">
             <Size x="45" y="44" />
             <Anchors>
-                <Anchor point="TOPLEFT" />
+                <Anchor point="CENTER" />
             </Anchors>
         </PushedTexture>
         <HighlightTexture parentKey="HighlightTexture" atlas="UI-HUD-ActionBar-IconFrame-Mouseover">
-            <Size x="45" y="44" />
+            <Size x="48" y="47" />
             <Anchors>
-                <Anchor point="TOPLEFT" />
+                <Anchor point="CENTER" />
             </Anchors>
         </HighlightTexture>
     </Button>
@@ -821,29 +821,46 @@
             </OnMouseWheel>
         </Scripts>
     </Button>
-    <!-- [Perskan] The icon-picker grid. It used to sit on the old panel-button art with
-         the icon painted over the normal texture, so the hover and selection states were
-         a grey bevel; now it is the same slot art as the pad itself. -->
+    <!-- [Perskan] The icon-picker grid, rebuilt on the same slot art as the pad. It
+         used to sit on the old panel-button art with the icon painted straight over the
+         normal texture, so hover and selection were a grey bevel and there was no frame
+         around the icon at all. The icon is a plain region now and the frame art is the
+         normal texture, which is also what lets the corner mask apply to it. -->
     <CheckButton name="BindPadMacroPopupButtonTemplate" virtual="true">
         <Size x="36" y="36" />
         <Layers>
             <Layer level="BACKGROUND">
                 <Texture parentKey="SlotBackground" atlas="UI-HUD-ActionBar-IconFrame-Background" setAllPoints="true" />
+                <Texture parentKey="SlotArt" atlas="ui-hud-actionbar-iconframe-slot" setAllPoints="true" />
+                <Texture name="$parentIcon" parentKey="Icon" setAllPoints="true" />
+                <!-- 1.5x the icon; see the note on the pad's own slot template. -->
+                <MaskTexture parentKey="IconMask" atlas="UI-HUD-ActionBar-IconFrame-Mask" hWrapMode="CLAMPTOBLACKADDITIVE" vWrapMode="CLAMPTOBLACKADDITIVE">
+                    <Size x="54" y="54" />
+                    <Anchors>
+                        <Anchor point="CENTER" relativeKey="$parent.Icon" />
+                    </Anchors>
+                    <MaskedTextures>
+                        <MaskedTexture childKey="Icon" />
+                    </MaskedTextures>
+                </MaskTexture>
             </Layer>
         </Layers>
-        <NormalTexture name="$parentIcon" parentKey="Icon">
-            <Size x="36" y="36" />
+        <NormalTexture parentKey="NormalTexture" atlas="UI-HUD-ActionBar-IconFrame">
+            <Size x="37" y="36" />
+            <Anchors>
+                <Anchor point="CENTER" />
+            </Anchors>
         </NormalTexture>
         <HighlightTexture parentKey="HighlightTexture" atlas="UI-HUD-ActionBar-IconFrame-Mouseover">
-            <Size x="45" y="44" />
+            <Size x="40" y="39" />
             <Anchors>
-                <Anchor point="TOPLEFT" />
+                <Anchor point="CENTER" />
             </Anchors>
         </HighlightTexture>
         <CheckedTexture parentKey="CheckedTexture" atlas="UI-HUD-ActionBar-IconFrame-Mouseover">
-            <Size x="45" y="44" />
+            <Size x="40" y="39" />
             <Anchors>
-                <Anchor point="TOPLEFT" />
+                <Anchor point="CENTER" />
             </Anchors>
         </CheckedTexture>
         <Scripts>
@@ -871,7 +888,7 @@
                 <Anchors>
                     <Anchor point="TOPLEFT">
                         <Offset>
-                            <AbsDimension x="29" y="-35" />
+                            <AbsDimension x="30" y="-35" />
                         </Offset>
                     </Anchor>
                 </Anchors>
@@ -897,16 +914,15 @@
                 </Scripts>
                 <FontString inherits="ChatFontNormal" />
             </EditBox>
+            <!-- [Perskan] Sized and placed over the icon grid it scrolls. It used to be
+                 296 wide inside a 297 wide frame, anchored from the right by -39, which
+                 left its scrollbar stranded in the middle of the panel with nothing
+                 beside it. The frame itself draws nothing - the icon buttons are not its
+                 children - so this only decides where the bar lands. -->
             <ScrollFrame name="BindPadMacroPopupScrollFrame" inherits="FauxScrollFrameTemplate">
-                <Size>
-                    <AbsDimension x="296" y="195" />
-                </Size>
+                <Size x="220" y="144" />
                 <Anchors>
-                    <Anchor point="TOPRIGHT" relativeTo="BindPadMacroPopupFrame" relativePoint="TOPRIGHT">
-                        <Offset>
-                            <AbsDimension x="-39" y="-67" />
-                        </Offset>
-                    </Anchor>
+                    <Anchor point="TOPLEFT" relativeTo="BindPadMacroPopupFrame" relativePoint="TOPLEFT" x="30" y="-85" />
                 </Anchors>
                 <Scripts>
                     <OnVerticalScroll>
@@ -918,7 +934,7 @@
                 <Anchors>
                     <Anchor point="TOPLEFT">
                         <Offset>
-                            <AbsDimension x="24" y="-85" />
+                            <AbsDimension x="30" y="-85" />
                         </Offset>
                     </Anchor>
                 </Anchors>
