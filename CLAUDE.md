@@ -67,7 +67,10 @@ was deliberately moved away from.
 - **Libs/HereBeDragons/**: Embedded map/pin library (BSD), used by `Modules/DelveMap.lua`
   to place pins on the world map canvas.
 - **Perskan.xml**: Load order — Options → Modules → Config → Core.
-- **Perskan.toc**: Manifest (multi-interface: 110207, 120000).
+- **Perskan.toc**: Manifest. `## Interface` is multi-interface and lists live retail
+  first (`120100`, Midnight 12.1.0), because addon managers show the first entry as the
+  addon's game version; `110207` trails it for The War Within. Bump the leading number
+  when retail patches, or the manager reports the addon as built for an older game.
 
 Settings are stored in `PerskanDB` SavedVariable using AceDB-3.0 profiles.
 

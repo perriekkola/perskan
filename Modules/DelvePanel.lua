@@ -18,7 +18,7 @@ BINDING_HEADER_PERSKAN = "Perskan's Pack"
 BINDING_NAME_PERSKAN_TOGGLE_DELVE_PANEL = "Toggle Delve Panel"
 
 local WIDTH = 300
-local INSET_TOP = 60   -- clears the title bar and the portrait
+local INSET_TOP = 40   -- clears the title bar; no portrait to clear (see BuildPanel)
 local INSET_EDGE = 8   -- inset to panel edge
 local INSET_PAD = 8    -- content to inset edge
 local ROW_HEIGHT = 20
@@ -481,9 +481,13 @@ local function BuildPanel()
     if panel.SetTitle then
         panel:SetTitle("Delves")
     end
-    local portrait = panel.PortraitContainer and panel.PortraitContainer.portrait or panel.portrait
-    if portrait and C_Texture.GetAtlasInfo("delves-regular") then
-        portrait:SetAtlas("delves-regular")
+    -- No portrait. ButtonFrameTemplate's portrait is a plain square texture sitting
+    -- behind a ring, so it wants opaque art the way an icon file is: the delve map
+    -- atlas is transparent around the archway, which left the panel's own inset and
+    -- the world behind it showing through the circle. The chat copy window drops the
+    -- portrait the same way.
+    if ButtonFrameTemplate_HidePortrait then
+        ButtonFrameTemplate_HidePortrait(panel)
     end
 
     panel.Inset:ClearAllPoints()
