@@ -1,4 +1,7 @@
 <Bindings>
+  <Binding name="PERSKAN_TOGGLE_DELVE_PANEL" header="PERSKAN">
+    Perskan:ToggleDelvePanel();
+  </Binding>
   <Binding name="TOGGLE_BINDPAD" header="BINDPAD">
     BindPadFrame_Toggle();
   </Binding>

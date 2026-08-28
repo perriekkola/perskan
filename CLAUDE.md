@@ -25,8 +25,10 @@ was deliberately moved away from.
   Modules read `Perskan.db.profile` live (never cache it — AceDB repoints the table on a
   profile switch). Files: `CVars`, `FrameScaling`, `ActionBars`, `GreyOnCooldown`,
   `RangeColoring`, `HideElements`, `Auras`, `Nameplates`, `DamageMeter` (gated on
-  `enableDamageMeterCustomization`), `BuffBars`, `DelveMap`, `ChatCopyPaste`,
-  `KeyBindings`, `BindPadTweaks`, `ItemLevel`.
+  `enableDamageMeterCustomization`), `BuffBars`, `DelveMap`, `DelveData`/`DelvePanel`,
+  `ChatCopyPaste`, `KeyBindings`, `BindPadTweaks`, `ItemLevel`. `DelveData.lua` is the one
+  file that registers nothing: it is the delve difficulty table `DelvePanel.lua` reads,
+  ported from DelveSpeedTracker (Bloom) and meant to be tuned from experience.
 - **Vendored addons**: `Modules/BindPad/` (BindPad, Tageshi) and
   `Modules/SimpleItemLevel/` (Simple Item Level, Kemayo) are third-party addons carried
   whole, each with its own saved variable listed in the toc. Every deviation from
@@ -38,6 +40,14 @@ was deliberately moved away from.
 - **Action button visuals** are split by property so features stack rather than fight:
   `GreyOnCooldown` owns desaturation (cooldowns), `RangeColoring` owns vertex colour
   (range/resources).
+- **Bindings.xml**: loaded implicitly by the client (it is not in the toc). Bindings sit
+  under the `PERSKAN` header, whose `BINDING_HEADER_*`/`BINDING_NAME_*` strings are set
+  from the module that owns the binding. BindPad's own binding keeps its upstream header.
+- **Delve panel taint rule**: `Modules/DelvePanel.lua` reads story variants off delve map
+  POIs through `C_UIWidgetManager`. Doing that while the world map is open taints the
+  numbers Blizzard's POI tooltips lay out with ("secret number value tainted by ..." on
+  hover), so the scan only runs with the map closed and the panel shows the last result
+  until then. Variants rotate daily, so stale data costs nothing.
 - **Retail 12.x note**: unit-frame and raid-frame auras are engine-owned
   (`AuraContainer`/`AuraButton`, private auras). Individual aura icons and their
   cooldowns are not reachable from an addon; the only public knobs are the container's
@@ -78,6 +88,10 @@ Settings are stored in `PerskanDB` SavedVariable using AceDB-3.0 profiles.
 - **Taint avoidance**: Frame repositioning checks `InCombatLockdown()` before protected
   calls (`ClearAllPoints`/`SetPoint`) and re-asserts on `PLAYER_REGEN_ENABLED`. Don't use
   `AddManagedFrame` on UIParentBottomManagedFrameContainer (causes combat taint errors).
+- **Adding a keybinding**: add a `<Binding>` to `Bindings.xml` calling a method on the
+  `Perskan` global, and set `BINDING_NAME_<NAME>` at file scope in the module that
+  implements it. The method has to build its own frames lazily - a binding can fire before
+  anything has opened the feature.
 - **Adding a new setting**: (1) add the default to `defaults.profile` in Options.lua; (2) add
   a control to the relevant category in `Config/Schema.lua` (pick `type`; add `cvar` for a
   CVar, `apply` for a live effect, or `reload = true` if it needs a reload); (3) if it applies

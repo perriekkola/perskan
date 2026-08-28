@@ -14,6 +14,8 @@
   <Script file="Modules\DamageMeter.lua" />
   <Script file="Modules\BuffBars.lua" />
   <Script file="Modules\DelveMap.lua" />
+  <Script file="Modules\DelveData.lua" />
+  <Script file="Modules\DelvePanel.lua" />
   <Script file="Modules\ChatCopyPaste.lua" />
   <Script file="Modules\KeyBindings.lua" />
   <Script file="Modules\BindPadTweaks.lua" />
