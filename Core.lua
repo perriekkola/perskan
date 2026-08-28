@@ -42,6 +42,7 @@ local LIVE_APPLIERS = {
     "ApplyGreyOnCooldown",
     "ApplyRangeColoring",
     "ApplyDelveMapPins",
+    "ApplyDelvePanel",
     "ApplyChatCopyButton",
     "ApplyChatFade",
     "ApplyHideSocialButton",

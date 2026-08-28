@@ -700,8 +700,15 @@ function Perskan:BuildConfig()
             iconTexture = button:CreateTexture(nil, "ARTWORK")
             iconTexture:SetSize(18, 18)
             iconTexture:SetPoint("LEFT", button, "LEFT", 4, 0)
-            iconTexture:SetTexture(icon)
-            iconTexture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            -- Icons are square texture paths, cropped to drop the border baked into
+            -- Blizzard's icon art. An atlas name is taken as-is: atlases are already
+            -- trimmed, and cropping one would cut into the artwork.
+            if C_Texture.GetAtlasInfo(icon) then
+                iconTexture:SetAtlas(icon)
+            else
+                iconTexture:SetTexture(icon)
+                iconTexture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            end
         end
 
         local label = button:CreateFontString(nil, "ARTWORK", "GameFontHighlight")

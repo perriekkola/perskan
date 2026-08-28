@@ -23,3 +23,18 @@ function Perskan:ApplyBindPad()
         HideUIPanel(BindPadFrame)
     end
 end
+
+-- Blizzard's own Key Bindings panel, where the addon's bindings sit under a
+-- "Perskan's Pack" header (Bindings.xml). The settings window is closed on the way out:
+-- both are dialogs, and ours would otherwise sit on top of the one being opened.
+function Perskan:OpenKeyBindings()
+    if self._configWindow then
+        self._configWindow:Hide()
+    end
+
+    if Settings and Settings.OpenToCategory and Settings.KEYBINDINGS_CATEGORY_ID then
+        Settings.OpenToCategory(Settings.KEYBINDINGS_CATEGORY_ID)
+    elseif ToggleGameMenu then
+        ToggleGameMenu()
+    end
+end

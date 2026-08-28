@@ -348,6 +348,38 @@ addon.configSchema = {
     },
     --------------------------------------------------------------------------------
     {
+        key = "delves",
+        title = "Delves",
+        icon = "delves-regular",
+        controls = {
+            { type = "toggle", key = "delvePanelEnabled", name = "Delve Panel", store = "bool",
+              desc = "A panel listing today's delves grouped fastest to slowest. Which story "
+                  .. "variant a delve is running decides how long it takes, and that rotates "
+                  .. "daily, so the order changes day to day.",
+              apply = function() P():ApplyDelvePanel() end },
+            { type = "toggle", key = "delvePanelWaypoints", name = "Set TomTom Waypoint", store = "bool",
+              desc = "Clicking a delve also drops a TomTom waypoint on it. Does nothing "
+                  .. "without TomTom installed.",
+              disabled = function() return not profile().delvePanelEnabled end },
+            { type = "range", key = "delvePanelScale", name = "Panel Scale",
+              desc = "Size of the delve panel.", min = 0.5, max = 2.0, step = 0.05,
+              disabled = function() return not profile().delvePanelEnabled end,
+              apply = function() P():ApplyDelvePanel() end },
+
+            { type = "divider", name = "Opening It" },
+            { type = "button", name = "Toggle Delve Panel", width = 220,
+              desc = "Also bound to /pp delves, and to whatever key you set under "
+                  .. "Key Bindings -> Perskan's Pack.",
+              onClick = function() P():ToggleDelvePanel() end,
+              disabled = function() return not profile().delvePanelEnabled end },
+            { type = "button", name = "Open Key Bindings", width = 220,
+              desc = "Jump to the Key Bindings panel to put the delve panel on a key.",
+              onClick = function() P():OpenKeyBindings() end,
+              disabled = function() return not profile().delvePanelEnabled end },
+        },
+    },
+    --------------------------------------------------------------------------------
+    {
         key = "framescaling",
         title = "Frame Scaling",
         icon = "Interface\\Icons\\INV_Misc_Gear_01",
