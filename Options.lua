@@ -77,8 +77,6 @@ local defaults = {
         -- Tracked Bars
         anchorBuffBarsToWidgetFrame = true,
         anchorExtraQuestButton = false,
-        collapseTrackedBarGaps = true,
-        trackedBarSortMode = "default",
         -- Damage Meter
         enableDamageMeterCustomization = false,
         damageMeterWidth = 200,
@@ -153,15 +151,8 @@ function Perskan:OnInitialize()
 end
 
 function Perskan:SlashCommand(msg)
-    -- "/pp bars" prints what the addon can see of the tracked bar viewer, "/pp delves"
-    -- toggles the delve panel; everything else opens the settings window.
+    -- "/pp delves" toggles the delve panel; everything else opens the settings window.
     local command = type(msg) == "string" and string.lower(strtrim and strtrim(msg) or msg) or ""
-    if command == "bars" then
-        if self.DumpTrackedBars then
-            self:DumpTrackedBars()
-        end
-        return
-    end
 
     if command == "delves" then
         if self.ToggleDelvePanel then
