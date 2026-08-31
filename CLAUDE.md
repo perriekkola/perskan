@@ -48,6 +48,16 @@ was deliberately moved away from.
   numbers Blizzard's POI tooltips lay out with ("secret number value tainted by ..." on
   hover), so the scan only runs with the map closed and the panel shows the last result
   until then. Variants rotate daily, so stale data costs nothing.
+- **Cooldown viewer taint rule**: nothing may write to, hook, or re-anchor
+  `BuffBarCooldownViewer`'s item frames. In 12.1 the viewer keeps its aura lookup in the
+  `CreateSecureAuraInstanceMap` proxy (`Blizzard_CooldownViewer/CooldownViewerSecure.lua`),
+  flagged `Enum.TableSecurityOption.DisallowTaintedAccess`, and Blizzard's aura pipeline
+  shows/hides item frames and indexes that map in the same execution
+  (`CooldownViewerMixin:OnUnitAura` → `CheckAuraAddedAlertTriggers`, and the item frame
+  pool's reset callback). Any taint left on an item frame therefore comes back as
+  "attempted to index a table that cannot be accessed while tainted (execution tainted by
+  'Perskan')". This is what removed the tracked-bar stacking options in 1.1.40; see the
+  long comment at the top of `Modules/BuffBars.lua` before trying it again.
 - **Retail 12.x note**: unit-frame and raid-frame auras are engine-owned
   (`AuraContainer`/`AuraButton`, private auras). Individual aura icons and their
   cooldowns are not reachable from an addon; the only public knobs are the container's
