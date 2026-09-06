@@ -7,6 +7,16 @@
 -- Blizzard's own "Delves" map filter still wins: with showDelveEntrancesOnMap off,
 -- nothing is drawn. The "bountiful only" filter is both a setting here and a checkbox
 -- in the map's tracking menu, sharing one profile key.
+--
+-- Widget taint rule: the pin tooltips read a POI's story variant out of its widget set,
+-- which is the same read Modules/DelvePanel.lua fences off. Done straight from addon
+-- code it leaves this addon's taint on shared widget data, and every later reader of
+-- that data - Blizzard's own POI tooltips, the objective tracker's widget container -
+-- runs tainted. A tainted tracker layout is fatal in 12.1, because
+-- ScenarioObjectiveTrackerMixin:LayoutContents opens with ShouldShowMawBuffs(), whose
+-- GetAuraDataByIndex call cannot read a secret aura from a tainted execution. So every
+-- widget call goes through securecallfunction, and each widget set is read once and
+-- cached.
 
 local addonName = ...
 local HBDP = LibStub and LibStub("HereBeDragons-Pins-2.0", true)
@@ -27,7 +37,21 @@ local EXTRA_CHILDREN = {
 
 -- Bountiful delves rotate; the per-continent lookup is cheap to rebuild now and then.
 local parentDelveCache = {}
+
+-- Story variant and blurb per POI tooltip widget set (see ExtractWidgetInfo), so
+-- sweeping the pointer across a row of pins doesn't re-read the same widget data over
+-- and over. Kept short-lived rather than tied to the ticker below: the variant rotates
+-- daily, but the second line can be a bountiful countdown, and a minute is long enough
+-- to cover repeated hovers without showing a stale one.
+local WIDGET_CACHE_LIFETIME = 60
+local widgetTextCache = {}
+
 C_Timer.NewTicker(600, function() wipe(parentDelveCache) end)
+
+-- Same rule as Modules/DelvePanel.lua: widget reads go through securecallfunction so
+-- this addon's taint never lands on the widget data Blizzard's own POI tooltips - and
+-- the objective tracker's widget container - lay out with later.
+local SecureCall = securecallfunction or function(func, ...) return func(...) end
 
 --------------------------------------------------------------------------------
 -- Pins
@@ -58,15 +82,24 @@ function PinMixin:OnAcquire(info)
 end
 
 -- Pull the story variant and the bountiful blurb out of the POI's widget set, the
--- same data the stock tooltip shows.
+-- same data the stock tooltip shows. Every call here happens on a mouseover with the
+-- world map up, which is the worst place to be reading widget data, so the reads are
+-- secured and briefly cached.
 local function ExtractWidgetInfo(widgetSetID)
-    local widgets = widgetSetID and C_UIWidgetManager.GetAllWidgetsBySetID(widgetSetID)
+    if not widgetSetID then return end
+
+    local cached = widgetTextCache[widgetSetID]
+    if cached and GetTime() - cached.readAt < WIDGET_CACHE_LIFETIME then
+        return cached.variant, cached.description
+    end
+
+    local widgets = SecureCall(C_UIWidgetManager.GetAllWidgetsBySetID, widgetSetID)
     if not widgets then return end
 
     local variant, description
     for _, widget in ipairs(widgets) do
         if widget.widgetType == Enum.UIWidgetVisualizationType.TextWithState then
-            local info = C_UIWidgetManager.GetTextWithStateWidgetVisualizationInfo(widget.widgetID)
+            local info = SecureCall(C_UIWidgetManager.GetTextWithStateWidgetVisualizationInfo, widget.widgetID)
             -- orderIndex 0 is the variant line, 1 is the coffer-key/timer description.
             if info and info.orderIndex == 0 then
                 variant = info.text
@@ -75,6 +108,8 @@ local function ExtractWidgetInfo(widgetSetID)
             end
         end
     end
+
+    widgetTextCache[widgetSetID] = { variant = variant, description = description, readAt = GetTime() }
     return variant, description
 end
 

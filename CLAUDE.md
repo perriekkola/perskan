@@ -43,11 +43,24 @@ was deliberately moved away from.
 - **Bindings.xml**: loaded implicitly by the client (it is not in the toc). Bindings sit
   under the `PERSKAN` header, whose `BINDING_HEADER_*`/`BINDING_NAME_*` strings are set
   from the module that owns the binding. BindPad's own binding keeps its upstream header.
-- **Delve panel taint rule**: `Modules/DelvePanel.lua` reads story variants off delve map
-  POIs through `C_UIWidgetManager`. Doing that while the world map is open taints the
-  numbers Blizzard's POI tooltips lay out with ("secret number value tainted by ..." on
-  hover), so the scan only runs with the map closed and the panel shows the last result
-  until then. Variants rotate daily, so stale data costs nothing.
+- **Delve widget taint rule**: `Modules/DelvePanel.lua` and `Modules/DelveMap.lua` both
+  read story variants off delve map POIs through `C_UIWidgetManager`. Doing that from
+  addon code taints shared widget data, which surfaces as "secret number value tainted
+  by ..." on POI tooltip hover. Every widget call in both files goes through
+  `securecallfunction`, the panel's scan additionally only runs with the map closed (it
+  shows the last result until then), and the map's pin tooltips briefly cache each widget
+  set they read. Variants rotate daily, so stale data costs nothing.
+- **Objective tracker taint rule**: nothing this addon does may leave taint in an
+  execution that marks a Blizzard frame dirty. `DirtiableMixin:MarkDirty`
+  (`Blizzard_SharedXML/MixinUtil.lua`) defers the update with `RunNextFrame`, which
+  carries the scheduling execution's taint into the update, and
+  `ScenarioObjectiveTrackerMixin:LayoutContents` opens every tracker layout with
+  `ShouldShowMawBuffs()` - a `C_UnitAuras.GetAuraDataByIndex` call that throws "Auras
+  cannot be accessed when secret while tainted by 'Perskan'" the moment the layout runs
+  tainted, in or out of a scenario. Two habits keep us out of it: read Blizzard's shared
+  state through `securecallfunction`, and don't install hooks that run inside Blizzard's
+  own execution (`HookScript` on a Blizzard frame, unlike `hooksecurefunc`, taints
+  whoever fired the script) for a feature that is switched off.
 - **Cooldown viewer taint rule**: nothing may write to, hook, or re-anchor
   `BuffBarCooldownViewer`'s item frames. In 12.1 the viewer keeps its aura lookup in the
   `CreateSecureAuraInstanceMap` proxy (`Blizzard_CooldownViewer/CooldownViewerSecure.lua`),
