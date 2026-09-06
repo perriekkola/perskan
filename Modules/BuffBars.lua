@@ -86,6 +86,19 @@ local function RepositionAll()
 end
 
 Perskan:RegisterModule("BuffBars", function(self)
+    -- Nothing here installs unless one of the two anchors is actually on. Both hooks
+    -- below run inside somebody else's execution - Blizzard's cast bar layout, the
+    -- ExtraQuestButton addon's show/hide - and an addon function that runs there taints
+    -- that execution whether or not it does any work. A tainted execution that goes on
+    -- to mark a Blizzard frame dirty hands its taint to the deferred update
+    -- (DirtiableMixin:MarkDirty -> RunNextFrame), which is how taint from this addon
+    -- ends up in layout passes that read secret values - the objective tracker's
+    -- ShouldShowMawBuffs aura read being the loud one in 12.1. Both settings are
+    -- reload-gated, so reading them once at login is the whole story.
+    if not (self.db.profile.anchorBuffBarsToWidgetFrame or self.db.profile.anchorExtraQuestButton) then
+        return
+    end
+
     local eventFrame = CreateFrame("Frame")
     eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     eventFrame:RegisterEvent("ADDON_LOADED")
@@ -111,8 +124,11 @@ Perskan:RegisterModule("BuffBars", function(self)
                 end)
             end
 
-            -- ExtraQuestButton visibility affects the buff-bar anchor.
-            if ExtraQuestButton then
+            -- ExtraQuestButton visibility affects the buff-bar anchor - but only
+            -- when both anchors are on, so the hooks stay off ExtraQuestButton's
+            -- frame in every other case.
+            if ExtraQuestButton and Perskan.db.profile.anchorExtraQuestButton
+                and Perskan.db.profile.anchorBuffBarsToWidgetFrame then
                 ExtraQuestButton:HookScript("OnShow", function()
                     if not InCombatLockdown() then RepositionBuffBarsAboveWidget() end
                 end)
