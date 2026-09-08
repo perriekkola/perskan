@@ -24,7 +24,8 @@ was deliberately moved away from.
   registry and exposes live-apply methods on `Perskan` (e.g. `Perskan:ApplyXpBarScale()`).
   Modules read `Perskan.db.profile` live (never cache it — AceDB repoints the table on a
   profile switch). Files: `CVars`, `FrameScaling`, `ActionBars`, `GreyOnCooldown`,
-  `RangeColoring`, `HideElements`, `Auras`, `Nameplates`, `DamageMeter` (gated on
+  `RangeColoring`, `HideElements`, `Auras`, `PlayerBuffs` (gated on
+  `filterPlayerBuffs`), `Nameplates`, `DamageMeter` (gated on
   `enableDamageMeterCustomization`), `BuffBars`, `DelveMap`, `DelveData`/`DelvePanel`,
   `ChatCopyPaste`, `KeyBindings`, `BindPadTweaks`, `ItemLevel`. `DelveData.lua` is the one
   file that registers nothing: it is the delve difficulty table `DelvePanel.lua` reads,
@@ -75,6 +76,22 @@ was deliberately moved away from.
   (`AuraContainer`/`AuraButton`, private auras). Individual aura icons and their
   cooldowns are not reachable from an addon; the only public knobs are the container's
   `SetSmallAuraSize`/`SetLargeAuraSize`, which is what `Modules/Auras.lua` drives.
+- **12.1 aura filtering rule**: filtering auras is possible again, but only by letting the
+  engine do it. `CreateFrame("AuraContainer", nil, parent, "CustomAuraContainerTemplate")`
+  tracks, filters, sorts and creates its own `AuraButton`s; an addon supplies presentation
+  (`SetIcon`, `SetDurationText`, `SetApplicationCount`, `SetCancelAuraButtons`) and a filter
+  (`AddAuraGroup(key, filterString, { candidateFilters = { excludeSpellIDs = ... } })`,
+  changed later with `SetAuraGroupCandidateFilters`). Reading aura data is still off the
+  table: the index/slot/instance-ID APIs raise a Lua error from addon code while auras are
+  secret (combat, encounters, M+, rated PvP), `UNIT_AURA` carries a secret payload, and
+  `AuraButton`s carry Forbidden Aspects — no script handlers, no focus queries, secret
+  `IsShown`. `Modules/PlayerBuffs.lua` is built on this: it hides Blizzard's `BuffFrame`
+  (still an unfilterable `AuraUtil.ForEachAura` frame in 12.1) and draws the row itself, and
+  its shift+right-click-to-hide only arms while auras are readable, because mapping a
+  clicked slot back to a spell ID means reading the aura list ourselves. It stands aside
+  while Edit Mode is open and mirrors its layout off `BuffFrame.AuraContainer`
+  (`iconStride`/`iconPadding`/`iconScale`/`isHorizontal`/`addIconsToRight`/`addIconsToTop`)
+  so the Edit Mode aura settings still drive the replacement row.
 - **Config/Schema.lua**: Data-driven description of the settings window — categories and
   controls (`toggle`/`range`/`select`/`color`/`button`/`divider`) with `cvar`, `apply`,
   `reload`, `hidden`, `disabled` flags, plus optional `get`/`set` for settings that don't

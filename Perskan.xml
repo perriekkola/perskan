@@ -10,6 +10,7 @@
   <Script file="Modules\RangeColoring.lua" />
   <Script file="Modules\HideElements.lua" />
   <Script file="Modules\Auras.lua" />
+  <Script file="Modules\PlayerBuffs.lua" />
   <Script file="Modules\Nameplates.lua" />
   <Script file="Modules\DamageMeter.lua" />
   <Script file="Modules\BuffBars.lua" />

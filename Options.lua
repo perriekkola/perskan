@@ -71,6 +71,9 @@ local defaults = {
         delvePanelY = 0,
         -- Unit Frame Auras
         targetFocusAuraSize = 20,
+        -- Player Buffs
+        filterPlayerBuffs = false,
+        hiddenBuffs = {},
         -- Hide UI Elements
         hideSocialButton = false,
         hideBagsBar = false,
