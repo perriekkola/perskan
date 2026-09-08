@@ -39,15 +39,24 @@
 -- keeps this clear of the cooldown viewer's secure-aura-map problem (see the comment
 -- at the top of Modules/BuffBars.lua).
 
+-- Blizzard's own numbers, so the row lands where the default one did:
+-- AuraButtonArtTemplate is 30x40 (a 30x30 icon with the duration text under it) and
+-- AuraContainerTemplate carries iconStride 8 / iconPadding 5, anchored to the aura
+-- frame's TOPRIGHT with addIconsToRight and addIconsToTop both false - so icons grow
+-- leftwards and down from the top right, with the collapse arrow (15x30, a 10x16
+-- `bag-arrow`) on the right of the row. BUFF_MAX_DISPLAY is 32.
 local ICON_SIZE     = 30
+local SLOT_HEIGHT   = 40     -- icon plus the duration text below it
 local ICON_SPACING  = 5
-local ROW_SPACING   = 16     -- room for the duration text under each row
-local ICONS_PER_ROW = 16
+local ROW_SPACING   = 5
+local ICONS_PER_ROW = 8
 local MAX_BUFFS     = 32
 local MAX_ROWS      = math.ceil(MAX_BUFFS / ICONS_PER_ROW)
+local ARROW_WIDTH   = 15
 
-local ROW_WIDTH  = ICONS_PER_ROW * ICON_SIZE + (ICONS_PER_ROW - 1) * ICON_SPACING
-local GRID_HEIGHT = MAX_ROWS * ICON_SIZE + (MAX_ROWS - 1) * ROW_SPACING
+local GRID_WIDTH   = ICONS_PER_ROW * ICON_SIZE + (ICONS_PER_ROW - 1) * ICON_SPACING
+local GRID_HEIGHT  = MAX_ROWS * SLOT_HEIGHT + (MAX_ROWS - 1) * ROW_SPACING
+local HOLDER_WIDTH = GRID_WIDTH + ARROW_WIDTH
 
 local holder, container, expander, hiddenPanel, combatPane
 local overlays, hiddenRows = {}, {}
@@ -168,19 +177,24 @@ end
 -- Dress one AuraButton. Called once per button the container creates; the button is
 -- recycled between auras, so nothing here may assume which aura it holds.
 local function InitAuraButton(button)
-    button:SetSize(ICON_SIZE, ICON_SIZE)
+    -- Region for region, this is Blizzard's AuraButtonArtTemplate. The icon is drawn
+    -- uncropped on purpose: WoW icon art has its border baked into the file, so
+    -- trimming the edge (the usual 0.07-0.93 texcoords) is what makes an icon look
+    -- borderless next to the default UI.
+    button:SetSize(ICON_SIZE, SLOT_HEIGHT)
 
-    local icon = button:CreateTexture(nil, "BORDER")
-    icon:SetAllPoints(button)
-    icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    local icon = button:CreateTexture(nil, "BACKGROUND")
+    icon:SetSize(ICON_SIZE, ICON_SIZE)
+    icon:SetPoint("TOP", button, "TOP", 0, 0)
     button:SetIcon(icon)
+    button.PerskanIcon = icon
 
-    local duration = button:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    duration:SetPoint("TOP", button, "BOTTOM", 0, -2)
+    local duration = button:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+    duration:SetPoint("TOP", icon, "BOTTOM", 0, 0)
     button:SetDurationText(duration)
 
     local count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-    count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
+    count:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", -2, 2)
     button:SetApplicationCount(count, {})
 
     -- Right-click cancels, the way Blizzard's buff icons do. Cancelling is engine
@@ -191,14 +205,26 @@ local function InitAuraButton(button)
     end
 end
 
+-- Temporary weapon enchants get the border Blizzard draws on them.
+local function InitEnchantButton(button)
+    InitAuraButton(button)
+
+    local border = button:CreateTexture(nil, "OVERLAY")
+    border:SetTexture("Interface\\Buttons\\UI-TempEnchant-Border")
+    border:SetSize(32, 32)
+    border:SetPoint("CENTER", button.PerskanIcon or button, "CENTER", 0, 0)
+end
+
 local function CreateContainer()
     if container then return true end
     if not (CreateFrame and BuffFrame) then return false end
 
     holder = CreateFrame("Frame", "PerskanPlayerBuffs", UIParent)
-    holder:SetSize(ROW_WIDTH, GRID_HEIGHT)
+    holder:SetSize(HOLDER_WIDTH, GRID_HEIGHT)
     -- Park on Blizzard's (hidden) buff frame so Edit Mode still positions the row.
-    holder:SetPoint("TOPLEFT", BuffFrame, "TOPLEFT", 0, 0)
+    -- TOPRIGHT, because that is the corner the default row is anchored from.
+    holder:SetPoint("TOPRIGHT", BuffFrame, "TOPRIGHT", 0, 0)
+    holder:SetClampedToScreen(true)
 
     local created, frame = pcall(CreateFrame, "AuraContainer", nil, holder, "CustomAuraContainerTemplate")
     if not created or not frame then
@@ -207,13 +233,17 @@ local function CreateContainer()
         return false
     end
     container = frame
-    pcall(container.SetPoint, container, "TOPLEFT", holder, "TOPLEFT")
+    -- The arrow sits at the right end of the row, so the icons start just left of it.
+    pcall(container.SetPoint, container, "TOPRIGHT", holder, "TOPRIGHT", -ARROW_WIDTH, 0)
 
     local ok = pcall(function()
         container:SetUnit("player")
-        -- Flow layout defaults are already top-left, growing right then down; all we
-        -- need is the wrap point.
-        container:SetFlowLayoutMaximumLineSize(ROW_WIDTH)
+        -- Flow layout defaults to top-left growing right; the default buff row grows
+        -- leftwards and down from its top-right corner instead.
+        container:SetFlowLayoutAnchorPoint("TOPRIGHT")
+        container:SetFlowLayoutGrowthDirection(AnchorUtil.FlowDirection.Left,
+            AnchorUtil.FlowDirection.Down)
+        container:SetFlowLayoutMaximumLineSize(GRID_WIDTH)
         container:AddAuraGroup("buffs", "HELPFUL", {
             maxFrameCount = MAX_BUFFS,
             sortMethod = EnumValue(AuraContainerSortMethod, "Default", 0),
@@ -222,7 +252,7 @@ local function CreateContainer()
             initializeFrame = InitAuraButton,
             layout = {
                 elementWidth = ICON_SIZE,
-                elementHeight = ICON_SIZE,
+                elementHeight = SLOT_HEIGHT,
                 elementSpacing = ICON_SPACING,
                 lineSpacing = ROW_SPACING,
             },
@@ -242,12 +272,12 @@ local function CreateContainer()
         local slots = AuraContainerItemEnchantmentSlot
         if not slots then return end
         for _, slot in ipairs({ slots.MainHand, slots.OffHand, slots.Ranged }) do
-            container:AddItemEnchantment(slot, { initializeFrame = InitAuraButton })
+            container:AddItemEnchantment(slot, { initializeFrame = InitEnchantButton })
         end
         container:SetItemEnchantmentLayout({
             placement = EnumValue(CustomAuraContainerItemEnchantmentPlacement, "AfterAuraGroups", 1),
             elementWidth = ICON_SIZE,
-            elementHeight = ICON_SIZE,
+            elementHeight = SLOT_HEIGHT,
             elementSpacing = ICON_SPACING,
             lineSpacing = ROW_SPACING,
         })
@@ -287,10 +317,14 @@ end
 -- Shift overlay: the click target that turns a slot into a spell ID
 --------------------------------------------------------------------------------
 
+-- Where slot `index` sits relative to the holder's TOPRIGHT, mirroring the flow
+-- layout: leftwards along a row of ICONS_PER_ROW, then down. The arrow occupies the
+-- first ARROW_WIDTH pixels on the right.
 local function SlotOffset(index)
     local row = math.floor((index - 1) / ICONS_PER_ROW)
     local col = (index - 1) % ICONS_PER_ROW
-    return col * (ICON_SIZE + ICON_SPACING), -row * (ICON_SIZE + ROW_SPACING)
+    return -ARROW_WIDTH - col * (ICON_SIZE + ICON_SPACING),
+        -row * (SLOT_HEIGHT + ROW_SPACING)
 end
 
 local HideBuffAt
@@ -335,7 +369,8 @@ local function EnsureCombatPane()
     if combatPane then return combatPane end
 
     combatPane = CreateFrame("Button", nil, holder)
-    combatPane:SetAllPoints(holder)
+    combatPane:SetSize(GRID_WIDTH, GRID_HEIGHT)
+    combatPane:SetPoint("TOPRIGHT", holder, "TOPRIGHT", -ARROW_WIDTH, 0)
     pcall(combatPane.SetFrameLevel, combatPane, container:GetFrameLevel() + 20)
     combatPane:SetMouseMotionEnabled(false)
     combatPane:RegisterForClicks("RightButtonUp")
@@ -381,7 +416,7 @@ local function Arm()
             local overlay = EnsureOverlay(index)
             local x, y = SlotOffset(index)
             overlay:ClearAllPoints()
-            overlay:SetPoint("TOPLEFT", holder, "TOPLEFT", x, y)
+            overlay:SetPoint("TOPRIGHT", holder, "TOPRIGHT", x, y)
             overlay.slotIndex = index
             overlay:Show()
         elseif overlays[index] then
@@ -424,9 +459,10 @@ local function EnsureHiddenPanel()
     if hiddenPanel then return hiddenPanel end
 
     hiddenPanel = CreateFrame("Frame", nil, holder, "TooltipBackdropTemplate")
-    hiddenPanel:SetPoint("TOPLEFT", holder, "TOPLEFT", 0, -(GRID_HEIGHT + 8))
+    hiddenPanel:SetPoint("TOPRIGHT", holder, "TOPRIGHT", 0, -(SLOT_HEIGHT + 8))
     hiddenPanel:SetSize(220, 40)
     hiddenPanel:SetFrameStrata("DIALOG")
+    hiddenPanel:SetClampedToScreen(true)
     hiddenPanel:Hide()
 
     local title = hiddenPanel:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -529,20 +565,24 @@ end
 local function EnsureExpander()
     if expander then return expander end
 
+    -- Same size, spot and art as BuffFrame's own collapse button: 15x30 at the right
+    -- end of the row, drawing a 10x16 `bag-arrow`.
     expander = CreateFrame("Button", nil, holder)
-    expander:SetSize(16, 16)
-    expander:SetPoint("LEFT", holder, "TOPLEFT", ROW_WIDTH + 6, -(ICON_SIZE / 2))
+    expander:SetSize(ARROW_WIDTH, ICON_SIZE)
+    expander:SetPoint("TOPRIGHT", holder, "TOPRIGHT", 0, 0)
 
-    -- Stock art: the same atlas BuffFrame's own collapse button uses.
     local arrow = expander:CreateTexture(nil, "ARTWORK")
-    arrow:SetAtlas("bag-arrow", true)
-    arrow:SetAllPoints(expander)
+    arrow:SetAtlas("bag-arrow")
+    arrow:SetSize(10, 16)
+    arrow:SetPoint("CENTER", expander, "CENTER", 0, 0)
     expander.Arrow = arrow
 
     local highlight = expander:CreateTexture(nil, "HIGHLIGHT")
-    highlight:SetAtlas("bag-arrow", true)
-    highlight:SetAllPoints(expander)
+    highlight:SetAtlas("bag-arrow")
+    highlight:SetSize(10, 16)
+    highlight:SetPoint("CENTER", expander, "CENTER", 0, 0)
     highlight:SetAlpha(0.4)
+    highlight:SetBlendMode("ADD")
 
     expander:SetScript("OnClick", ToggleHiddenPanel)
     expander:SetScript("OnEnter", function(self)
@@ -572,6 +612,16 @@ function Perskan:ApplyPlayerBuffFilter()
         RefreshHiddenPanel()
     end
     Rearm()
+end
+
+-- Also reachable from the settings window, for when the arrow is behind something.
+function Perskan:ToggleHiddenBuffList()
+    if not holder then
+        self:Print("The filterable buff row isn't running - enable it under "
+            .. "Unit Frames -> Player Buffs and reload.")
+        return
+    end
+    ToggleHiddenPanel()
 end
 
 function Perskan:ClearHiddenBuffs()
