@@ -12,9 +12,15 @@
 -- Blizzard's own BuffFrame is not part of that. In 12.1 it still builds its icons from
 -- AuraUtil.ForEachAura into its own auraInfo table, with no filter hook to hand a
 -- blacklist to (only the target frame was moved onto a ManagedAuraContainer). So this
--- module hides BuffFrame and draws the row from our own container, anchored to the
--- hidden BuffFrame so Edit Mode still decides where the row sits. DebuffFrame is a
+-- module hides BuffFrame and draws the row from our own container. DebuffFrame is a
 -- separate frame and is left alone.
+--
+-- Edit Mode still owns the buff frame. While it is open we stand aside completely -
+-- our row hides, the default frame stays shown, so it can be moved and configured as
+-- usual - and on the way out we read Blizzard's own layout back off
+-- BuffFrame.AuraContainer (iconStride, iconPadding, iconScale, isHorizontal,
+-- addIconsToRight/addIconsToTop) and anchor to the frame corner for corner. That way
+-- the Edit Mode aura settings drive our row instead of being ignored.
 --
 -- Shift+right-click hides the buff under the cursor. The arrow at the end of the row
 -- opens the hidden list, where shift+right-click puts one back.
@@ -39,27 +45,87 @@
 -- keeps this clear of the cooldown viewer's secure-aura-map problem (see the comment
 -- at the top of Modules/BuffBars.lua).
 
--- Blizzard's own numbers, so the row lands where the default one did:
--- AuraButtonArtTemplate is 30x40 (a 30x30 icon with the duration text under it) and
--- AuraContainerTemplate carries iconStride 8 / iconPadding 5, anchored to the aura
--- frame's TOPRIGHT with addIconsToRight and addIconsToTop both false - so icons grow
--- leftwards and down from the top right, with the collapse arrow (15x30, a 10x16
--- `bag-arrow`) on the right of the row. BUFF_MAX_DISPLAY is 32.
-local ICON_SIZE     = 30
-local SLOT_HEIGHT   = 40     -- icon plus the duration text below it
-local ICON_SPACING  = 5
-local ROW_SPACING   = 5
-local ICONS_PER_ROW = 8
-local MAX_BUFFS     = 32
-local MAX_ROWS      = math.ceil(MAX_BUFFS / ICONS_PER_ROW)
-local ARROW_WIDTH   = 15
+-- Fixed art sizes, from Blizzard's AuraButtonArtTemplate (a 30x30 icon in a 30x40
+-- slot, the duration text filling the rest) and its CollapseAndExpandButton (15x30).
+local ICON_SIZE   = 30
+local SLOT_HEIGHT = 40
+local ARROW_WIDTH = 15
+local ICON_INSET  = SLOT_HEIGHT - ICON_SIZE   -- the icon sits at the top of its slot
 
-local GRID_WIDTH   = ICONS_PER_ROW * ICON_SIZE + (ICONS_PER_ROW - 1) * ICON_SPACING
-local GRID_HEIGHT  = MAX_ROWS * SLOT_HEIGHT + (MAX_ROWS - 1) * ROW_SPACING
-local HOLDER_WIDTH = GRID_WIDTH + ARROW_WIDTH
+-- Everything else is read off Blizzard's own buff container, so Edit Mode's aura
+-- settings still drive the row: iconStride is icons per line, iconPadding the gap,
+-- iconScale the size, isHorizontal the orientation, and addIconsToRight/addIconsToTop
+-- the corner it grows from. Defaults here match AuraContainerTemplate's KeyValues
+-- (stride 8, padding 5, growing leftwards and down from the top right) with
+-- BUFF_MAX_DISPLAY worth of icons.
+local layout = {
+    perLine    = 8,
+    spacing    = 5,
+    scale      = 1,
+    horizontal = true,
+    toRight    = false,
+    toTop      = false,
+    maxAuras   = 32,
+}
+
+local function ReadBlizzardLayout()
+    local auraContainer = BuffFrame and BuffFrame.AuraContainer
+    if not auraContainer then return end
+
+    layout.perLine    = tonumber(auraContainer.iconStride) or layout.perLine
+    layout.spacing    = tonumber(auraContainer.iconPadding) or layout.spacing
+    layout.scale      = tonumber(auraContainer.iconScale) or 1
+    layout.horizontal = auraContainer.isHorizontal ~= false
+    layout.toRight    = auraContainer.addIconsToRight and true or false
+    layout.toTop      = auraContainer.addIconsToTop and true or false
+    layout.maxAuras   = tonumber(BuffFrame.maxAuras) or layout.maxAuras
+
+    if layout.perLine < 1 then layout.perLine = 1 end
+    if layout.maxAuras < 1 then layout.maxAuras = 1 end
+end
+
+-- The corner the row grows out of, and the sign of an offset from it.
+local function GrowthCorner()
+    return (layout.toTop and "BOTTOM" or "TOP") .. (layout.toRight and "LEFT" or "RIGHT")
+end
+
+local function GrowthSigns()
+    return layout.toRight and 1 or -1, layout.toTop and 1 or -1
+end
+
+-- Pitch along the line, and from one line to the next.
+local function LinePitch()
+    return (layout.horizontal and ICON_SIZE or SLOT_HEIGHT) + layout.spacing
+end
+
+local function CrossPitch()
+    return (layout.horizontal and SLOT_HEIGHT or ICON_SIZE) + layout.spacing
+end
+
+local function LineCount()
+    return math.ceil(layout.maxAuras / layout.perLine)
+end
+
+-- Span the flow layout may fill before it wraps to the next line.
+local function MaximumLineSize()
+    local primary = layout.horizontal and ICON_SIZE or SLOT_HEIGHT
+    return layout.perLine * primary + (layout.perLine - 1) * layout.spacing
+end
+
+local function GridSize()
+    local along = MaximumLineSize()
+    local lines = LineCount()
+    local across = lines * (layout.horizontal and SLOT_HEIGHT or ICON_SIZE)
+        + (lines - 1) * layout.spacing
+    if layout.horizontal then
+        return along, across
+    end
+    return across, along
+end
 
 local holder, container, expander, hiddenPanel, combatPane
 local overlays, hiddenRows = {}, {}
+local ApplyLayout           -- defined once every frame it touches exists
 local visibleAuras          -- index -> aura data, only while the shift overlay is armed
 local armed = false
 
@@ -151,14 +217,14 @@ local function ReadVisibleBuffs()
             auras[#auras + 1] = auraData
         end
         -- Read the lot: the container picks its maxFrameCount off the *sorted* list,
-        -- so stopping early at 32 could keep a different set than it shows.
+        -- so stopping early at the icon limit could keep a different set than it shows.
         return false
     end, true)
 
     if not ok or secret then return nil end
 
     table.sort(auras, AuraUtil.DefaultAuraCompare or FallbackAuraCompare)
-    while #auras > MAX_BUFFS do
+    while #auras > layout.maxAuras do
         table.remove(auras)
     end
     return auras
@@ -219,11 +285,9 @@ local function CreateContainer()
     if container then return true end
     if not (CreateFrame and BuffFrame) then return false end
 
+    ReadBlizzardLayout()
+
     holder = CreateFrame("Frame", "PerskanPlayerBuffs", UIParent)
-    holder:SetSize(HOLDER_WIDTH, GRID_HEIGHT)
-    -- Park on Blizzard's (hidden) buff frame so Edit Mode still positions the row.
-    -- TOPRIGHT, because that is the corner the default row is anchored from.
-    holder:SetPoint("TOPRIGHT", BuffFrame, "TOPRIGHT", 0, 0)
     holder:SetClampedToScreen(true)
 
     local created, frame = pcall(CreateFrame, "AuraContainer", nil, holder, "CustomAuraContainerTemplate")
@@ -233,29 +297,15 @@ local function CreateContainer()
         return false
     end
     container = frame
-    -- The arrow sits at the right end of the row, so the icons start just left of it.
-    pcall(container.SetPoint, container, "TOPRIGHT", holder, "TOPRIGHT", -ARROW_WIDTH, 0)
 
     local ok = pcall(function()
         container:SetUnit("player")
-        -- Flow layout defaults to top-left growing right; the default buff row grows
-        -- leftwards and down from its top-right corner instead.
-        container:SetFlowLayoutAnchorPoint("TOPRIGHT")
-        container:SetFlowLayoutGrowthDirection(AnchorUtil.FlowDirection.Left,
-            AnchorUtil.FlowDirection.Down)
-        container:SetFlowLayoutMaximumLineSize(GRID_WIDTH)
         container:AddAuraGroup("buffs", "HELPFUL", {
-            maxFrameCount = MAX_BUFFS,
+            maxFrameCount = layout.maxAuras,
             sortMethod = EnumValue(AuraContainerSortMethod, "Default", 0),
             sortDirection = EnumValue(AuraContainerSortDirection, "Normal", 0),
             candidateFilters = { excludeSpellIDs = BuildExcludeMap() },
             initializeFrame = InitAuraButton,
-            layout = {
-                elementWidth = ICON_SIZE,
-                elementHeight = SLOT_HEIGHT,
-                elementSpacing = ICON_SPACING,
-                lineSpacing = ROW_SPACING,
-            },
         })
     end)
     if not ok then
@@ -274,13 +324,6 @@ local function CreateContainer()
         for _, slot in ipairs({ slots.MainHand, slots.OffHand, slots.Ranged }) do
             container:AddItemEnchantment(slot, { initializeFrame = InitEnchantButton })
         end
-        container:SetItemEnchantmentLayout({
-            placement = EnumValue(CustomAuraContainerItemEnchantmentPlacement, "AfterAuraGroups", 1),
-            elementWidth = ICON_SIZE,
-            elementHeight = SLOT_HEIGHT,
-            elementSpacing = ICON_SPACING,
-            lineSpacing = ROW_SPACING,
-        })
     end)
 
     return true
@@ -289,6 +332,20 @@ end
 --------------------------------------------------------------------------------
 -- Hiding Blizzard's buff frame
 --------------------------------------------------------------------------------
+
+-- Is Edit Mode holding the buff frame open? While it is, the frame is Blizzard's to
+-- show, move and configure, and we keep out of the way entirely.
+local function EditModeActive()
+    if BuffFrame and BuffFrame.IsEditing then
+        local ok, editing = pcall(BuffFrame.IsEditing, BuffFrame)
+        if ok then return editing and true or false end
+    end
+    if EditModeManagerFrame and EditModeManagerFrame.IsEditModeActive then
+        local ok, active = pcall(EditModeManagerFrame.IsEditModeActive, EditModeManagerFrame)
+        if ok then return active and true or false end
+    end
+    return false
+end
 
 -- Same shape as Modules/HideElements.lua: hide it once and keep it hidden with a
 -- gated hook, and only ever reverse our own hide. BuffFrame shows itself again from
@@ -300,7 +357,7 @@ local function HideBlizzardBuffFrame()
     if not frame._perskanBuffRowHooked then
         frame._perskanBuffRowHooked = true
         local function reassert(self)
-            if profile().filterPlayerBuffs then
+            if profile().filterPlayerBuffs and not EditModeActive() then
                 self:Hide()
             end
         end
@@ -310,21 +367,32 @@ local function HideBlizzardBuffFrame()
         end)
     end
 
-    frame:Hide()
+    if not EditModeActive() then
+        frame:Hide()
+    end
 end
 
 --------------------------------------------------------------------------------
 -- Shift overlay: the click target that turns a slot into a spell ID
 --------------------------------------------------------------------------------
 
--- Where slot `index` sits relative to the holder's TOPRIGHT, mirroring the flow
--- layout: leftwards along a row of ICONS_PER_ROW, then down. The arrow occupies the
--- first ARROW_WIDTH pixels on the right.
+-- Where slot `index`'s icon sits relative to the holder's growth corner, mirroring
+-- the flow layout: along the line for perLine slots, then on to the next line. The
+-- arrow takes the first ARROW_WIDTH pixels along the line.
 local function SlotOffset(index)
-    local row = math.floor((index - 1) / ICONS_PER_ROW)
-    local col = (index - 1) % ICONS_PER_ROW
-    return -ARROW_WIDTH - col * (ICON_SIZE + ICON_SPACING),
-        -row * (SLOT_HEIGHT + ROW_SPACING)
+    local line = math.floor((index - 1) / layout.perLine)
+    local slot = (index - 1) % layout.perLine
+    local xSign, ySign = GrowthSigns()
+    local along = ARROW_WIDTH + slot * LinePitch()
+    local across = line * CrossPitch()
+    -- Growing upwards anchors from a BOTTOM corner, where the icon is a slot's worth
+    -- of duration text above the bottom edge.
+    local iconInset = layout.toTop and ICON_INSET or 0
+
+    if layout.horizontal then
+        return xSign * along, ySign * (across + iconInset)
+    end
+    return xSign * across, ySign * (along + iconInset)
 end
 
 local HideBuffAt
@@ -370,8 +438,6 @@ local function EnsureCombatPane()
     if combatPane then return combatPane end
 
     combatPane = CreateFrame("Button", nil, holder)
-    combatPane:SetSize(GRID_WIDTH, GRID_HEIGHT)
-    combatPane:SetPoint("TOPRIGHT", holder, "TOPRIGHT", -ARROW_WIDTH, 0)
     pcall(combatPane.SetFrameLevel, combatPane, container:GetFrameLevel() + 20)
     combatPane:SetMouseMotionEnabled(false)
     combatPane:RegisterForClicks("RightButtonUp")
@@ -380,6 +446,7 @@ local function EnsureCombatPane()
             .. "and outside encounters, Mythic+ and rated PvP.")
     end)
 
+    if ApplyLayout then ApplyLayout() end
     return combatPane
 end
 
@@ -395,6 +462,7 @@ end
 local function Arm()
     if not (container and holder) then return end
     if not profile().filterPlayerBuffs then return end
+    if EditModeActive() then return end
 
     armed = true
     visibleAuras = ReadVisibleBuffs()
@@ -409,12 +477,13 @@ local function Arm()
 
     if combatPane then combatPane:Hide() end
 
-    for index = 1, MAX_BUFFS do
+    for index = 1, layout.maxAuras do
         if visibleAuras[index] then
             local overlay = EnsureOverlay(index)
+            local corner = GrowthCorner()
             local x, y = SlotOffset(index)
             overlay:ClearAllPoints()
-            overlay:SetPoint("TOPRIGHT", holder, "TOPRIGHT", x, y)
+            overlay:SetPoint(corner, holder, corner, x, y)
             overlay.slotIndex = index
             overlay:Show()
         elseif overlays[index] then
@@ -457,7 +526,6 @@ local function EnsureHiddenPanel()
     if hiddenPanel then return hiddenPanel end
 
     hiddenPanel = CreateFrame("Frame", nil, holder, "TooltipBackdropTemplate")
-    hiddenPanel:SetPoint("TOPRIGHT", holder, "TOPRIGHT", 0, -(SLOT_HEIGHT + 8))
     hiddenPanel:SetSize(220, 40)
     hiddenPanel:SetFrameStrata("DIALOG")
     hiddenPanel:SetClampedToScreen(true)
@@ -478,6 +546,7 @@ local function EnsureHiddenPanel()
     empty:SetText("Nothing hidden yet.")
     hiddenPanel.Empty = empty
 
+    if ApplyLayout then ApplyLayout() end
     return hiddenPanel
 end
 
@@ -492,7 +561,6 @@ local function EnsureHiddenRow(index)
     local icon = row:CreateTexture(nil, "ARTWORK")
     icon:SetSize(18, 18)
     icon:SetPoint("LEFT", row, "LEFT", 0, 0)
-    icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
     row.Icon = icon
 
     local label = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
@@ -563,24 +631,21 @@ end
 local function EnsureExpander()
     if expander then return expander end
 
-    -- Same size, spot and art as BuffFrame's own collapse button: 15x30 at the right
-    -- end of the row, drawing a 10x16 `bag-arrow`.
+    -- Same art as BuffFrame's own collapse button, a 10x16 `bag-arrow`, and the same
+    -- spot: the corner the row grows out of. ApplyLayout sizes and places it.
     expander = CreateFrame("Button", nil, holder)
-    expander:SetSize(ARROW_WIDTH, ICON_SIZE)
-    expander:SetPoint("TOPRIGHT", holder, "TOPRIGHT", 0, 0)
 
     local arrow = expander:CreateTexture(nil, "ARTWORK")
     arrow:SetAtlas("bag-arrow")
-    arrow:SetSize(10, 16)
     arrow:SetPoint("CENTER", expander, "CENTER", 0, 0)
     expander.Arrow = arrow
 
     local highlight = expander:CreateTexture(nil, "HIGHLIGHT")
     highlight:SetAtlas("bag-arrow")
-    highlight:SetSize(10, 16)
     highlight:SetPoint("CENTER", expander, "CENTER", 0, 0)
     highlight:SetAlpha(0.4)
     highlight:SetBlendMode("ADD")
+    expander.Highlight = highlight
 
     expander:SetScript("OnClick", ToggleHiddenPanel)
     expander:SetScript("OnEnter", function(self)
@@ -592,7 +657,123 @@ local function EnsureExpander()
     end)
     expander:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
+    if ApplyLayout then ApplyLayout() end
     return expander
+end
+
+--------------------------------------------------------------------------------
+-- Layout
+--------------------------------------------------------------------------------
+
+-- Push the mirrored numbers onto every frame. Safe to call whenever Blizzard's own
+-- change: Edit Mode closing, a layout switch, or a frame we only just created.
+function ApplyLayout()
+    if not (holder and container) then return end
+
+    local corner = GrowthCorner()
+    local xSign, ySign = GrowthSigns()
+    local gridWidth, gridHeight = GridSize()
+
+    holder:SetScale(layout.scale)
+    if layout.horizontal then
+        holder:SetSize(gridWidth + ARROW_WIDTH, gridHeight)
+    else
+        holder:SetSize(gridWidth, gridHeight + ARROW_WIDTH)
+    end
+    -- Park on Blizzard's (hidden) buff frame corner for corner, so Edit Mode still
+    -- decides where the row sits.
+    holder:ClearAllPoints()
+    holder:SetPoint(corner, BuffFrame, corner, 0, 0)
+
+    pcall(function()
+        container:ClearAllPoints()
+        if layout.horizontal then
+            container:SetPoint(corner, holder, corner, xSign * ARROW_WIDTH, 0)
+        else
+            container:SetPoint(corner, holder, corner, 0, ySign * ARROW_WIDTH)
+        end
+
+        container:SetFlowLayoutAxis(layout.horizontal and AnchorUtil.FlowLayoutAxis.Horizontal
+            or AnchorUtil.FlowLayoutAxis.Vertical)
+        container:SetFlowLayoutAnchorPoint(corner)
+        container:SetFlowLayoutGrowthDirection(
+            layout.toRight and AnchorUtil.FlowDirection.Right or AnchorUtil.FlowDirection.Left,
+            layout.toTop and AnchorUtil.FlowDirection.Up or AnchorUtil.FlowDirection.Down)
+        container:SetFlowLayoutMaximumLineSize(MaximumLineSize())
+
+        container:SetAuraGroupMaxFrameCount("buffs", layout.maxAuras)
+        container:SetAuraGroupLayout("buffs", {
+            elementWidth = ICON_SIZE,
+            elementHeight = SLOT_HEIGHT,
+            elementSpacing = layout.spacing,
+            lineSpacing = layout.spacing,
+        })
+        container:SetItemEnchantmentLayout({
+            placement = EnumValue(CustomAuraContainerItemEnchantmentPlacement, "AfterAuraGroups", 1),
+            elementWidth = ICON_SIZE,
+            elementHeight = SLOT_HEIGHT,
+            elementSpacing = layout.spacing,
+            lineSpacing = layout.spacing,
+        })
+    end)
+
+    if expander then
+        expander:ClearAllPoints()
+        expander:SetSize(layout.horizontal and ARROW_WIDTH or ICON_SIZE,
+            layout.horizontal and ICON_SIZE or ARROW_WIDTH)
+        expander:SetPoint(corner, holder, corner, 0, layout.toTop and ICON_INSET or 0)
+
+        -- Point it away from the icons. Rotation only, the way
+        -- CollapseAndExpandButtonMixin:UpdateOrientation does it - the texture stays
+        -- 10x16 and an atlas texture can't be flipped with texcoords anyway.
+        local rotation
+        if layout.horizontal then
+            rotation = layout.toRight and math.pi or 0
+        else
+            rotation = layout.toTop and (math.pi / 2) or (3 * math.pi / 2)
+        end
+        for _, texture in ipairs({ expander.Arrow, expander.Highlight }) do
+            texture:SetSize(10, 16)
+            texture:SetRotation(rotation)
+        end
+    end
+
+    if combatPane then
+        combatPane:ClearAllPoints()
+        combatPane:SetSize(gridWidth, gridHeight)
+        if layout.horizontal then
+            combatPane:SetPoint(corner, holder, corner, xSign * ARROW_WIDTH, 0)
+        else
+            combatPane:SetPoint(corner, holder, corner, 0, ySign * ARROW_WIDTH)
+        end
+    end
+
+    if hiddenPanel then
+        -- Hangs off the arrow, away from the row.
+        local side = layout.toRight and "LEFT" or "RIGHT"
+        hiddenPanel:ClearAllPoints()
+        hiddenPanel:SetPoint((layout.toTop and "BOTTOM" or "TOP") .. side,
+            expander or holder, (layout.toTop and "TOP" or "BOTTOM") .. side,
+            0, layout.toTop and 6 or -6)
+    end
+end
+
+-- Edit Mode owns the buff frame while it is open: stand aside completely so it can
+-- be moved and configured, then take its numbers when it closes. Blizzard shows the
+-- frame itself on the way in (AuraFrameEditModeMixin:ShouldBeShown is true while
+-- editing) and our hide hook defers to that, so there is nothing to show here.
+local function ApplyEditModeState(editing)
+    if editing then
+        Disarm()
+        if hiddenPanel then hiddenPanel:Hide() end
+        if holder then holder:Hide() end
+        return
+    end
+
+    ReadBlizzardLayout()
+    ApplyLayout()
+    if holder then holder:Show() end
+    HideBlizzardBuffFrame()
 end
 
 --------------------------------------------------------------------------------
@@ -648,6 +829,16 @@ Perskan:RegisterModule("PlayerBuffs", function(self)
 
     HideBlizzardBuffFrame()
     EnsureExpander()
+    ApplyLayout()
+
+    -- Follow Edit Mode in and out. hooksecurefunc, not HookScript: this must not run
+    -- inside Blizzard's own execution (see the objective tracker rule in CLAUDE.md).
+    if BuffFrame.SetIsEditing and not BuffFrame._perskanEditModeHooked then
+        BuffFrame._perskanEditModeHooked = true
+        hooksecurefunc(BuffFrame, "SetIsEditing", function(_, editing)
+            ApplyEditModeState(editing and true or false)
+        end)
+    end
 
     local eventFrame = CreateFrame("Frame")
     eventFrame:RegisterEvent("MODIFIER_STATE_CHANGED")
@@ -655,6 +846,7 @@ Perskan:RegisterModule("PlayerBuffs", function(self)
     eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
     eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
     eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    eventFrame:RegisterEvent("EDIT_MODE_LAYOUTS_UPDATED")
     eventFrame:SetScript("OnEvent", function(_, event, arg1)
         if event == "MODIFIER_STATE_CHANGED" then
             if arg1 == "LSHIFT" or arg1 == "RSHIFT" then
@@ -670,6 +862,11 @@ Perskan:RegisterModule("PlayerBuffs", function(self)
             Rearm()
         elseif event == "PLAYER_ENTERING_WORLD" then
             HideBlizzardBuffFrame()
+            ReadBlizzardLayout()
+            ApplyLayout()
+        elseif event == "EDIT_MODE_LAYOUTS_UPDATED" then
+            -- A saved layout can move the frame or change the aura settings.
+            ApplyEditModeState(EditModeActive())
         end
     end)
 end, "filterPlayerBuffs")

@@ -88,7 +88,10 @@ was deliberately moved away from.
   `IsShown`. `Modules/PlayerBuffs.lua` is built on this: it hides Blizzard's `BuffFrame`
   (still an unfilterable `AuraUtil.ForEachAura` frame in 12.1) and draws the row itself, and
   its shift+right-click-to-hide only arms while auras are readable, because mapping a
-  clicked slot back to a spell ID means reading the aura list ourselves.
+  clicked slot back to a spell ID means reading the aura list ourselves. It stands aside
+  while Edit Mode is open and mirrors its layout off `BuffFrame.AuraContainer`
+  (`iconStride`/`iconPadding`/`iconScale`/`isHorizontal`/`addIconsToRight`/`addIconsToTop`)
+  so the Edit Mode aura settings still drive the replacement row.
 - **Config/Schema.lua**: Data-driven description of the settings window — categories and
   controls (`toggle`/`range`/`select`/`color`/`button`/`divider`) with `cvar`, `apply`,
   `reload`, `hidden`, `disabled` flags, plus optional `get`/`set` for settings that don't
