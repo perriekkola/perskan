@@ -153,6 +153,18 @@ addon.configSchema = {
                   .. "every aura, including your own (Blizzard draws those larger by default).",
               min = 10, max = 40, step = 1,
               apply = function() P():ApplyTargetFocusAuraSize() end },
+
+            { type = "divider", name = "Player Buffs" },
+            { type = "toggle", key = "filterPlayerBuffs", name = "Filterable Buff Row",
+              desc = "Draw your buffs from Perskan's own aura container, which can filter by "
+                  .. "spell: shift+right-click a buff to hide it, and use the arrow at the end "
+                  .. "of the row to list (and restore) what's hidden. Blizzard's buff frame has "
+                  .. "no filter of its own, so it gets hidden. Requires a reload to take effect.",
+              reload = true },
+            { type = "button", name = "Clear Hidden Buffs", width = 220,
+              desc = "Put every hidden buff back on the row.",
+              onClick = function() P():ClearHiddenBuffs() end,
+              disabled = function() return P():CountHiddenBuffs() == 0 end },
         },
     },
     --------------------------------------------------------------------------------
