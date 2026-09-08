@@ -339,10 +339,11 @@ local function EnsureOverlay(index)
     -- button underneath still owns the tooltip.
     pcall(overlay.SetFrameLevel, overlay, container:GetFrameLevel() + 20)
     overlay:SetMouseMotionEnabled(false)
+    -- Right-click only. Passing the other buttons through with
+    -- SetPassThroughButtons is not an option: it is protected, so calling it from an
+    -- addon raises ADDON_ACTION_BLOCKED. Swallowing shift+left/middle over an icon
+    -- costs nothing - buffs have no action on those buttons.
     overlay:RegisterForClicks("RightButtonUp")
-    if overlay.SetPassThroughButtons then
-        pcall(overlay.SetPassThroughButtons, overlay, "LeftButton", "MiddleButton")
-    end
 
     local marker = overlay:CreateTexture(nil, "OVERLAY")
     marker:SetTexture("Interface\\Buttons\\UI-GroupLoot-Pass-Up")
@@ -374,9 +375,6 @@ local function EnsureCombatPane()
     pcall(combatPane.SetFrameLevel, combatPane, container:GetFrameLevel() + 20)
     combatPane:SetMouseMotionEnabled(false)
     combatPane:RegisterForClicks("RightButtonUp")
-    if combatPane.SetPassThroughButtons then
-        pcall(combatPane.SetPassThroughButtons, combatPane, "LeftButton", "MiddleButton")
-    end
     combatPane:SetScript("OnClick", function()
         Perskan:Print("Buffs can only be hidden while auras are readable - out of combat, "
             .. "and outside encounters, Mythic+ and rated PvP.")
