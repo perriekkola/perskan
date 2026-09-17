@@ -240,6 +240,58 @@ local function EnumValue(enumTable, key, fallback)
     return fallback
 end
 
+-- Blizzard's buff durations are NORMAL_FONT_COLOR (yellow) until the aura is nearly
+-- gone and HIGHLIGHT_FONT_COLOR (white) below BUFF_DURATION_WARNING_TIME - see
+-- AuraButtonMixin:UpdateDuration in Blizzard_BuffFrame/BuffFrame.lua. Our font string
+-- is written by the engine's duration binding, which only sets the text, so without
+-- this it just keeps GameFontNormalSmall's yellow for the whole duration.
+--
+-- We can't colour it from a script either: the time left is secret, and the font
+-- string carries the Text/Alpha/VertexColor secret aspects the moment it is handed to
+-- SetDurationText. The colour has to go the same way the text does, as a curve the
+-- engine evaluates against the remaining duration itself.
+--
+-- A step curve holds each point's value until the next point and promotes on an exact
+-- match (the rule Blizzard_AuraContainerShared.lua leans on for its formatter
+-- intervals), so [0, warning) reads white and warning upwards reads yellow: the same
+-- switch as Blizzard's, evaluated engine side.
+local durationTextOptions, durationTextOptionsBuilt
+
+local function DurationColor(color, r, g, b)
+    -- Alpha spelled out: the global font colours carry no alpha, and the curve's
+    -- colour drives the font string's alpha as well as its tint.
+    if color then
+        return CreateColor(color.r or r, color.g or g, color.b or b, 1)
+    end
+    return CreateColor(r, g, b, 1)
+end
+
+local function DurationTextOptions()
+    if durationTextOptionsBuilt then return durationTextOptions end
+    durationTextOptionsBuilt = true
+
+    local property = Enum and Enum.DurationTextBindingProperty
+        and Enum.DurationTextBindingProperty.RemainingDuration
+    local stepCurve = Enum and Enum.LuaCurveType and Enum.LuaCurveType.Step
+    if not (property and stepCurve and C_CurveUtil and C_CurveUtil.CreateColorCurve) then
+        return nil
+    end
+
+    local warningTime = tonumber(BUFF_DURATION_WARNING_TIME) or 90
+    local ok, curve = pcall(C_CurveUtil.CreateColorCurve)
+    if not ok or not curve then return nil end
+
+    local built = pcall(function()
+        curve:SetType(stepCurve)
+        curve:AddPoint(0, DurationColor(HIGHLIGHT_FONT_COLOR, 1, 1, 1))
+        curve:AddPoint(warningTime, DurationColor(NORMAL_FONT_COLOR, 1, 0.82, 0))
+    end)
+    if not built then return nil end
+
+    durationTextOptions = { textColor = { curve = curve, property = property } }
+    return durationTextOptions
+end
+
 -- Dress one AuraButton. Called once per button the container creates; the button is
 -- recycled between auras, so nothing here may assume which aura it holds.
 local function InitAuraButton(button)
@@ -257,7 +309,17 @@ local function InitAuraButton(button)
 
     local duration = button:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
     duration:SetPoint("TOP", icon, "BOTTOM", 0, 0)
-    button:SetDurationText(duration)
+    -- The font string is Blizzard's DEFAULT_AURA_DURATION_FONT; the colour curve is
+    -- what keeps it switching to white the way the default buffs do. If the options
+    -- table is ever rejected, drop it for good and keep the plain duration text.
+    local options = DurationTextOptions()
+    if options and not pcall(button.SetDurationText, button, duration, options) then
+        durationTextOptions = nil
+        options = nil
+    end
+    if not options then
+        button:SetDurationText(duration)
+    end
 
     local count = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
     count:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", -2, 2)
