@@ -107,6 +107,12 @@ addon.configSchema = {
             { type = "toggle", key = "nameplateNameOutline", name = "Name Outline", store = "bool",
               desc = "Add an outline to nameplate names for readability.",
               apply = function() P():ApplyNameplateNameOutline() end },
+            { type = "toggle", key = "nameplateFriendlyClickThrough", name = "Friendly Clickthrough",
+              store = "bool",
+              desc = "Let the mouse pass through friendly nameplates: no clicks, no "
+                  .. "targeting and no tooltips off them, so they can't get in the way of "
+                  .. "what is behind them. Enemy plates are untouched.",
+              apply = function() P():ApplyNameplateFriendlyClickThrough() end },
             { type = "range", key = "nameplateOtherBottomInset", name = "Bottom Inset",
               desc = "Nameplate bottom inset.", min = -1, max = 1, step = 0.01,
               cvar = "nameplateOtherBottomInset" },

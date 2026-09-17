@@ -17,6 +17,7 @@ local defaults = {
         nameplateCastbarNameInside = false,
         nameplateCastbarNameInset = 4,
         nameplateNameOutline = false,
+        nameplateFriendlyClickThrough = false,
         alwaysShowNameplates = 1,
         nameplateShowAll = 1,
         nameplateShowEnemies = 1,

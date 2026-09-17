@@ -1,5 +1,5 @@
--- Nameplate tweaks: name outline, custom healthbar height, custom castbar height and
--- moving the castbar's spell name/icon up into the bar.
+-- Nameplate tweaks: name outline, custom healthbar height, custom castbar height,
+-- moving the castbar's spell name/icon up into the bar, and friendly clickthrough.
 --
 -- The hooks are installed unconditionally at login and gated internally by the
 -- profile, so every setting can be changed live without a reload. Each exposes an
@@ -407,6 +407,100 @@ function Perskan:ApplyNameplateCastbarNamePlacement()
 end
 
 --------------------------------------------------------------------------------
+-- Friendly clickthrough
+--------------------------------------------------------------------------------
+
+-- Retail 12.x moved a nameplate's clickable region onto the nameplate frame itself as
+-- hit-test points, and NamePlateUnitFrameMixin:UpdateHitTestArea is the one function
+-- that rebuilds them: it either anchors them around the health bar and name, or - for
+-- Blizzard's own name-only friendly plates - clears them outright with
+-- ClearAllHitTestPoints (Blizzard_NamePlates/Blizzard_NamePlateUnitFrame.lua). That
+-- clear is exactly what clickthrough is: no hit-test points, no mouse region, so
+-- clicks, tooltips and targeting land on whatever is behind the plate.
+--
+-- Two things shape how it is applied. Changing hit-test points from addon code
+-- *raises* when it isn't allowed rather than failing quietly, so every call is guarded
+-- on NamePlateFrame:CanChangeHitTestPoints. And in combat it is only allowed on the
+-- tick a unit is assigned to a plate, or when Blizzard updated the points on the same
+-- tick - which is why this hangs off UpdateHitTestArea itself and off
+-- NAME_PLATE_UNIT_ADDED. Every relayout that rebuilds the area re-clears it, in combat
+-- as well as out of it.
+
+local function CanChangeHitTest(namePlate)
+    if not namePlate.CanChangeHitTestPoints then return false end
+    local ok, allowed = pcall(namePlate.CanChangeHitTestPoints, namePlate)
+    return ok and allowed and true or false
+end
+
+-- Blizzard's own hit-test calls go through securecallfunction so our taint stays out of
+-- the nameplate's state, the same habit the delve modules use for widget reads.
+local function SecureCall(fn, ...)
+    if securecallfunction then
+        return securecallfunction(fn, ...)
+    end
+    return fn(...)
+end
+
+local function ApplyClickThrough(frame)
+    if not frame or frame:IsForbidden() then return end
+    -- Interface versions without hit-test points have nothing to clear; the option is
+    -- simply inert there.
+    if not (frame.GetNamePlateFrame and frame.UpdateHitTestArea and frame.IsFriend) then return end
+
+    -- The personal resource display is a friendly plate as well, and the game has its
+    -- own setting for that one (the NameplatePersonalClickThrough CVar), so it is left
+    -- alone here.
+    if frame.unit and UnitIsUnit(frame.unit, "player") then return end
+
+    local namePlate = frame:GetNamePlateFrame()
+    if not (namePlate and namePlate.ClearAllHitTestPoints) then return end
+    if not CanChangeHitTest(namePlate) then return end
+
+    if Perskan.db.profile.nameplateFriendlyClickThrough and frame:IsFriend() then
+        pcall(SecureCall, namePlate.ClearAllHitTestPoints, namePlate)
+        frame._perskanClickThrough = true
+    elseif frame._perskanClickThrough then
+        -- Hand the area back to Blizzard, rebuilt from the shared setup options every
+        -- plate is laid out from - the same call UpdateShowOnlyName makes. Without that
+        -- table there is nothing to restore from, so keep the flag and try again on the
+        -- next pass rather than leaving the plate clickthrough with no way back.
+        if type(NamePlateSetupOptions) ~= "table" then return end
+        frame._perskanClickThrough = nil
+        pcall(SecureCall, frame.UpdateHitTestArea, frame, NamePlateSetupOptions)
+    end
+end
+
+local function HookClickThrough(nameplate)
+    local frame = nameplate and nameplate.UnitFrame
+    if not frame or frame:IsForbidden() then return end
+    if not frame.UpdateHitTestArea then return end
+
+    if not frame._perskanHitTestHooked then
+        frame._perskanHitTestHooked = true
+
+        -- Blizzard has just set the points, so ours is an allowed change on this tick
+        -- even in combat. The profile is read inside, so the hook costs nothing once
+        -- the option is switched off. The guard keeps the restore path - which calls
+        -- UpdateHitTestArea itself - from re-entering this hook.
+        hooksecurefunc(frame, "UpdateHitTestArea", function(self)
+            if self._perskanInHitTest then return end
+            self._perskanInHitTest = true
+            pcall(ApplyClickThrough, self)
+            self._perskanInHitTest = false
+        end)
+    end
+
+    ApplyClickThrough(frame)
+end
+
+function Perskan:ApplyNameplateFriendlyClickThrough()
+    if not C_NamePlate or not C_NamePlate.GetNamePlates then return end
+    for _, nameplate in pairs(C_NamePlate.GetNamePlates()) do
+        pcall(HookClickThrough, nameplate)
+    end
+end
+
+--------------------------------------------------------------------------------
 -- Setup
 --------------------------------------------------------------------------------
 
@@ -417,11 +511,23 @@ Perskan:RegisterModule("Nameplates", function(self)
 
     local eventFrame = CreateFrame("Frame")
     eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
-    eventFrame:SetScript("OnEvent", function(_, _, unit)
+    -- Hit-test points can't be changed by us mid-combat unless Blizzard touched them on
+    -- the same tick, so a plate that took the setting late (or lost it on a toggle in
+    -- combat) is squared up on the way out of combat.
+    eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    eventFrame:SetScript("OnEvent", function(_, event, unit)
+        if event == "PLAYER_REGEN_ENABLED" then
+            Perskan:ApplyNameplateFriendlyClickThrough()
+            return
+        end
+
         local nameplate = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit(unit)
         if not nameplate then return end
         ApplyHealthbarHeight(nameplate)
         ApplyCastbarLayout(nameplate)
+        -- The tick the unit is assigned is one of the two moments the hit-test points
+        -- are ours to change in combat, so the clickthrough pass belongs here.
+        pcall(HookClickThrough, nameplate)
         local frame = nameplate.UnitFrame
         if frame and not frame:IsForbidden() then
             HookNameplateName(frame)
@@ -432,4 +538,5 @@ Perskan:RegisterModule("Nameplates", function(self)
     self:ApplyNameplateHealthbarHeight()
     self:ApplyNameplateCastbarHeight()
     self:ApplyNameplateNameOutline()
+    self:ApplyNameplateFriendlyClickThrough()
 end)
