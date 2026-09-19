@@ -69,15 +69,17 @@ was deliberately moved away from.
   taint into Edit Mode's single refresh of every unit frame, and party-frame health values
   are secret in 12.1, so it surfaced as "attempt to compare local 'currValue' (a secret
   number value, while execution tainted by 'Perskan')" hundreds of times a second. The
-  poll skips entirely while both options are off. Don't reintroduce the hooks. It hides a
-  name with alpha rather than `Hide()`, too: Blizzard calls `Show()` on the fontstring
-  whenever it refreshes a name - and refreshes every one of them on a target change or a
-  new plate - so a hidden name came straight back and went again on the next poll, which
-  read as flicker across the whole screen. Nothing sets the name's own alpha, so zero
-  sticks through `Show()`. Blizzard also whitens the name under the cursor: left alone by
-  default, and overridden when `nameplateNameDisableHoverHighlight` is on - which is only
-  flicker-free because the hovered plate gets a pass every frame rather than on the poll,
-  there being at most one of it.
+  poll skips entirely while both options are off. Don't reintroduce the hooks. It also draws its own
+  fontstring rather than steering Blizzard's, which is what finally ended the flicker.
+  Blizzard owns `frame.name` and repaints it - text, `Show()`, colour - on a target change,
+  a mouseover change, a new plate and more; every attempt to react (alpha, a faster poll,
+  the mouseover event, a full pass on it) narrowed the window without closing it, because
+  there is always a repaint we didn't hear about. So `frame.name` is muted to alpha zero
+  (which sticks where `Hide()` doesn't, nothing sets the name's own alpha) and left to be
+  repainted freely, while `frame._perskanOwnName` - anchored `SetAllPoints` to it, font and
+  justification copied each pass - carries the text and colour. Nothing races. Blizzard's
+  white hover highlight is reproduced by us when `nameplateNameDisableHoverHighlight` is
+  off, rather than let through.
 - **Cooldown viewer taint rule**: nothing may write to, hook, or re-anchor
   `BuffBarCooldownViewer`'s item frames. In 12.1 the viewer keeps its aura lookup in the
   `CreateSecureAuraInstanceMap` proxy (`Blizzard_CooldownViewer/CooldownViewerSecure.lua`),

@@ -691,63 +691,107 @@ local function NameColorFor(unit, frame)
     return color[1], color[2], color[3]
 end
 
+-- Our own fontstring, over the top of Blizzard's. Chasing Blizzard's name - alpha, then
+-- a faster poll, then the mouseover event, then every plate on it - shrank the flicker
+-- each time without ending it, because Blizzard owns that fontstring and repaints it
+-- whenever it likes: react however quickly and there is still a repaint we did not hear
+-- about. Drawing our own removes the race rather than narrowing it. Blizzard's name is
+-- muted to alpha zero (which sticks, unlike Hide) and left to be repainted all it wants;
+-- nothing looks at it again.
+local function NameplateOwnName(frame)
+    if frame._perskanOwnName then
+        return frame._perskanOwnName
+    end
+
+    local blizzName = frame.name
+    if not (blizzName and frame.CreateFontString) then return nil end
+
+    local layer = blizzName.GetDrawLayer and blizzName:GetDrawLayer() or "OVERLAY"
+    local ours = frame:CreateFontString(nil, layer)
+    -- Anchored to Blizzard's, so it follows every move and resize of it for free. Alpha
+    -- does not affect geometry, so muting it changes nothing here.
+    ours:SetAllPoints(blizzName)
+    ours:Hide()
+
+    frame._perskanOwnName = ours
+    return ours
+end
+
+-- Puts Blizzard's own name back and takes ours away. Used when both options are off.
+local function RestoreBlizzardName(frame)
+    local ours = frame._perskanOwnName
+    if ours then ours:Hide() end
+
+    local blizzName = frame.name
+    if blizzName and blizzName._perskanMuted then
+        blizzName:SetAlpha(blizzName._perskanBaseAlpha or 1)
+        blizzName._perskanMuted = nil
+    end
+end
+
 local function ApplyNameDisplay(frame)
-    local nameFS = frame and frame.name
-    if not nameFS then return end
+    local blizzName = frame and frame.name
+    if not blizzName then return end
+
+    local profile = Perskan.db.profile
+    if not (profile.nameplateNamesRelevantOnly or profile.nameplateNameHostilityColor) then
+        RestoreBlizzardName(frame)
+        return
+    end
 
     local unit = NameplateUnit(frame)
     if not unit or not UnitExists(unit) then return end
 
-    local profile = Perskan.db.profile
+    local ours = NameplateOwnName(frame)
+    if not ours then return end
 
-    -- Alpha rather than Hide. Blizzard calls Show() on the fontstring whenever it
-    -- refreshes a name, so a hidden name came back the instant it did and went again on
-    -- the next poll - visible flicker. Nothing in the nameplate code sets the name's own
-    -- alpha (the fade you see is the whole plate's, and alphas multiply), so zero sticks
-    -- through Show() and there is nothing to flicker between. A plate Blizzard hides for
-    -- its own reasons stays hidden either way, since this never calls Show().
-    if nameFS._perskanBaseAlpha == nil then
-        nameFS._perskanBaseAlpha = nameFS:GetAlpha() or 1
+    if blizzName._perskanBaseAlpha == nil then
+        blizzName._perskanBaseAlpha = blizzName:GetAlpha() or 1
+    end
+    if blizzName:GetAlpha() ~= 0 then
+        blizzName:SetAlpha(0)
+    end
+    blizzName._perskanMuted = true
+
+    -- Track Blizzard's font so ours reads identically, outline option included.
+    local font, size, flags = blizzName:GetFont()
+    if font then
+        ours:SetFont(font, size, flags)
+    end
+    if blizzName.GetJustifyH then
+        ours:SetJustifyH(blizzName:GetJustifyH())
     end
 
-    if profile.nameplateNamesRelevantOnly and not ShouldShowName(unit) then
-        if nameFS:GetAlpha() ~= 0 then
-            nameFS:SetAlpha(0)
-        end
-        nameFS._perskanHidName = true
-    elseif nameFS._perskanHidName then
-        nameFS:SetAlpha(nameFS._perskanBaseAlpha)
-        nameFS._perskanHidName = nil
+    -- A plate Blizzard is not showing a name for gets none from us either.
+    if not blizzName:IsShown()
+        or (profile.nameplateNamesRelevantOnly and not ShouldShowName(unit)) then
+        ours:Hide()
+        return
     end
 
-    -- Remember what Blizzard shipped, the same way the outline remembers its font flags,
-    -- so switching the option off puts the colour back without a reload.
-    if nameFS._perskanBaseColor == nil then
-        local r, g, b = nameFS:GetVertexColor()
-        nameFS._perskanBaseColor = { r or 1, g or 1, b or 1 }
-    end
-
-    -- Blizzard whitens the name under the cursor. Left alone by default on retail, where
-    -- painting over it made the two take turns and showed as a white flash; with the
-    -- option on we win it instead, which is only flicker-free because the hovered plate
-    -- gets a pass every frame rather than on the poll (see the OnUpdate below).
-    local hovered = UnitIsUnit(unit, "mouseover")
-        and not profile.nameplateNameDisableHoverHighlight
+    ours:SetText(blizzName:GetText() or UnitName(unit) or "")
 
     local r, g, b
     if profile.nameplateNameHostilityColor then
-        if not hovered then
+        -- Blizzard whitens the name under the cursor. With the option off we reproduce
+        -- that ourselves rather than letting its fontstring show through - same look, and
+        -- still nothing to race.
+        if UnitIsUnit(unit, "mouseover") and not profile.nameplateNameDisableHoverHighlight then
+            r, g, b = 1, 1, 1
+        else
             r, g, b = NameColorFor(unit, frame)
         end
-    elseif nameFS._perskanColored then
-        r, g, b = unpack(nameFS._perskanBaseColor)
     end
 
-    if r then
-        nameFS:SetVertexColor(r, g, b)
-        nameFS._perskanColored = profile.nameplateNameHostilityColor or nil
+    if not r then
+        local br, bg, bb = blizzName:GetVertexColor()
+        r, g, b = br or 1, bg or 1, bb or 1
     end
+
+    ours:SetTextColor(r, g, b)
+    ours:Show()
 end
+
 
 -- Deliberately hookless. Every earlier attempt at keeping the name in step re-asserted
 -- from inside Blizzard's own execution - hooks on the fontstring's SetText, Show and
@@ -866,17 +910,6 @@ Perskan:RegisterModule("Nameplates", function(self)
         if not profile then return end
         if not (profile.nameplateNamesRelevantOnly or profile.nameplateNameHostilityColor) then
             return
-        end
-
-        -- Blizzard repaints the hovered name white on its own schedule, so overriding it
-        -- on the poll would show as a flash at whatever the interval is. There is only
-        -- ever one plate under the cursor, so it gets its own pass every frame.
-        if profile.nameplateNameHostilityColor and profile.nameplateNameDisableHoverHighlight then
-            local plate = NamePlateForUnit("mouseover")
-            local frame = plate and plate.UnitFrame
-            if frame and not frame:IsForbidden() then
-                ApplyNameDisplay(frame)
-            end
         end
 
         sinceNamePoll = sinceNamePoll + elapsed
