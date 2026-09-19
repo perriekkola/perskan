@@ -35,6 +35,11 @@ local function notOnForever()
     return Perskan:IsForeverClient()
 end
 
+-- The mirror of the above: settings that only mean anything on Forever.
+local function foreverOnly()
+    return not Perskan:IsForeverClient()
+end
+
 local function damageMeterCustomizationOff()
     return not profile().enableDamageMeterCustomization
 end
@@ -125,6 +130,19 @@ addon.configSchema = {
                   .. "targeting and no tooltips off them, so they can't get in the way of "
                   .. "what is behind them. Enemy plates are untouched.",
               apply = function() P():ApplyNameplateFriendlyClickThrough() end },
+
+            { type = "divider", name = "Names", hidden = foreverOnly },
+            { type = "toggle", key = "nameplateNamesRelevantOnly", name = "Only Show Relevant Names",
+              store = "bool", hidden = foreverOnly,
+              desc = "Hide NPC names except on your current target and on anything that "
+                  .. "counts toward a quest objective. Player names are never hidden.",
+              apply = function() P():ApplyNameplateNameDisplay() end },
+            { type = "toggle", key = "nameplateNameHostilityColor", name = "Colour Names By Reaction",
+              store = "bool", hidden = foreverOnly,
+              desc = "Colour nameplate names by how the unit regards you: red hostile, "
+                  .. "yellow neutral, green friendly. Players are coloured by class "
+                  .. "instead.",
+              apply = function() P():ApplyNameplateNameDisplay() end },
             { type = "range", key = "nameplateOtherBottomInset", name = "Bottom Inset",
               desc = "Nameplate bottom inset.", min = -1, max = 1, step = 0.01,
               cvar = "nameplateOtherBottomInset" },

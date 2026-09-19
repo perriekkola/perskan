@@ -102,7 +102,12 @@ was deliberately moved away from.
   nameplate spell-name and name-outline pieces (castbar *height* still applies) — so their
   controls carry
   `hidden = notOnForever` (Config/Schema.lua) instead of sitting there doing nothing.
-  Retail is untouched. What the port needed beyond that: AceDB-3.0 at minor 36 or later
+  Retail is untouched. It runs the other way too: `foreverOnly` marks a control that only
+  exists on that client, which is how `Modules/Nameplates.lua` exposes its name-relevance
+  and reaction-colouring options. Both default to on there and off on retail, by keying
+  the `defaults.profile` entry to the same client check - AceDB stores only what differs
+  from the default, so one profile carried between the two clients does the right thing in
+  each. What the port needed beyond that: AceDB-3.0 at minor 36 or later
   (33 keyed profiles by realm name, which isn't stable identity here, so a profile was
   looked up under a different key each login; 36 substitutes the ruleset, giving
   `"Name - PvP"`, and stops an empty `GetCurrentRegionName` becoming the region key), the

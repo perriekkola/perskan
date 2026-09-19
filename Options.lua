@@ -19,7 +19,7 @@ end
 local defaults = {
     profile = {
         -- Camera
-        cameraYawMoveSpeed = 90,
+        cameraYawMoveSpeed = 50,
         cameraPivot = false,
         cameraDistanceMaxZoomFactor = 2.5,
         -- Nameplates
@@ -33,6 +33,12 @@ local defaults = {
         nameplateCastbarNameInset = 4,
         nameplateNameOutline = false,
         nameplateFriendlyClickThrough = false,
+        -- On by default where they apply. The controls only exist on Forever, and a
+        -- default that follows the client keeps a profile carried between the two doing
+        -- the right thing in each: AceDB stores only what differs from the default, so
+        -- an untouched setting reads false on retail and true on Forever.
+        nameplateNamesRelevantOnly = isForeverClient,
+        nameplateNameHostilityColor = isForeverClient,
         alwaysShowNameplates = 1,
         nameplateShowAll = 1,
         nameplateShowEnemies = 1,

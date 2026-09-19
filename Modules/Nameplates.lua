@@ -1,5 +1,7 @@
 -- Nameplate tweaks: name outline, custom healthbar height, custom castbar height,
--- moving the castbar's spell name/icon up into the bar, and friendly clickthrough.
+-- moving the castbar's spell name/icon up into the bar, friendly clickthrough, and - on
+-- WoW Forever only - hiding NPC names that are neither the target nor a quest objective
+-- and colouring the names that remain by reaction.
 --
 -- The hooks are installed unconditionally at login and gated internally by the
 -- profile, so every setting can be changed live without a reload. Each exposes an
@@ -503,6 +505,171 @@ end
 --------------------------------------------------------------------------------
 -- Setup
 --------------------------------------------------------------------------------
+-- Name display: relevance and reaction colouring
+--------------------------------------------------------------------------------
+-- Forever labels every nameplate, which buries the two units that actually matter: what
+-- you are fighting and what a quest wants. With the relevance option on, an NPC keeps its
+-- name only while it is the current target or counts toward an active quest objective.
+-- Players are never hidden - a name is how you tell one player from another.
+--
+-- Once most names are gone, reaction is no longer readable from the row of names, so the
+-- colour option paints what is left: NPCs by reaction, players by class.
+
+local HOSTILE_NAME_COLOR = { 1.00, 0.28, 0.25 }
+local NEUTRAL_NAME_COLOR = { 1.00, 0.85, 0.24 }
+local FRIENDLY_NAME_COLOR = { 0.35, 0.95, 0.40 }
+
+local QUEST_SCANNER_NAME = "PerskanQuestScanTooltip"
+local questScanner
+local questObjectiveCache = {}
+
+local function QuestScanner()
+    if not questScanner then
+        questScanner = CreateFrame("GameTooltip", QUEST_SCANNER_NAME, nil, "GameTooltipTemplate")
+    end
+    return questScanner
+end
+
+-- A unit that counts toward a quest carries an objective line on its tooltip - "3/6
+-- Wolves slain", or a percentage for the progress-bar kind. There is no public API for
+-- the question on this client, so the tooltip is the source; the answer is cached per
+-- GUID because this runs for every visible nameplate and only moves when the quest log
+-- does.
+local function ScanForQuestObjective(unit)
+    local tip = QuestScanner()
+    tip:SetOwner(UIParent, "ANCHOR_NONE")
+    tip:ClearLines()
+
+    if not pcall(tip.SetUnit, tip, unit) then
+        return false
+    end
+
+    for i = 2, tip:NumLines() do
+        local line = _G[QUEST_SCANNER_NAME .. "TextLeft" .. i]
+        local text = line and line:GetText()
+        if text and (text:find("%d+%s*/%s*%d+") or text:find("%d+%s*%%")) then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function IsQuestObjectiveUnit(unit)
+    -- Use a direct answer where the client has one rather than reading a tooltip.
+    if C_QuestLog and C_QuestLog.UnitIsRelatedToActiveQuest then
+        local ok, related = pcall(C_QuestLog.UnitIsRelatedToActiveQuest, unit)
+        if ok then
+            return related and true or false
+        end
+    end
+
+    local guid = UnitGUID(unit)
+    if not guid then
+        return ScanForQuestObjective(unit)
+    end
+
+    local cached = questObjectiveCache[guid]
+    if cached == nil then
+        cached = ScanForQuestObjective(unit)
+        questObjectiveCache[guid] = cached
+    end
+
+    return cached
+end
+
+local function ShouldShowName(unit)
+    if UnitIsPlayer(unit) then return true end
+    if UnitIsUnit(unit, "target") then return true end
+    return IsQuestObjectiveUnit(unit)
+end
+
+local function NameColorFor(unit)
+    if UnitIsPlayer(unit) then
+        local _, class = UnitClass(unit)
+        local palette = CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS
+        local color = class and palette and palette[class]
+        if color then
+            return color.r, color.g, color.b
+        end
+        return nil
+    end
+
+    local reaction = UnitReaction("player", unit)
+    if not reaction then return nil end
+
+    local color = (reaction <= 3 and HOSTILE_NAME_COLOR)
+        or (reaction == 4 and NEUTRAL_NAME_COLOR)
+        or FRIENDLY_NAME_COLOR
+    return color[1], color[2], color[3]
+end
+
+local function ApplyNameDisplay(frame)
+    local nameFS = frame and frame.name
+    if not nameFS then return end
+
+    local unit = frame.unit or frame.displayedUnit
+    if not unit or not UnitExists(unit) then return end
+
+    local profile = Perskan.db.profile
+
+    -- Only ever re-show a name this addon hid, so a plate Blizzard hides for its own
+    -- reasons - the personal resource display among them - stays hidden.
+    if profile.nameplateNamesRelevantOnly and not ShouldShowName(unit) then
+        nameFS:Hide()
+        nameFS._perskanHidName = true
+    elseif nameFS._perskanHidName then
+        nameFS:Show()
+        nameFS._perskanHidName = nil
+    end
+
+    -- Remember what Blizzard shipped, the same way the outline remembers its font flags,
+    -- so switching the option off puts the colour back without a reload.
+    if nameFS._perskanBaseColor == nil then
+        local r, g, b = nameFS:GetVertexColor()
+        nameFS._perskanBaseColor = { r or 1, g or 1, b or 1 }
+    end
+
+    local r, g, b
+    if profile.nameplateNameHostilityColor then
+        r, g, b = NameColorFor(unit)
+    elseif nameFS._perskanColored then
+        r, g, b = unpack(nameFS._perskanBaseColor)
+    end
+
+    if r then
+        nameFS._perskanColoring = true
+        nameFS:SetVertexColor(r, g, b)
+        nameFS._perskanColoring = false
+        nameFS._perskanColored = profile.nameplateNameHostilityColor or nil
+    end
+end
+
+local function HookNameplateNameDisplay(frame)
+    if not frame or not frame.name then return end
+
+    if not frame._perskanNameDisplayHooked then
+        frame._perskanNameDisplayHooked = true
+
+        -- Blizzard rewrites the name and its colour on its own schedule; re-assert after
+        -- it, guarded against the colour we set ourselves.
+        hooksecurefunc(frame.name, "SetText", function()
+            ApplyNameDisplay(frame)
+        end)
+        hooksecurefunc(frame.name, "SetVertexColor", function(self)
+            if self._perskanColoring then return end
+            ApplyNameDisplay(frame)
+        end)
+    end
+
+    ApplyNameDisplay(frame)
+end
+
+function Perskan:ApplyNameplateNameDisplay()
+    ForEachNameplateFrame(HookNameplateNameDisplay)
+end
+
+--------------------------------------------------------------------------------
 
 Perskan:RegisterModule("Nameplates", function(self)
     if outlineHooked and healthbarHooked then return end
@@ -511,6 +678,11 @@ Perskan:RegisterModule("Nameplates", function(self)
 
     local eventFrame = CreateFrame("Frame")
     eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+    -- Which names are relevant moves with the target and with the quest log, and neither
+    -- change touches a nameplate, so both have to re-run the pass themselves.
+    eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+    eventFrame:RegisterEvent("QUEST_LOG_UPDATE")
+    eventFrame:RegisterEvent("UNIT_QUEST_LOG_CHANGED")
     -- Hit-test points can't be changed by us mid-combat unless Blizzard touched them on
     -- the same tick, so a plate that took the setting late (or lost it on a toggle in
     -- combat) is squared up on the way out of combat.
@@ -518,6 +690,19 @@ Perskan:RegisterModule("Nameplates", function(self)
     eventFrame:SetScript("OnEvent", function(_, event, unit)
         if event == "PLAYER_REGEN_ENABLED" then
             Perskan:ApplyNameplateFriendlyClickThrough()
+            return
+        end
+
+        if event == "PLAYER_TARGET_CHANGED" then
+            Perskan:ApplyNameplateNameDisplay()
+            return
+        end
+
+        if event == "QUEST_LOG_UPDATE" or event == "UNIT_QUEST_LOG_CHANGED" then
+            -- Accepting or finishing a quest changes which units are objectives, and the
+            -- cache has no way to know that from a GUID.
+            table.wipe(questObjectiveCache)
+            Perskan:ApplyNameplateNameDisplay()
             return
         end
 
@@ -531,6 +716,7 @@ Perskan:RegisterModule("Nameplates", function(self)
         local frame = nameplate.UnitFrame
         if frame and not frame:IsForbidden() then
             HookNameplateName(frame)
+            HookNameplateNameDisplay(frame)
         end
     end)
 
@@ -538,5 +724,6 @@ Perskan:RegisterModule("Nameplates", function(self)
     self:ApplyNameplateHealthbarHeight()
     self:ApplyNameplateCastbarHeight()
     self:ApplyNameplateNameOutline()
+    self:ApplyNameplateNameDisplay()
     self:ApplyNameplateFriendlyClickThrough()
 end)
