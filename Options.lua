@@ -127,6 +127,13 @@ local function MigrateProfile(profile)
 end
 
 function Perskan:OnInitialize()
+    -- [Perskan] Diagnostic probe for the WoW Forever port. The client restores an addon's
+    -- saved variables before ADDON_LOADED, so whatever sits in the global at this point is
+    -- what it handed back. AceDB creates the table itself when it finds nothing, which
+    -- hides the difference, so read it first. `/dump Perskan.savedVariablesRestored`.
+    local restored = _G[addonName .. "DB"]
+    self.savedVariablesRestored = (type(restored) == "table" and next(restored) ~= nil) or false
+
     self.db = LibStub("AceDB-3.0"):New(addonName .. "DB", defaults, true)
     MigrateProfile(self.db.profile)
 
