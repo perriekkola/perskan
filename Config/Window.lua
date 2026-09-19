@@ -225,11 +225,17 @@ local function BuildRange(parent, control, get, set)
 
     local syncing = false
 
+    -- Deliberately does not touch `syncing`. It used to set the flag true and then false
+    -- around the SetText, which clobbered the guard refresh() had already raised: refresh
+    -- sets syncing, calls slider:SetValue, that fires OnValueChanged synchronously,
+    -- OnValueChanged calls SyncBox, SyncBox lowers the flag, and the `if syncing then
+    -- return end` below it no longer fired - so simply opening the window wrote every
+    -- slider's value back into the profile through set(). Nothing here needs guarding:
+    -- SetText only fires OnTextChanged, which this box does not script, and the handlers
+    -- that do write (OnEnterPressed, OnEditFocusLost) need a real edit to fire.
     local function SyncBox(value)
-        syncing = true
         box:SetText(Format(value))
         box:SetCursorPosition(0)
-        syncing = false
     end
 
     -- Typed values are clamped to the range and snapped to the control's step, so the box
