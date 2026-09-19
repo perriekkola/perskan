@@ -727,9 +727,16 @@ local function ApplyNameDisplay(frame)
         nameFS._perskanBaseColor = { r or 1, g or 1, b or 1 }
     end
 
+    -- Blizzard whitens the name under the cursor. Leave it to: painting over that made
+    -- the two take turns, which showed as a white flash on hover. The next pass after the
+    -- cursor moves off puts our colour back.
+    local hovered = UnitIsUnit(unit, "mouseover")
+
     local r, g, b
     if profile.nameplateNameHostilityColor then
-        r, g, b = NameColorFor(unit, frame)
+        if not hovered then
+            r, g, b = NameColorFor(unit, frame)
+        end
     elseif nameFS._perskanColored then
         r, g, b = unpack(nameFS._perskanBaseColor)
     end

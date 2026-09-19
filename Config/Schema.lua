@@ -141,7 +141,8 @@ addon.configSchema = {
               store = "bool", hidden = foreverOnly,
               desc = "Colour nameplate names by how the unit regards you: red hostile, "
                   .. "yellow neutral, green friendly, and grey for anything another "
-                  .. "player has tapped. Players are coloured by class instead.",
+                  .. "player has tapped. Players are coloured by class instead, and the "
+                  .. "name under your cursor keeps Blizzard's own highlight.",
               apply = function() P():ApplyNameplateNameDisplay() end },
             { type = "range", key = "nameplateOtherBottomInset", name = "Bottom Inset",
               desc = "Nameplate bottom inset.", min = -1, max = 1, step = 0.01,
