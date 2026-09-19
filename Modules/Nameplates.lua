@@ -638,8 +638,16 @@ local function NameColorFor(unit)
         return nil
     end
 
-    -- A mob another player has tapped isn't yours to kill, which is worth more at a
-    -- glance than how it feels about you, so grey wins over reaction.
+    -- Blizzard colours the health bar from UnitSelectionColor, so take the name from the
+    -- same place and the two can never disagree. It already accounts for what reaction
+    -- alone gets wrong: a neutral mob that has been engaged reads red there while
+    -- UnitReaction still says 4, and a mob another player tapped reads grey.
+    if UnitSelectionColor then
+        local ok, r, g, b = pcall(UnitSelectionColor, unit, true)
+        if ok and r then return r, g, b end
+    end
+
+    -- Fallbacks for a client without it, in the order the bar would pick them.
     if IsTapDenied(unit) then
         return TAPPED_NAME_COLOR[1], TAPPED_NAME_COLOR[2], TAPPED_NAME_COLOR[3]
     end
@@ -714,6 +722,16 @@ local function HookNameplateNameDisplay(frame)
             if self._perskanShowing then return end
             ApplyNameDisplay(frame)
         end)
+
+        -- The moment the bar recolours is the moment the name is stale, and it is the
+        -- only signal for it: engaging a neutral mob reddens the bar without going
+        -- anywhere near the name, so no fontstring hook and no unit event catches it.
+        local healthBar = frame.healthBar or frame.HealthBarsContainer or frame.HealthBar
+        if healthBar and healthBar.SetStatusBarColor then
+            hooksecurefunc(healthBar, "SetStatusBarColor", function()
+                ApplyNameDisplay(frame)
+            end)
+        end
         hooksecurefunc(frame.name, "SetVertexColor", function(self)
             if self._perskanColoring then return end
             ApplyNameDisplay(frame)
