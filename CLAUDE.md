@@ -97,7 +97,8 @@ was deliberately moved away from.
   ones. `Perskan:IsForeverClient()` in Options.lua answers by interface version, using the
   same 16000–20000 range AceDB-3.0 checks for its own Forever handling; there is no single
   API that feature-detects everything that differs. Several features simply aren't in that
-  client — delves, the talking head frame, the cooldown viewer's tracked bars, and the
+  client — delves (both the Delves category and Map, which holds only the continent-map
+  delve pins), the talking head frame, the cooldown viewer's tracked bars, and the
   nameplate spell-name and name-outline pieces (castbar *height* still applies) — so their
   controls carry
   `hidden = notOnForever` (Config/Schema.lua) instead of sitting there doing nothing.

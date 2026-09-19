@@ -365,6 +365,7 @@ addon.configSchema = {
     --------------------------------------------------------------------------------
     {
         key = "map",
+        hidden = notOnForever,
         title = "Map",
         icon = "Interface\\Icons\\INV_Misc_Map02",
         controls = {
