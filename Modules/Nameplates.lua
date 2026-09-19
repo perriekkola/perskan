@@ -778,8 +778,6 @@ Perskan:RegisterModule("Nameplates", function(self)
     outlineHooked = true
     healthbarHooked = true
 
-    local lastHoveredFrame
-
     local eventFrame = CreateFrame("Frame")
     eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
     -- Which names are relevant moves with the target and with the quest log, and neither
@@ -815,20 +813,11 @@ Perskan:RegisterModule("Nameplates", function(self)
         end
 
         if event == "UPDATE_MOUSEOVER_UNIT" then
-            local plate = NamePlateForUnit("mouseover")
-            local frame = plate and plate.UnitFrame
-            if frame and not frame:IsForbidden() then
-                ApplyNameDisplay(frame)
-            end
-
-            -- The plate just left is owed its colour back, and "mouseover" no longer
-            -- points at it, so it has to have been remembered.
-            if lastHoveredFrame and lastHoveredFrame ~= frame
-                and not lastHoveredFrame:IsForbidden() then
-                ApplyNameDisplay(lastHoveredFrame)
-            end
-            lastHoveredFrame = frame
-
+            -- Every plate, not just the one gained and the one left: Blizzard refreshes
+            -- all of the names on a mouseover change the same way it does on a target
+            -- change, so anything narrower leaves the rest showing Blizzard's colour
+            -- until the next poll.
+            Perskan:ApplyNameplateNameDisplay()
             return
         end
 
@@ -861,8 +850,10 @@ Perskan:RegisterModule("Nameplates", function(self)
         local frame = nameplate.UnitFrame
         if frame and not frame:IsForbidden() then
             HookNameplateName(frame)
-            HookNameplateNameDisplay(frame)
         end
+        -- Same story as a mouseover or target change: a new plate makes Blizzard refresh
+        -- every name, so the pass has to cover every plate, not just the new one.
+        Perskan:ApplyNameplateNameDisplay()
     end)
 
     -- The name display polls instead of hooking; see HookNameplateNameDisplay. The pass
