@@ -579,6 +579,15 @@ local function IsQuestObjectiveUnit(unit)
     return cached
 end
 
+-- GetNamePlateForUnit raises, rather than returning nil, on a token it won't accept -
+-- "targettarget" among them - and the unit events this module listens to fire for exactly
+-- those. Ask through pcall so a token without a nameplate is simply no answer.
+local function NamePlateForUnit(unit)
+    if not (unit and C_NamePlate and C_NamePlate.GetNamePlateForUnit) then return nil end
+    local ok, plate = pcall(C_NamePlate.GetNamePlateForUnit, unit)
+    return ok and plate or nil
+end
+
 -- The unit token lives on the unit frame on retail and on the nameplate itself on the
 -- Classic line, so take whichever this client offers.
 local function NameplateUnit(frame)
@@ -757,8 +766,7 @@ Perskan:RegisterModule("Nameplates", function(self)
         if event == "UNIT_FACTION" or event == "UNIT_THREAT_LIST_UPDATE"
             or event == "UNIT_FLAGS" then
             -- Only the one plate: these fire per unit, and in combat they fire often.
-            local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit
-                and C_NamePlate.GetNamePlateForUnit(unit)
+            local plate = NamePlateForUnit(unit)
             local frame = plate and plate.UnitFrame
             if frame and not frame:IsForbidden() then
                 HookNameplateNameDisplay(frame)
