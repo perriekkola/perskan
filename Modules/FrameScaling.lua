@@ -88,10 +88,41 @@ function Perskan:ApplyXpBarScale()
     end
 end
 
+-- Resizing the container does not move what is inside it: the bars keep the width they
+-- were last laid out at, so the fill stops matching the frame. Opening and closing Edit
+-- Mode repaired it only because that forces a layout pass, so ask for one outright.
+-- Whichever of these the client carries, first one that runs wins.
+local function RelayoutXpBar(frame)
+    for _, method in ipairs({ "UpdateBarsShown", "Layout" }) do
+        if type(frame[method]) == "function" and pcall(frame[method], frame) then
+            return true
+        end
+    end
+
+    -- The manager owns the container, and can lay it out when the container itself
+    -- offers nothing to call.
+    local manager = _G.StatusTrackingBarManager
+    if manager and manager ~= frame then
+        for _, method in ipairs({ "UpdateBarsShown", "LayoutBar", "Layout" }) do
+            if type(manager[method]) == "function" and pcall(manager[method], manager) then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
 -- 0 means leave Blizzard's own width alone, the same way a castbar height of 0 does on
 -- nameplates. Anything else is held against Blizzard's own layout passes by a
--- self-correcting SetWidth hook, guarded against the width we set ourselves.
+-- self-correcting SetWidth hook.
+local applyingXpBarWidth = false
+
 function Perskan:ApplyXpBarWidth()
+    -- One guard for the whole pass rather than one around each write: the relayout below
+    -- sets widths of its own, and every one of them comes back through the hook.
+    if applyingXpBarWidth then return end
+
     local frame = XpBarWidthFrame()
     if not frame then return end
 
@@ -104,16 +135,16 @@ function Perskan:ApplyXpBarWidth()
     local wanted = (width > 0) and width or frame._perskanBaseWidth
     if not wanted or wanted <= 0 then return end
 
+    applyingXpBarWidth = true
     if frame:GetWidth() ~= wanted then
-        frame._perskanSizing = true
         frame:SetWidth(wanted)
-        frame._perskanSizing = false
     end
+    RelayoutXpBar(frame)
+    applyingXpBarWidth = false
 
     if not frame._perskanWidthHooked then
         frame._perskanWidthHooked = true
-        hooksecurefunc(frame, "SetWidth", function(self)
-            if self._perskanSizing then return end
+        hooksecurefunc(frame, "SetWidth", function()
             Perskan:ApplyXpBarWidth()
         end)
     end

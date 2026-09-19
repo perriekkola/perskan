@@ -700,13 +700,23 @@ local function ApplyNameDisplay(frame)
 
     local profile = Perskan.db.profile
 
-    -- Only ever re-show a name this addon hid, so a plate Blizzard hides for its own
-    -- reasons - the personal resource display among them - stays hidden.
+    -- Alpha rather than Hide. Blizzard calls Show() on the fontstring whenever it
+    -- refreshes a name, so a hidden name came back the instant it did and went again on
+    -- the next poll - visible flicker. Nothing in the nameplate code sets the name's own
+    -- alpha (the fade you see is the whole plate's, and alphas multiply), so zero sticks
+    -- through Show() and there is nothing to flicker between. A plate Blizzard hides for
+    -- its own reasons stays hidden either way, since this never calls Show().
+    if nameFS._perskanBaseAlpha == nil then
+        nameFS._perskanBaseAlpha = nameFS:GetAlpha() or 1
+    end
+
     if profile.nameplateNamesRelevantOnly and not ShouldShowName(unit) then
-        nameFS:Hide()
+        if nameFS:GetAlpha() ~= 0 then
+            nameFS:SetAlpha(0)
+        end
         nameFS._perskanHidName = true
     elseif nameFS._perskanHidName then
-        nameFS:Show()
+        nameFS:SetAlpha(nameFS._perskanBaseAlpha)
         nameFS._perskanHidName = nil
     end
 
@@ -824,7 +834,7 @@ Perskan:RegisterModule("Nameplates", function(self)
     -- The name display polls instead of hooking; see HookNameplateNameDisplay. The pass
     -- is skipped outright while both options are off, so a player who never turns them
     -- on pays nothing for them.
-    local NAME_POLL_INTERVAL = 0.15
+    local NAME_POLL_INTERVAL = 0.05
     local sinceNamePoll = 0
     eventFrame:SetScript("OnUpdate", function(_, elapsed)
         local profile = Perskan.db and Perskan.db.profile

@@ -69,7 +69,12 @@ was deliberately moved away from.
   taint into Edit Mode's single refresh of every unit frame, and party-frame health values
   are secret in 12.1, so it surfaced as "attempt to compare local 'currValue' (a secret
   number value, while execution tainted by 'Perskan')" hundreds of times a second. The
-  poll skips entirely while both options are off. Don't reintroduce the hooks.
+  poll skips entirely while both options are off. Don't reintroduce the hooks. It hides a
+  name with alpha rather than `Hide()`, too: Blizzard calls `Show()` on the fontstring
+  whenever it refreshes a name - and refreshes every one of them on a target change or a
+  new plate - so a hidden name came straight back and went again on the next poll, which
+  read as flicker across the whole screen. Nothing sets the name's own alpha, so zero
+  sticks through `Show()`.
 - **Cooldown viewer taint rule**: nothing may write to, hook, or re-anchor
   `BuffBarCooldownViewer`'s item frames. In 12.1 the viewer keeps its aura lookup in the
   `CreateSecureAuraInstanceMap` proxy (`Blizzard_CooldownViewer/CooldownViewerSecure.lua`),
