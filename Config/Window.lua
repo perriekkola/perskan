@@ -510,6 +510,9 @@ local function BuildProfilesPanel(panel)
     newBox:SetSize(240, 22)
     newBox:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + 6, y)
     newBox:SetAutoFocus(false)
+    -- AceDB 36 raises on a profile name longer than 50 characters rather than trimming
+    -- it, and SetProfile is called straight from this box.
+    newBox:SetMaxLetters(50)
     y = y - (28 + SPACING)
 
     local createButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
