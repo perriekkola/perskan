@@ -449,6 +449,12 @@ addon.configSchema = {
             { type = "range", key = "xpBarScale", name = "XP / Status Bar Scale",
               desc = "Scale of the XP and reputation bars.", min = 0.5, max = 2.0, step = 0.1,
               apply = function() P():ApplyXpBarScale() end },
+            { type = "range", key = "xpBarWidth", name = "XP / Status Bar Width",
+              hidden = foreverOnly,
+              desc = "Exact width of the XP and reputation bars, in pixels. 0 keeps "
+                  .. "Blizzard's own width, which follows the screen.",
+              min = 0, max = 1200, step = 1,
+              apply = function() P():ApplyXpBarWidth() end },
             { type = "range", key = "extraActionButtonScale", name = "Extra Action Button Scale",
               desc = "Scale of the extra action button.", min = 0.5, max = 2.0, step = 0.1,
               apply = function() P():ApplyExtraActionButtonScale() end },

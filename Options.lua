@@ -63,6 +63,8 @@ local defaults = {
         encounterBarScale = 1,
         talkingHeadScale = 1,
         xpBarScale = 1,
+        -- 0 leaves Blizzard's own width alone; Forever only.
+        xpBarWidth = 0,
         extraActionButtonScale = 1,
         -- Action Bars
         hideHotkeys = false,
