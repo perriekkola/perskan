@@ -2,9 +2,8 @@
 ## Notes: Lua snippets altering the default UI
 ## Author: Per Riekkola
 ## Interface: 120100, 110207, 16001
-## Version: 1.1.46
+## Version: 1.1.47
 ## IconTexture: Interface\Icons\ability_titankeeper_testofconfidence
-
 ## SavedVariables: PerskanDB, BindPadVars, SimpleItemLevelDB
 
 # Library files
