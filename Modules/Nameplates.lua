@@ -706,9 +706,7 @@ local function ApplyNameDisplay(frame)
         nameFS:Hide()
         nameFS._perskanHidName = true
     elseif nameFS._perskanHidName then
-        nameFS._perskanShowing = true
         nameFS:Show()
-        nameFS._perskanShowing = false
         nameFS._perskanHidName = nil
     end
 
@@ -727,47 +725,25 @@ local function ApplyNameDisplay(frame)
     end
 
     if r then
-        nameFS._perskanColoring = true
         nameFS:SetVertexColor(r, g, b)
-        nameFS._perskanColoring = false
         nameFS._perskanColored = profile.nameplateNameHostilityColor or nil
     end
 end
 
+-- Deliberately hookless. Every earlier attempt at keeping the name in step re-asserted
+-- from inside Blizzard's own execution - hooks on the fontstring's SetText, Show and
+-- SetVertexColor, and on the health bar's SetStatusBarColor - and that is exactly what
+-- the taint rules in CLAUDE.md warn against. Edit Mode refreshes every unit frame in one
+-- pass, so our taint rode that pass into the party frames and their health values are
+-- secret in 12.x: "attempt to compare local 'currValue' (a secret number value, while
+-- execution tainted by 'Perskan')", hundreds of times a second.
+--
+-- A poll on our own frame costs a pass over the visible nameplates a few times a second -
+-- each one a handful of Unit* calls and a cached quest answer - and cannot taint anything,
+-- because Blizzard is never on the stack. The name lags a repaint by up to the interval,
+-- which for a colour and a visibility flag is not something an eye can catch.
 local function HookNameplateNameDisplay(frame)
     if not frame or not frame.name then return end
-
-    if not frame._perskanNameDisplayHooked then
-        frame._perskanNameDisplayHooked = true
-
-        -- Blizzard rewrites the name and its colour on its own schedule; re-assert after
-        -- it, guarded against the colour we set ourselves.
-        hooksecurefunc(frame.name, "SetText", function()
-            ApplyNameDisplay(frame)
-        end)
-        -- CompactUnitFrame_UpdateName sets the text and *then* shows the fontstring, so
-        -- hooking SetText alone loses every race: we hide the name and Blizzard shows it
-        -- again a line later. This is the hook that actually decides it.
-        hooksecurefunc(frame.name, "Show", function(self)
-            if self._perskanShowing then return end
-            ApplyNameDisplay(frame)
-        end)
-
-        -- The moment the bar recolours is the moment the name is stale, and it is the
-        -- only signal for it: engaging a neutral mob reddens the bar without going
-        -- anywhere near the name, so no fontstring hook and no unit event catches it.
-        local healthBar = NameplateHealthBar(frame)
-        if healthBar and healthBar.SetStatusBarColor then
-            hooksecurefunc(healthBar, "SetStatusBarColor", function()
-                ApplyNameDisplay(frame)
-            end)
-        end
-        hooksecurefunc(frame.name, "SetVertexColor", function(self)
-            if self._perskanColoring then return end
-            ApplyNameDisplay(frame)
-        end)
-    end
-
     ApplyNameDisplay(frame)
 end
 
@@ -843,6 +819,25 @@ Perskan:RegisterModule("Nameplates", function(self)
             HookNameplateName(frame)
             HookNameplateNameDisplay(frame)
         end
+    end)
+
+    -- The name display polls instead of hooking; see HookNameplateNameDisplay. The pass
+    -- is skipped outright while both options are off, so a player who never turns them
+    -- on pays nothing for them.
+    local NAME_POLL_INTERVAL = 0.15
+    local sinceNamePoll = 0
+    eventFrame:SetScript("OnUpdate", function(_, elapsed)
+        local profile = Perskan.db and Perskan.db.profile
+        if not profile then return end
+        if not (profile.nameplateNamesRelevantOnly or profile.nameplateNameHostilityColor) then
+            return
+        end
+
+        sinceNamePoll = sinceNamePoll + elapsed
+        if sinceNamePoll < NAME_POLL_INTERVAL then return end
+        sinceNamePoll = 0
+
+        Perskan:ApplyNameplateNameDisplay()
     end)
 
     -- Catch nameplates that already exist at login.

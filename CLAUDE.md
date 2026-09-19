@@ -62,6 +62,14 @@ was deliberately moved away from.
   state through `securecallfunction`, and don't install hooks that run inside Blizzard's
   own execution (`HookScript` on a Blizzard frame, unlike `hooksecurefunc`, taints
   whoever fired the script) for a feature that is switched off.
+- **Nameplate name display taint rule**: the Forever name display in
+  `Modules/Nameplates.lua` polls on its own frame and installs no hooks, deliberately.
+  Re-asserting from inside Blizzard's execution - hooks on the name fontstring's
+  `SetText`/`Show`/`SetVertexColor`, or on the health bar's `SetStatusBarColor` - put our
+  taint into Edit Mode's single refresh of every unit frame, and party-frame health values
+  are secret in 12.1, so it surfaced as "attempt to compare local 'currValue' (a secret
+  number value, while execution tainted by 'Perskan')" hundreds of times a second. The
+  poll skips entirely while both options are off. Don't reintroduce the hooks.
 - **Cooldown viewer taint rule**: nothing may write to, hook, or re-anchor
   `BuffBarCooldownViewer`'s item frames. In 12.1 the viewer keeps its aura lookup in the
   `CreateSecureAuraInstanceMap` proxy (`Blizzard_CooldownViewer/CooldownViewerSecure.lua`),
