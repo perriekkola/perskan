@@ -42,6 +42,7 @@ local defaults = {
         -- an untouched setting reads false on retail and true on Forever.
         nameplateNamesRelevantOnly = isForeverClient,
         nameplateNameHostilityColor = isForeverClient,
+        nameplateNameDisableHoverHighlight = isForeverClient,
         alwaysShowNameplates = 1,
         nameplateShowAll = 1,
         nameplateShowEnemies = 1,
@@ -63,6 +64,8 @@ local defaults = {
         encounterBarScale = 1,
         talkingHeadScale = 1,
         xpBarScale = 1,
+        -- 0 leaves Blizzard's own width alone; Forever only.
+        xpBarWidth = 0,
         extraActionButtonScale = 1,
         -- Action Bars
         hideHotkeys = false,

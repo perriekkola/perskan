@@ -1,4 +1,5 @@
--- Frame scaling: encounter bar, talking head, XP/status bar, extra action button.
+-- Frame scaling: encounter bar, talking head, XP/status bar, extra action button, and -
+-- on WoW Forever only - an explicit XP bar width.
 --
 -- All four apply live from the settings window. The status-bar and extra-action
 -- containers get a self-correcting SetScale hook so Blizzard can't reset them; the
@@ -44,6 +45,33 @@ local function InstallScaledContainer(globalName, getScale)
     end)
 end
 
+-- Runs fn once the named global exists, then stops listening.
+local function WhenFrameExists(globalName, fn)
+    if _G[globalName] then
+        fn()
+        return
+    end
+
+    local waiter = CreateFrame("Frame")
+    waiter:RegisterEvent("PLAYER_ENTERING_WORLD")
+    waiter:RegisterEvent("ADDON_LOADED")
+    waiter:SetScript("OnEvent", function(self)
+        if _G[globalName] then
+            fn()
+            self:UnregisterAllEvents()
+            self:SetScript("OnEvent", nil)
+        end
+    end)
+end
+
+-- Width is not the manager's to give: the scale option drives StatusTrackingBarManager,
+-- but the frame that actually draws the bar - and the one whose width means anything -
+-- is MainStatusTrackingBarContainer. The manager is only a fallback for a client that
+-- doesn't carry the container.
+local function XpBarWidthFrame()
+    return _G.MainStatusTrackingBarContainer or _G.StatusTrackingBarManager
+end
+
 --------------------------------------------------------------------------------
 -- Appliers (called live from the settings window)
 --------------------------------------------------------------------------------
@@ -57,6 +85,68 @@ end
 function Perskan:ApplyXpBarScale()
     if StatusTrackingBarManager then
         StatusTrackingBarManager:SetScale(self.db.profile.xpBarScale or 1)
+    end
+end
+
+-- Resizing the container does not move what is inside it: the bars keep the width they
+-- were last laid out at, so the fill stops matching the frame. Opening and closing Edit
+-- Mode repaired it only because that forces a layout pass, so ask for one outright.
+-- Whichever of these the client carries, first one that runs wins.
+local function RelayoutXpBar(frame)
+    for _, method in ipairs({ "UpdateBarsShown", "Layout" }) do
+        if type(frame[method]) == "function" and pcall(frame[method], frame) then
+            return true
+        end
+    end
+
+    -- The manager owns the container, and can lay it out when the container itself
+    -- offers nothing to call.
+    local manager = _G.StatusTrackingBarManager
+    if manager and manager ~= frame then
+        for _, method in ipairs({ "UpdateBarsShown", "LayoutBar", "Layout" }) do
+            if type(manager[method]) == "function" and pcall(manager[method], manager) then
+                return true
+            end
+        end
+    end
+
+    return false
+end
+
+-- 0 means leave Blizzard's own width alone, the same way a castbar height of 0 does on
+-- nameplates. Anything else is held against Blizzard's own layout passes by a
+-- self-correcting SetWidth hook.
+local applyingXpBarWidth = false
+
+function Perskan:ApplyXpBarWidth()
+    -- One guard for the whole pass rather than one around each write: the relayout below
+    -- sets widths of its own, and every one of them comes back through the hook.
+    if applyingXpBarWidth then return end
+
+    local frame = XpBarWidthFrame()
+    if not frame then return end
+
+    local width = self.db.profile.xpBarWidth or 0
+
+    if frame._perskanBaseWidth == nil then
+        frame._perskanBaseWidth = frame:GetWidth()
+    end
+
+    local wanted = (width > 0) and width or frame._perskanBaseWidth
+    if not wanted or wanted <= 0 then return end
+
+    applyingXpBarWidth = true
+    if frame:GetWidth() ~= wanted then
+        frame:SetWidth(wanted)
+    end
+    RelayoutXpBar(frame)
+    applyingXpBarWidth = false
+
+    if not frame._perskanWidthHooked then
+        frame._perskanWidthHooked = true
+        hooksecurefunc(frame, "SetWidth", function()
+            Perskan:ApplyXpBarWidth()
+        end)
     end
 end
 
@@ -85,6 +175,10 @@ Perskan:RegisterModule("FrameScaling", function(self)
     end)
     InstallScaledContainer("ExtraAbilityContainer", function()
         return Perskan.db.profile.extraActionButtonScale or 1
+    end)
+
+    WhenFrameExists("MainStatusTrackingBarContainer", function()
+        Perskan:ApplyXpBarWidth()
     end)
 
     -- TalkingHeadFrame lives in a load-on-demand addon; hook PlayCurrent so the scale

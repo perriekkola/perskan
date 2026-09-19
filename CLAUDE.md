@@ -62,6 +62,24 @@ was deliberately moved away from.
   state through `securecallfunction`, and don't install hooks that run inside Blizzard's
   own execution (`HookScript` on a Blizzard frame, unlike `hooksecurefunc`, taints
   whoever fired the script) for a feature that is switched off.
+- **Nameplate name display taint rule**: the Forever name display in
+  `Modules/Nameplates.lua` polls on its own frame and installs no hooks, deliberately.
+  Re-asserting from inside Blizzard's execution - hooks on the name fontstring's
+  `SetText`/`Show`/`SetVertexColor`, or on the health bar's `SetStatusBarColor` - put our
+  taint into Edit Mode's single refresh of every unit frame, and party-frame health values
+  are secret in 12.1, so it surfaced as "attempt to compare local 'currValue' (a secret
+  number value, while execution tainted by 'Perskan')" hundreds of times a second. The
+  poll skips entirely while both options are off. Don't reintroduce the hooks. It also draws its own
+  fontstring rather than steering Blizzard's, which is what finally ended the flicker.
+  Blizzard owns `frame.name` and repaints it - text, `Show()`, colour - on a target change,
+  a mouseover change, a new plate and more; every attempt to react (alpha, a faster poll,
+  the mouseover event, a full pass on it) narrowed the window without closing it, because
+  there is always a repaint we didn't hear about. So `frame.name` is muted to alpha zero
+  (which sticks where `Hide()` doesn't, nothing sets the name's own alpha) and left to be
+  repainted freely, while `frame._perskanOwnName` - anchored `SetAllPoints` to it, font and
+  justification copied each pass - carries the text and colour. Nothing races. Blizzard's
+  white hover highlight is reproduced by us when `nameplateNameDisableHoverHighlight` is
+  off, rather than let through.
 - **Cooldown viewer taint rule**: nothing may write to, hook, or re-anchor
   `BuffBarCooldownViewer`'s item frames. In 12.1 the viewer keeps its aura lookup in the
   `CreateSecureAuraInstanceMap` proxy (`Blizzard_CooldownViewer/CooldownViewerSecure.lua`),
@@ -104,7 +122,9 @@ was deliberately moved away from.
   `hidden = notOnForever` (Config/Schema.lua) instead of sitting there doing nothing.
   Retail is untouched. It runs the other way too: `foreverOnly` marks a control that only
   exists on that client, which is how `Modules/Nameplates.lua` exposes its name-relevance
-  and reaction-colouring options. Both default to on there and off on retail, by keying
+  and reaction-colouring options and `Modules/FrameScaling.lua` its XP bar width (that
+  one sizes `MainStatusTrackingBarContainer`, not the `StatusTrackingBarManager` the
+  scale option drives). Both default to on there and off on retail, by keying
   the `defaults.profile` entry to the same client check - AceDB stores only what differs
   from the default, so one profile carried between the two clients does the right thing in
   each. What the port needed beyond that: AceDB-3.0 at minor 36 or later

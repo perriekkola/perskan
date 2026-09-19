@@ -691,83 +691,122 @@ local function NameColorFor(unit, frame)
     return color[1], color[2], color[3]
 end
 
+-- Our own fontstring, over the top of Blizzard's. Chasing Blizzard's name - alpha, then
+-- a faster poll, then the mouseover event, then every plate on it - shrank the flicker
+-- each time without ending it, because Blizzard owns that fontstring and repaints it
+-- whenever it likes: react however quickly and there is still a repaint we did not hear
+-- about. Drawing our own removes the race rather than narrowing it. Blizzard's name is
+-- muted to alpha zero (which sticks, unlike Hide) and left to be repainted all it wants;
+-- nothing looks at it again.
+local function NameplateOwnName(frame)
+    if frame._perskanOwnName then
+        return frame._perskanOwnName
+    end
+
+    local blizzName = frame.name
+    if not (blizzName and frame.CreateFontString) then return nil end
+
+    local layer = blizzName.GetDrawLayer and blizzName:GetDrawLayer() or "OVERLAY"
+    local ours = frame:CreateFontString(nil, layer)
+    -- Anchored to Blizzard's, so it follows every move and resize of it for free. Alpha
+    -- does not affect geometry, so muting it changes nothing here.
+    ours:SetAllPoints(blizzName)
+    ours:Hide()
+
+    frame._perskanOwnName = ours
+    return ours
+end
+
+-- Puts Blizzard's own name back and takes ours away. Used when both options are off.
+local function RestoreBlizzardName(frame)
+    local ours = frame._perskanOwnName
+    if ours then ours:Hide() end
+
+    local blizzName = frame.name
+    if blizzName and blizzName._perskanMuted then
+        blizzName:SetAlpha(blizzName._perskanBaseAlpha or 1)
+        blizzName._perskanMuted = nil
+    end
+end
+
 local function ApplyNameDisplay(frame)
-    local nameFS = frame and frame.name
-    if not nameFS then return end
+    local blizzName = frame and frame.name
+    if not blizzName then return end
+
+    local profile = Perskan.db.profile
+    if not (profile.nameplateNamesRelevantOnly or profile.nameplateNameHostilityColor) then
+        RestoreBlizzardName(frame)
+        return
+    end
 
     local unit = NameplateUnit(frame)
     if not unit or not UnitExists(unit) then return end
 
-    local profile = Perskan.db.profile
+    local ours = NameplateOwnName(frame)
+    if not ours then return end
 
-    -- Only ever re-show a name this addon hid, so a plate Blizzard hides for its own
-    -- reasons - the personal resource display among them - stays hidden.
-    if profile.nameplateNamesRelevantOnly and not ShouldShowName(unit) then
-        nameFS:Hide()
-        nameFS._perskanHidName = true
-    elseif nameFS._perskanHidName then
-        nameFS._perskanShowing = true
-        nameFS:Show()
-        nameFS._perskanShowing = false
-        nameFS._perskanHidName = nil
+    if blizzName._perskanBaseAlpha == nil then
+        blizzName._perskanBaseAlpha = blizzName:GetAlpha() or 1
+    end
+    if blizzName:GetAlpha() ~= 0 then
+        blizzName:SetAlpha(0)
+    end
+    blizzName._perskanMuted = true
+
+    -- Track Blizzard's font so ours reads identically, outline option included.
+    local font, size, flags = blizzName:GetFont()
+    if font then
+        ours:SetFont(font, size, flags)
+    end
+    if blizzName.GetJustifyH then
+        ours:SetJustifyH(blizzName:GetJustifyH())
     end
 
-    -- Remember what Blizzard shipped, the same way the outline remembers its font flags,
-    -- so switching the option off puts the colour back without a reload.
-    if nameFS._perskanBaseColor == nil then
-        local r, g, b = nameFS:GetVertexColor()
-        nameFS._perskanBaseColor = { r or 1, g or 1, b or 1 }
+    -- A plate Blizzard is not showing a name for gets none from us either.
+    if not blizzName:IsShown()
+        or (profile.nameplateNamesRelevantOnly and not ShouldShowName(unit)) then
+        ours:Hide()
+        return
     end
+
+    ours:SetText(blizzName:GetText() or UnitName(unit) or "")
 
     local r, g, b
     if profile.nameplateNameHostilityColor then
-        r, g, b = NameColorFor(unit, frame)
-    elseif nameFS._perskanColored then
-        r, g, b = unpack(nameFS._perskanBaseColor)
+        -- Blizzard whitens the name under the cursor. With the option off we reproduce
+        -- that ourselves rather than letting its fontstring show through - same look, and
+        -- still nothing to race.
+        if UnitIsUnit(unit, "mouseover") and not profile.nameplateNameDisableHoverHighlight then
+            r, g, b = 1, 1, 1
+        else
+            r, g, b = NameColorFor(unit, frame)
+        end
     end
 
-    if r then
-        nameFS._perskanColoring = true
-        nameFS:SetVertexColor(r, g, b)
-        nameFS._perskanColoring = false
-        nameFS._perskanColored = profile.nameplateNameHostilityColor or nil
+    if not r then
+        local br, bg, bb = blizzName:GetVertexColor()
+        r, g, b = br or 1, bg or 1, bb or 1
     end
+
+    ours:SetTextColor(r, g, b)
+    ours:Show()
 end
 
+
+-- Deliberately hookless. Every earlier attempt at keeping the name in step re-asserted
+-- from inside Blizzard's own execution - hooks on the fontstring's SetText, Show and
+-- SetVertexColor, and on the health bar's SetStatusBarColor - and that is exactly what
+-- the taint rules in CLAUDE.md warn against. Edit Mode refreshes every unit frame in one
+-- pass, so our taint rode that pass into the party frames and their health values are
+-- secret in 12.x: "attempt to compare local 'currValue' (a secret number value, while
+-- execution tainted by 'Perskan')", hundreds of times a second.
+--
+-- A poll on our own frame costs a pass over the visible nameplates a few times a second -
+-- each one a handful of Unit* calls and a cached quest answer - and cannot taint anything,
+-- because Blizzard is never on the stack. The name lags a repaint by up to the interval,
+-- which for a colour and a visibility flag is not something an eye can catch.
 local function HookNameplateNameDisplay(frame)
     if not frame or not frame.name then return end
-
-    if not frame._perskanNameDisplayHooked then
-        frame._perskanNameDisplayHooked = true
-
-        -- Blizzard rewrites the name and its colour on its own schedule; re-assert after
-        -- it, guarded against the colour we set ourselves.
-        hooksecurefunc(frame.name, "SetText", function()
-            ApplyNameDisplay(frame)
-        end)
-        -- CompactUnitFrame_UpdateName sets the text and *then* shows the fontstring, so
-        -- hooking SetText alone loses every race: we hide the name and Blizzard shows it
-        -- again a line later. This is the hook that actually decides it.
-        hooksecurefunc(frame.name, "Show", function(self)
-            if self._perskanShowing then return end
-            ApplyNameDisplay(frame)
-        end)
-
-        -- The moment the bar recolours is the moment the name is stale, and it is the
-        -- only signal for it: engaging a neutral mob reddens the bar without going
-        -- anywhere near the name, so no fontstring hook and no unit event catches it.
-        local healthBar = NameplateHealthBar(frame)
-        if healthBar and healthBar.SetStatusBarColor then
-            hooksecurefunc(healthBar, "SetStatusBarColor", function()
-                ApplyNameDisplay(frame)
-            end)
-        end
-        hooksecurefunc(frame.name, "SetVertexColor", function(self)
-            if self._perskanColoring then return end
-            ApplyNameDisplay(frame)
-        end)
-    end
-
     ApplyNameDisplay(frame)
 end
 
@@ -797,6 +836,11 @@ Perskan:RegisterModule("Nameplates", function(self)
     for _, event in ipairs({ "UNIT_FACTION", "UNIT_THREAT_LIST_UPDATE", "UNIT_FLAGS" }) do
         pcall(eventFrame.RegisterEvent, eventFrame, event)
     end
+    -- Blizzard repaints the hovered name white from its own handling of this event, so
+    -- answering the same event puts our colour back in the same frame. Nothing is drawn
+    -- until every script for the frame has run, so a correction made here is never seen -
+    -- which is the difference between no flash and a one-frame one.
+    pcall(eventFrame.RegisterEvent, eventFrame, "UPDATE_MOUSEOVER_UNIT")
     -- Hit-test points can't be changed by us mid-combat unless Blizzard touched them on
     -- the same tick, so a plate that took the setting late (or lost it on a toggle in
     -- combat) is squared up on the way out of combat.
@@ -808,6 +852,15 @@ Perskan:RegisterModule("Nameplates", function(self)
         end
 
         if event == "PLAYER_TARGET_CHANGED" then
+            Perskan:ApplyNameplateNameDisplay()
+            return
+        end
+
+        if event == "UPDATE_MOUSEOVER_UNIT" then
+            -- Every plate, not just the one gained and the one left: Blizzard refreshes
+            -- all of the names on a mouseover change the same way it does on a target
+            -- change, so anything narrower leaves the rest showing Blizzard's colour
+            -- until the next poll.
             Perskan:ApplyNameplateNameDisplay()
             return
         end
@@ -841,8 +894,29 @@ Perskan:RegisterModule("Nameplates", function(self)
         local frame = nameplate.UnitFrame
         if frame and not frame:IsForbidden() then
             HookNameplateName(frame)
-            HookNameplateNameDisplay(frame)
         end
+        -- Same story as a mouseover or target change: a new plate makes Blizzard refresh
+        -- every name, so the pass has to cover every plate, not just the new one.
+        Perskan:ApplyNameplateNameDisplay()
+    end)
+
+    -- The name display polls instead of hooking; see HookNameplateNameDisplay. The pass
+    -- is skipped outright while both options are off, so a player who never turns them
+    -- on pays nothing for them.
+    local NAME_POLL_INTERVAL = 0.05
+    local sinceNamePoll = 0
+    eventFrame:SetScript("OnUpdate", function(_, elapsed)
+        local profile = Perskan.db and Perskan.db.profile
+        if not profile then return end
+        if not (profile.nameplateNamesRelevantOnly or profile.nameplateNameHostilityColor) then
+            return
+        end
+
+        sinceNamePoll = sinceNamePoll + elapsed
+        if sinceNamePoll < NAME_POLL_INTERVAL then return end
+        sinceNamePoll = 0
+
+        Perskan:ApplyNameplateNameDisplay()
     end)
 
     -- Catch nameplates that already exist at login.
