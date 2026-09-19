@@ -778,6 +778,8 @@ Perskan:RegisterModule("Nameplates", function(self)
     outlineHooked = true
     healthbarHooked = true
 
+    local lastHoveredFrame
+
     local eventFrame = CreateFrame("Frame")
     eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
     -- Which names are relevant moves with the target and with the quest log, and neither
@@ -792,6 +794,11 @@ Perskan:RegisterModule("Nameplates", function(self)
     for _, event in ipairs({ "UNIT_FACTION", "UNIT_THREAT_LIST_UPDATE", "UNIT_FLAGS" }) do
         pcall(eventFrame.RegisterEvent, eventFrame, event)
     end
+    -- Blizzard repaints the hovered name white from its own handling of this event, so
+    -- answering the same event puts our colour back in the same frame. Nothing is drawn
+    -- until every script for the frame has run, so a correction made here is never seen -
+    -- which is the difference between no flash and a one-frame one.
+    pcall(eventFrame.RegisterEvent, eventFrame, "UPDATE_MOUSEOVER_UNIT")
     -- Hit-test points can't be changed by us mid-combat unless Blizzard touched them on
     -- the same tick, so a plate that took the setting late (or lost it on a toggle in
     -- combat) is squared up on the way out of combat.
@@ -804,6 +811,24 @@ Perskan:RegisterModule("Nameplates", function(self)
 
         if event == "PLAYER_TARGET_CHANGED" then
             Perskan:ApplyNameplateNameDisplay()
+            return
+        end
+
+        if event == "UPDATE_MOUSEOVER_UNIT" then
+            local plate = NamePlateForUnit("mouseover")
+            local frame = plate and plate.UnitFrame
+            if frame and not frame:IsForbidden() then
+                ApplyNameDisplay(frame)
+            end
+
+            -- The plate just left is owed its colour back, and "mouseover" no longer
+            -- points at it, so it has to have been remembered.
+            if lastHoveredFrame and lastHoveredFrame ~= frame
+                and not lastHoveredFrame:IsForbidden() then
+                ApplyNameDisplay(lastHoveredFrame)
+            end
+            lastHoveredFrame = frame
+
             return
         end
 
