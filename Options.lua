@@ -186,6 +186,14 @@ function Perskan:SlashCommand(msg)
         return
     end
 
+    -- Temporary, for the WoW Forever port; remove with the nameplate name display settled.
+    if command == "nameplate" then
+        if self.ReportNameplateNameDisplay then
+            self:ReportNameplateNameDisplay()
+        end
+        return
+    end
+
     if self.OpenConfig then
         self:OpenConfig()
     end

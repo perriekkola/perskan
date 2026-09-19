@@ -579,6 +579,31 @@ local function IsQuestObjectiveUnit(unit)
     return cached
 end
 
+-- Field names for the health bar differ across clients, and the name's colour and its
+-- refresh both hang off finding it, so fall back to looking for it: the unit frame's
+-- first StatusBar child is the bar on every layout this addon has met. Cached per frame.
+local function NameplateHealthBar(frame)
+    if frame._perskanHealthBar ~= nil then
+        return frame._perskanHealthBar or nil
+    end
+
+    local bar = frame.healthBar or frame.HealthBarsContainer or frame.HealthBar
+    if not (bar and bar.GetStatusBarColor) then
+        bar = nil
+        if frame.GetChildren then
+            for _, child in ipairs({ frame:GetChildren() }) do
+                if child.GetObjectType and child:GetObjectType() == "StatusBar" then
+                    bar = child
+                    break
+                end
+            end
+        end
+    end
+
+    frame._perskanHealthBar = bar or false
+    return bar
+end
+
 -- GetNamePlateForUnit raises, rather than returning nil, on a token it won't accept -
 -- "targettarget" among them - and the unit events this module listens to fire for exactly
 -- those. Ask through pcall so a token without a nameplate is simply no answer.
@@ -627,7 +652,7 @@ local function IsTapDenied(unit)
     return true
 end
 
-local function NameColorFor(unit)
+local function NameColorFor(unit, frame)
     if UnitIsPlayer(unit) then
         local _, class = UnitClass(unit)
         local palette = CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS
@@ -638,16 +663,21 @@ local function NameColorFor(unit)
         return nil
     end
 
-    -- Blizzard colours the health bar from UnitSelectionColor, so take the name from the
-    -- same place and the two can never disagree. It already accounts for what reaction
-    -- alone gets wrong: a neutral mob that has been engaged reads red there while
-    -- UnitReaction still says 4, and a mob another player tapped reads grey.
+    -- Read the colour off the health bar rather than working out what it ought to be.
+    -- Whatever this client decides - reaction, engaged neutral, tapped, anything added
+    -- later - the bar already shows it, and the name matching the bar is the whole point.
+    local healthBar = frame and NameplateHealthBar(frame)
+    if healthBar then
+        local ok, r, g, b = pcall(healthBar.GetStatusBarColor, healthBar)
+        if ok and r then return r, g, b end
+    end
+
+    -- Only reachable if the bar could not be found at all.
     if UnitSelectionColor then
         local ok, r, g, b = pcall(UnitSelectionColor, unit, true)
         if ok and r then return r, g, b end
     end
 
-    -- Fallbacks for a client without it, in the order the bar would pick them.
     if IsTapDenied(unit) then
         return TAPPED_NAME_COLOR[1], TAPPED_NAME_COLOR[2], TAPPED_NAME_COLOR[3]
     end
@@ -691,7 +721,7 @@ local function ApplyNameDisplay(frame)
 
     local r, g, b
     if profile.nameplateNameHostilityColor then
-        r, g, b = NameColorFor(unit)
+        r, g, b = NameColorFor(unit, frame)
     elseif nameFS._perskanColored then
         r, g, b = unpack(nameFS._perskanBaseColor)
     end
@@ -726,7 +756,7 @@ local function HookNameplateNameDisplay(frame)
         -- The moment the bar recolours is the moment the name is stale, and it is the
         -- only signal for it: engaging a neutral mob reddens the bar without going
         -- anywhere near the name, so no fontstring hook and no unit event catches it.
-        local healthBar = frame.healthBar or frame.HealthBarsContainer or frame.HealthBar
+        local healthBar = NameplateHealthBar(frame)
         if healthBar and healthBar.SetStatusBarColor then
             hooksecurefunc(healthBar, "SetStatusBarColor", function()
                 ApplyNameDisplay(frame)
@@ -743,6 +773,43 @@ end
 
 function Perskan:ApplyNameplateNameDisplay()
     ForEachNameplateFrame(HookNameplateNameDisplay)
+end
+
+-- "/pp nameplate" while targeting something. Temporary, for the Forever port: reports
+-- what the name display found on the target's plate, so a wrong colour can be traced to
+-- the bar, the lookup or the refresh in one go rather than one guess per login.
+function Perskan:ReportNameplateNameDisplay()
+    local function say(...) print("|cff00ff96Perskan|r", ...) end
+
+    local plate = NamePlateForUnit("target")
+    local frame = plate and plate.UnitFrame
+    if not frame then
+        say("no nameplate for your target - target something with one and try again")
+        return
+    end
+
+    local unit = NameplateUnit(frame)
+    local bar = NameplateHealthBar(frame)
+    local nameFS = frame.name
+
+    say("unit token    :", tostring(unit), unit and ("exists=" .. tostring(UnitExists(unit))) or "")
+    say("name fontstring:", nameFS and "found" or "MISSING")
+    say("health bar    :", bar and (bar:GetObjectType() .. (frame.healthBar == bar and " (frame.healthBar)"
+        or frame.HealthBarsContainer == bar and " (HealthBarsContainer)" or " (found by search)")) or "MISSING")
+
+    if bar and bar.GetStatusBarColor then
+        say(("bar colour    : %.2f %.2f %.2f"):format(bar:GetStatusBarColor()))
+    end
+    if nameFS then
+        say(("name colour   : %.2f %.2f %.2f"):format(nameFS:GetVertexColor()))
+    end
+    if unit then
+        say("reaction      :", tostring(UnitReaction("player", unit)),
+            "player=" .. tostring(UnitIsPlayer(unit)), "tapDenied=" .. tostring(IsTapDenied(unit)))
+        say("UnitSelectionColor:", UnitSelectionColor and "present" or "absent")
+        local r, g, b = NameColorFor(unit, frame)
+        say("we would paint:", r and ("%.2f %.2f %.2f"):format(r, g, b) or "nothing")
+    end
 end
 
 --------------------------------------------------------------------------------
