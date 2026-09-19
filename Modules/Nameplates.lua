@@ -732,6 +732,13 @@ Perskan:RegisterModule("Nameplates", function(self)
     eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
     eventFrame:RegisterEvent("QUEST_LOG_UPDATE")
     eventFrame:RegisterEvent("UNIT_QUEST_LOG_CHANGED")
+    -- Reaction and tap state change without Blizzard touching the name - it recolours the
+    -- health bar and stops there - so none of the fontstring hooks fire. Without these a
+    -- neutral mob that turns hostile keeps a yellow name over a red bar. Registered
+    -- defensively: an event this client doesn't know raises on RegisterEvent.
+    for _, event in ipairs({ "UNIT_FACTION", "UNIT_THREAT_LIST_UPDATE", "UNIT_FLAGS" }) do
+        pcall(eventFrame.RegisterEvent, eventFrame, event)
+    end
     -- Hit-test points can't be changed by us mid-combat unless Blizzard touched them on
     -- the same tick, so a plate that took the setting late (or lost it on a toggle in
     -- combat) is squared up on the way out of combat.
@@ -744,6 +751,18 @@ Perskan:RegisterModule("Nameplates", function(self)
 
         if event == "PLAYER_TARGET_CHANGED" then
             Perskan:ApplyNameplateNameDisplay()
+            return
+        end
+
+        if event == "UNIT_FACTION" or event == "UNIT_THREAT_LIST_UPDATE"
+            or event == "UNIT_FLAGS" then
+            -- Only the one plate: these fire per unit, and in combat they fire often.
+            local plate = C_NamePlate and C_NamePlate.GetNamePlateForUnit
+                and C_NamePlate.GetNamePlateForUnit(unit)
+            local frame = plate and plate.UnitFrame
+            if frame and not frame:IsForbidden() then
+                HookNameplateNameDisplay(frame)
+            end
             return
         end
 
