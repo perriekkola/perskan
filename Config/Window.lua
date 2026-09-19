@@ -736,10 +736,17 @@ function Perskan:BuildConfig()
         page:SetHeight(page:GetHeight())
     end
 
+    -- A category whose whole subject is missing from this client is left out of the
+    -- sidebar entirely, rather than opening onto an empty page. Evaluated once here
+    -- because what it tests - which client this is - cannot change while logged in.
+    local firstVisible
     for _, category in ipairs(addon.configSchema) do
-        AddCategory(category.key, category.title, category.icon, function(page)
-            return BuildCategoryPanel(page, category)
-        end)
+        if not (category.hidden and category.hidden()) then
+            firstVisible = firstVisible or category.key
+            AddCategory(category.key, category.title, category.icon, function(page)
+                return BuildCategoryPanel(page, category)
+            end)
+        end
     end
     listY = listY - 10
     AddCategory("profiles", "Profiles", "Interface\\Icons\\INV_Misc_Book_11", BuildProfilesPanel)
@@ -771,7 +778,7 @@ function Perskan:BuildConfig()
         if self._reloadPending then reloadButton:Show() end
     end)
 
-    ShowPage(addon.configSchema[1] and addon.configSchema[1].key or "profiles")
+    ShowPage(firstVisible or "profiles")
 
     -- Discoverability: a stub in the game's AddOns options that opens this window.
     local panel = CreateFrame("Frame")

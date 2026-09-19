@@ -1,6 +1,21 @@
 local addonName = ...
 Perskan = LibStub("AceAddon-3.0"):NewAddon(addonName, "AceConsole-3.0", "AceEvent-3.0")
 
+-- WoW Forever is a Classic-line client on interface 16xxx. Several things this addon has
+-- settings for simply do not exist there - delves, the talking head frame, the cooldown
+-- viewer's tracked bars, and the nameplate spell-name and name-outline pieces - so their
+-- controls are hidden rather than left to do nothing. Castbar height still applies there. Detected by interface version, the
+-- same 16000-20000 range AceDB-3.0 uses for its own Forever handling, because there is no
+-- single API to feature-detect all of them. Retail is untouched.
+local buildInterfaceVersion = select(4, GetBuildInfo())
+local isForeverClient = type(buildInterfaceVersion) == "number"
+    and buildInterfaceVersion > 16000
+    and buildInterfaceVersion < 20000
+
+function Perskan:IsForeverClient()
+    return isForeverClient
+end
+
 local defaults = {
     profile = {
         -- Camera
@@ -127,13 +142,6 @@ local function MigrateProfile(profile)
 end
 
 function Perskan:OnInitialize()
-    -- [Perskan] Diagnostic probe for the WoW Forever port. The client restores an addon's
-    -- saved variables before ADDON_LOADED, so whatever sits in the global at this point is
-    -- what it handed back. AceDB creates the table itself when it finds nothing, which
-    -- hides the difference, so read it first. `/dump Perskan.savedVariablesRestored`.
-    local restored = _G[addonName .. "DB"]
-    self.savedVariablesRestored = (type(restored) == "table" and next(restored) ~= nil) or false
-
     self.db = LibStub("AceDB-3.0"):New(addonName .. "DB", defaults, true)
     MigrateProfile(self.db.profile)
 

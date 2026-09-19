@@ -16,6 +16,9 @@ local addonName, addon = ...
 --   disabled  function() -> boolean
 --   hidden    function() -> boolean
 --
+-- A category may carry `hidden` too, evaluated once when the window is built: it is then
+-- left out of the sidebar altogether rather than opening onto an empty page.
+--
 -- Anything with `apply` takes effect immediately. Only settings that genuinely can't
 -- revert at runtime carry `reload`, so the reload banner is the exception, not the rule.
 
@@ -24,6 +27,12 @@ local function profile() return Perskan.db.profile end
 
 local function extraQuestButtonMissing()
     return not (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("ExtraQuestButton"))
+end
+
+-- Not present on WoW Forever, so their controls are hidden there rather than left to do
+-- nothing. See Perskan:IsForeverClient() in Options.lua.
+local function notOnForever()
+    return Perskan:IsForeverClient()
 end
 
 local function damageMeterCustomizationOff()
@@ -94,17 +103,20 @@ addon.configSchema = {
                   .. "which varies with nameplate style and size.", min = 0, max = 40, step = 0.5,
               apply = function() P():ApplyNameplateCastbarHeight() end },
             { type = "toggle", key = "nameplateCastbarNameInside", name = "Spell Name Inside Castbar",
+              hidden = notOnForever,
               store = "bool",
               desc = "Move the spell name and icon up into the cast bar instead of leaving "
                   .. "them below it. The Blocky Bars, Blocky Cast and Legacy Red nameplate "
                   .. "styles already draw them inside the bar, so this has no effect there.",
               apply = function() P():ApplyNameplateCastbarNamePlacement() end },
             { type = "range", key = "nameplateCastbarNameInset", name = "Spell Name Inset",
+              hidden = notOnForever,
               desc = "How far in from the cast bar's left edge the spell icon and name sit.",
               min = 0, max = 30, step = 0.5,
               disabled = function() return not profile().nameplateCastbarNameInside end,
               apply = function() P():ApplyNameplateCastbarNamePlacement() end },
             { type = "toggle", key = "nameplateNameOutline", name = "Name Outline", store = "bool",
+              hidden = notOnForever,
               desc = "Add an outline to nameplate names for readability.",
               apply = function() P():ApplyNameplateNameOutline() end },
             { type = "toggle", key = "nameplateFriendlyClickThrough", name = "Friendly Clickthrough",
@@ -372,6 +384,7 @@ addon.configSchema = {
     --------------------------------------------------------------------------------
     {
         key = "delves",
+        hidden = notOnForever,
         title = "Delves",
         icon = "delves-regular",
         controls = {
@@ -411,6 +424,7 @@ addon.configSchema = {
               desc = "Scale of the encounter/boss ability bar.", min = 0.5, max = 2.0, step = 0.1,
               apply = function() P():ApplyEncounterBarScale() end },
             { type = "range", key = "talkingHeadScale", name = "Talking Head Scale",
+              hidden = notOnForever,
               desc = "Scale of the talking head frame.", min = 0.5, max = 2.0, step = 0.1,
               apply = function() P():ApplyTalkingHeadScale() end },
             { type = "range", key = "xpBarScale", name = "XP / Status Bar Scale",
@@ -424,6 +438,7 @@ addon.configSchema = {
     --------------------------------------------------------------------------------
     {
         key = "trackedbars",
+        hidden = notOnForever,
         title = "Tracked Bars",
         icon = "Interface\\Icons\\Spell_Holy_WordFortitude",
         controls = {

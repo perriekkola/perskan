@@ -89,10 +89,6 @@ local BindPadPetAction = {
 -- attach, so the key did nothing. Keep whatever is already there and fill in only what is
 -- absent, which is correct under either order: where the saved variables load second they
 -- replace this table wholesale anyway.
--- [Perskan] Diagnostic probe, as in Options.lua: was anything handed back for this
--- saved variable before a line of ours touched it?
-local svRestoredAtLoad = (BindPadVars ~= nil)
-
 BindPadVars = BindPadVars or {}
 if BindPadVars.tab == nil then
     BindPadVars.tab = BINDPAD_GENERAL_TAB
@@ -106,7 +102,6 @@ end
 
 -- Initialize BindPad core object.
 BindPadCore = {
-    svRestoredAtLoad = svRestoredAtLoad,
     drag = {},
     dragswap = {},
     specInfoCache = {},

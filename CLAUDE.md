@@ -92,10 +92,37 @@ was deliberately moved away from.
   while Edit Mode is open and mirrors its layout off `BuffFrame.AuraContainer`
   (`iconStride`/`iconPadding`/`iconScale`/`isHorizontal`/`addIconsToRight`/`addIconsToTop`)
   so the Edit Mode aura settings still drive the replacement row.
+- **WoW Forever**: a Classic-line client (`_classic_beta_`, interface `16001`, i.e. 1.60.x)
+  the addon also targets, declared as the third `## Interface` entry behind the two retail
+  ones. `Perskan:IsForeverClient()` in Options.lua answers by interface version, using the
+  same 16000–20000 range AceDB-3.0 checks for its own Forever handling; there is no single
+  API that feature-detects everything that differs. Several features simply aren't in that
+  client — delves, the talking head frame, the cooldown viewer's tracked bars, and the
+  nameplate spell-name and name-outline pieces (castbar *height* still applies) — so their
+  controls carry
+  `hidden = notOnForever` (Config/Schema.lua) instead of sitting there doing nothing.
+  Retail is untouched. What the port needed beyond that: AceDB-3.0 at minor 36 or later
+  (33 keyed profiles by realm name, which isn't stable identity here, so a profile was
+  looked up under a different key each login; 36 substitutes the ruleset, giving
+  `"Name - PvP"`, and stops an empty `GetCurrentRegionName` becoming the region key), the
+  specialization lookups resolved by feature detection rather than `WOW_PROJECT_ID`
+  (`Modules/BindPad/BindPad.lua`), and no atlas named in XML without a Lua-side fallback,
+  since an atlas this client lacks raises once per frame built from the template and XML
+  can't test for one.
+- **Forever saved-variables bug**: as of beta build 69913 the client writes
+  SavedVariables on exit and never reads them back, so every addon starts fresh each
+  session. It is a client bug, not ours — confirmed by probing the globals before AceDB or
+  BindPad could create them (both empty while the file on disk held the right values), and
+  reported at `ClassicWoWCommunity/forever-bugs` issue 34. **This will start working the
+  moment Blizzard patches it**, and nothing in this addon should be built around it: don't
+  add a CVar or macro persistence workaround, and don't reintroduce the diagnostic probes.
+  If settings appear not to persist on Forever, check that bug before looking here.
 - **Config/Schema.lua**: Data-driven description of the settings window — categories and
   controls (`toggle`/`range`/`select`/`color`/`button`/`divider`) with `cvar`, `apply`,
   `reload`, `hidden`, `disabled` flags, plus optional `get`/`set` for settings that don't
-  live in the profile. Adding a setting is mostly a schema edit.
+  live in the profile. A category may carry `hidden` too, evaluated once when the window is
+  built, and is then left out of the sidebar rather than opening onto an empty page.
+  Adding a setting is mostly a schema edit.
 - **Config/Window.lua**: Renders the schema into a `ButtonFrameTemplate` window with a
   category list on the left, a scrolling content pane (`MinimalScrollBar` paired through
   `ScrollUtil.InitScrollFrameWithScrollBar`), a Reload UI button that appears only when
@@ -109,8 +136,10 @@ was deliberately moved away from.
 - **Perskan.xml**: Load order — Options → Modules → Config → Core.
 - **Perskan.toc**: Manifest. `## Interface` is multi-interface and lists live retail
   first (`120100`, Midnight 12.1.0), because addon managers show the first entry as the
-  addon's game version; `110207` trails it for The War Within. Bump the leading number
-  when retail patches, or the manager reports the addon as built for an older game.
+  addon's game version; `110207` trails it for The War Within and `16001` for WoW Forever.
+  Bump the leading number when retail patches, or the manager reports the addon as built
+  for an older game. Order matters only to the managers, not to the client: an addon loads
+  on Forever with `16001` anywhere in the list.
 
 Settings are stored in `PerskanDB` SavedVariable using AceDB-3.0 profiles.
 
