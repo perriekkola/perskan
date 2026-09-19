@@ -518,6 +518,7 @@ end
 local HOSTILE_NAME_COLOR = { 1.00, 0.28, 0.25 }
 local NEUTRAL_NAME_COLOR = { 1.00, 0.85, 0.24 }
 local FRIENDLY_NAME_COLOR = { 0.35, 0.95, 0.40 }
+local TAPPED_NAME_COLOR = { 0.55, 0.55, 0.55 }
 
 local QUEST_SCANNER_NAME = "PerskanQuestScanTooltip"
 local questScanner
@@ -578,10 +579,43 @@ local function IsQuestObjectiveUnit(unit)
     return cached
 end
 
+-- The unit token lives on the unit frame on retail and on the nameplate itself on the
+-- Classic line, so take whichever this client offers.
+local function NameplateUnit(frame)
+    local unit = frame.unit or frame.displayedUnit
+    if unit then return unit end
+    local plate = frame.GetParent and frame:GetParent()
+    return plate and plate.namePlateUnitToken or nil
+end
+
 local function ShouldShowName(unit)
     if UnitIsPlayer(unit) then return true end
     if UnitIsUnit(unit, "target") then return true end
     return IsQuestObjectiveUnit(unit)
+end
+
+-- Tapped by someone else, so no credit is coming. Prefer the single modern call; the
+-- Classic line answers the same question with the older tapped/tapped-by-me pair.
+local function IsTapDenied(unit)
+    if UnitIsTapDenied then
+        local ok, denied = pcall(UnitIsTapDenied, unit)
+        if ok then return denied and true or false end
+    end
+
+    if not (UnitIsTapped and UnitIsTappedByPlayer) then return false end
+
+    local ok, tapped = pcall(UnitIsTapped, unit)
+    if not ok or not tapped then return false end
+
+    local mineOk, mine = pcall(UnitIsTappedByPlayer, unit)
+    if mineOk and mine then return false end
+
+    if UnitIsTappedByAllThreatList then
+        local sharedOk, shared = pcall(UnitIsTappedByAllThreatList, unit)
+        if sharedOk and shared then return false end
+    end
+
+    return true
 end
 
 local function NameColorFor(unit)
@@ -593,6 +627,12 @@ local function NameColorFor(unit)
             return color.r, color.g, color.b
         end
         return nil
+    end
+
+    -- A mob another player has tapped isn't yours to kill, which is worth more at a
+    -- glance than how it feels about you, so grey wins over reaction.
+    if IsTapDenied(unit) then
+        return TAPPED_NAME_COLOR[1], TAPPED_NAME_COLOR[2], TAPPED_NAME_COLOR[3]
     end
 
     local reaction = UnitReaction("player", unit)
@@ -608,7 +648,7 @@ local function ApplyNameDisplay(frame)
     local nameFS = frame and frame.name
     if not nameFS then return end
 
-    local unit = frame.unit or frame.displayedUnit
+    local unit = NameplateUnit(frame)
     if not unit or not UnitExists(unit) then return end
 
     local profile = Perskan.db.profile
@@ -619,7 +659,9 @@ local function ApplyNameDisplay(frame)
         nameFS:Hide()
         nameFS._perskanHidName = true
     elseif nameFS._perskanHidName then
+        nameFS._perskanShowing = true
         nameFS:Show()
+        nameFS._perskanShowing = false
         nameFS._perskanHidName = nil
     end
 
@@ -654,6 +696,13 @@ local function HookNameplateNameDisplay(frame)
         -- Blizzard rewrites the name and its colour on its own schedule; re-assert after
         -- it, guarded against the colour we set ourselves.
         hooksecurefunc(frame.name, "SetText", function()
+            ApplyNameDisplay(frame)
+        end)
+        -- CompactUnitFrame_UpdateName sets the text and *then* shows the fontstring, so
+        -- hooking SetText alone loses every race: we hide the name and Blizzard shows it
+        -- again a line later. This is the hook that actually decides it.
+        hooksecurefunc(frame.name, "Show", function(self)
+            if self._perskanShowing then return end
             ApplyNameDisplay(frame)
         end)
         hooksecurefunc(frame.name, "SetVertexColor", function(self)

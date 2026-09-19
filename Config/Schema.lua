@@ -140,8 +140,8 @@ addon.configSchema = {
             { type = "toggle", key = "nameplateNameHostilityColor", name = "Colour Names By Reaction",
               store = "bool", hidden = foreverOnly,
               desc = "Colour nameplate names by how the unit regards you: red hostile, "
-                  .. "yellow neutral, green friendly. Players are coloured by class "
-                  .. "instead.",
+                  .. "yellow neutral, green friendly, and grey for anything another "
+                  .. "player has tapped. Players are coloured by class instead.",
               apply = function() P():ApplyNameplateNameDisplay() end },
             { type = "range", key = "nameplateOtherBottomInset", name = "Bottom Inset",
               desc = "Nameplate bottom inset.", min = -1, max = 1, step = 0.01,
