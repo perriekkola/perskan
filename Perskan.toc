@@ -1,10 +1,9 @@
 ## Title: Perskan's Pack
 ## Notes: Lua snippets altering the default UI
 ## Author: Per Riekkola
-## Interface: 120100, 110207
-## Version: 1.1.45
+## Interface: 120100, 110207, 16001
+## Version: 1.1.48
 ## IconTexture: Interface\Icons\ability_titankeeper_testofconfidence
-
 ## SavedVariables: PerskanDB, BindPadVars, SimpleItemLevelDB
 
 # Library files

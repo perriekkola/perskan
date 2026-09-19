@@ -225,11 +225,17 @@ local function BuildRange(parent, control, get, set)
 
     local syncing = false
 
+    -- Deliberately does not touch `syncing`. It used to set the flag true and then false
+    -- around the SetText, which clobbered the guard refresh() had already raised: refresh
+    -- sets syncing, calls slider:SetValue, that fires OnValueChanged synchronously,
+    -- OnValueChanged calls SyncBox, SyncBox lowers the flag, and the `if syncing then
+    -- return end` below it no longer fired - so simply opening the window wrote every
+    -- slider's value back into the profile through set(). Nothing here needs guarding:
+    -- SetText only fires OnTextChanged, which this box does not script, and the handlers
+    -- that do write (OnEnterPressed, OnEditFocusLost) need a real edit to fire.
     local function SyncBox(value)
-        syncing = true
         box:SetText(Format(value))
         box:SetCursorPosition(0)
-        syncing = false
     end
 
     -- Typed values are clamped to the range and snapped to the control's step, so the box
@@ -504,6 +510,9 @@ local function BuildProfilesPanel(panel)
     newBox:SetSize(240, 22)
     newBox:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + 6, y)
     newBox:SetAutoFocus(false)
+    -- AceDB 36 raises on a profile name longer than 50 characters rather than trimming
+    -- it, and SetProfile is called straight from this box.
+    newBox:SetMaxLetters(50)
     y = y - (28 + SPACING)
 
     local createButton = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
@@ -727,10 +736,17 @@ function Perskan:BuildConfig()
         page:SetHeight(page:GetHeight())
     end
 
+    -- A category whose whole subject is missing from this client is left out of the
+    -- sidebar entirely, rather than opening onto an empty page. Evaluated once here
+    -- because what it tests - which client this is - cannot change while logged in.
+    local firstVisible
     for _, category in ipairs(addon.configSchema) do
-        AddCategory(category.key, category.title, category.icon, function(page)
-            return BuildCategoryPanel(page, category)
-        end)
+        if not (category.hidden and category.hidden()) then
+            firstVisible = firstVisible or category.key
+            AddCategory(category.key, category.title, category.icon, function(page)
+                return BuildCategoryPanel(page, category)
+            end)
+        end
     end
     listY = listY - 10
     AddCategory("profiles", "Profiles", "Interface\\Icons\\INV_Misc_Book_11", BuildProfilesPanel)
@@ -762,7 +778,7 @@ function Perskan:BuildConfig()
         if self._reloadPending then reloadButton:Show() end
     end)
 
-    ShowPage(addon.configSchema[1] and addon.configSchema[1].key or "profiles")
+    ShowPage(firstVisible or "profiles")
 
     -- Discoverability: a stub in the game's AddOns options that opens this window.
     local panel = CreateFrame("Frame")

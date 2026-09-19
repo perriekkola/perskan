@@ -16,6 +16,9 @@ local addonName, addon = ...
 --   disabled  function() -> boolean
 --   hidden    function() -> boolean
 --
+-- A category may carry `hidden` too, evaluated once when the window is built: it is then
+-- left out of the sidebar altogether rather than opening onto an empty page.
+--
 -- Anything with `apply` takes effect immediately. Only settings that genuinely can't
 -- revert at runtime carry `reload`, so the reload banner is the exception, not the rule.
 
@@ -24,6 +27,17 @@ local function profile() return Perskan.db.profile end
 
 local function extraQuestButtonMissing()
     return not (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("ExtraQuestButton"))
+end
+
+-- Not present on WoW Forever, so their controls are hidden there rather than left to do
+-- nothing. See Perskan:IsForeverClient() in Options.lua.
+local function notOnForever()
+    return Perskan:IsForeverClient()
+end
+
+-- The mirror of the above: settings that only mean anything on Forever.
+local function foreverOnly()
+    return not Perskan:IsForeverClient()
 end
 
 local function damageMeterCustomizationOff()
@@ -94,17 +108,20 @@ addon.configSchema = {
                   .. "which varies with nameplate style and size.", min = 0, max = 40, step = 0.5,
               apply = function() P():ApplyNameplateCastbarHeight() end },
             { type = "toggle", key = "nameplateCastbarNameInside", name = "Spell Name Inside Castbar",
+              hidden = notOnForever,
               store = "bool",
               desc = "Move the spell name and icon up into the cast bar instead of leaving "
                   .. "them below it. The Blocky Bars, Blocky Cast and Legacy Red nameplate "
                   .. "styles already draw them inside the bar, so this has no effect there.",
               apply = function() P():ApplyNameplateCastbarNamePlacement() end },
             { type = "range", key = "nameplateCastbarNameInset", name = "Spell Name Inset",
+              hidden = notOnForever,
               desc = "How far in from the cast bar's left edge the spell icon and name sit.",
               min = 0, max = 30, step = 0.5,
               disabled = function() return not profile().nameplateCastbarNameInside end,
               apply = function() P():ApplyNameplateCastbarNamePlacement() end },
             { type = "toggle", key = "nameplateNameOutline", name = "Name Outline", store = "bool",
+              hidden = notOnForever,
               desc = "Add an outline to nameplate names for readability.",
               apply = function() P():ApplyNameplateNameOutline() end },
             { type = "toggle", key = "nameplateFriendlyClickThrough", name = "Friendly Clickthrough",
@@ -113,6 +130,19 @@ addon.configSchema = {
                   .. "targeting and no tooltips off them, so they can't get in the way of "
                   .. "what is behind them. Enemy plates are untouched.",
               apply = function() P():ApplyNameplateFriendlyClickThrough() end },
+
+            { type = "divider", name = "Names", hidden = foreverOnly },
+            { type = "toggle", key = "nameplateNamesRelevantOnly", name = "Only Show Relevant Names",
+              store = "bool", hidden = foreverOnly,
+              desc = "Hide NPC names except on your current target and on anything that "
+                  .. "counts toward a quest objective. Player names are never hidden.",
+              apply = function() P():ApplyNameplateNameDisplay() end },
+            { type = "toggle", key = "nameplateNameHostilityColor", name = "Colour Names By Reaction",
+              store = "bool", hidden = foreverOnly,
+              desc = "Colour nameplate names by how the unit regards you: red hostile, "
+                  .. "yellow neutral, green friendly, and grey for anything another "
+                  .. "player has tapped. Players are coloured by class instead.",
+              apply = function() P():ApplyNameplateNameDisplay() end },
             { type = "range", key = "nameplateOtherBottomInset", name = "Bottom Inset",
               desc = "Nameplate bottom inset.", min = -1, max = 1, step = 0.01,
               cvar = "nameplateOtherBottomInset" },
@@ -353,6 +383,7 @@ addon.configSchema = {
     --------------------------------------------------------------------------------
     {
         key = "map",
+        hidden = notOnForever,
         title = "Map",
         icon = "Interface\\Icons\\INV_Misc_Map02",
         controls = {
@@ -372,6 +403,7 @@ addon.configSchema = {
     --------------------------------------------------------------------------------
     {
         key = "delves",
+        hidden = notOnForever,
         title = "Delves",
         icon = "delves-regular",
         controls = {
@@ -411,6 +443,7 @@ addon.configSchema = {
               desc = "Scale of the encounter/boss ability bar.", min = 0.5, max = 2.0, step = 0.1,
               apply = function() P():ApplyEncounterBarScale() end },
             { type = "range", key = "talkingHeadScale", name = "Talking Head Scale",
+              hidden = notOnForever,
               desc = "Scale of the talking head frame.", min = 0.5, max = 2.0, step = 0.1,
               apply = function() P():ApplyTalkingHeadScale() end },
             { type = "range", key = "xpBarScale", name = "XP / Status Bar Scale",
@@ -424,6 +457,7 @@ addon.configSchema = {
     --------------------------------------------------------------------------------
     {
         key = "trackedbars",
+        hidden = notOnForever,
         title = "Tracked Bars",
         icon = "Interface\\Icons\\Spell_Holy_WordFortitude",
         controls = {

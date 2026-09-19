@@ -1,23 +1,47 @@
 local addonName = ...
 Perskan = LibStub("AceAddon-3.0"):NewAddon(addonName, "AceConsole-3.0", "AceEvent-3.0")
 
+-- WoW Forever is a Classic-line client on interface 16xxx. Several things this addon has
+-- settings for simply do not exist there - delves, the talking head frame, the cooldown
+-- viewer's tracked bars, and the nameplate spell-name and name-outline pieces - so their
+-- controls are hidden rather than left to do nothing. Castbar height still applies there. Detected by interface version, the
+-- same 16000-20000 range AceDB-3.0 uses for its own Forever handling, because there is no
+-- single API to feature-detect all of them. Retail is untouched.
+local buildInterfaceVersion = select(4, GetBuildInfo())
+local isForeverClient = type(buildInterfaceVersion) == "number"
+    and buildInterfaceVersion > 16000
+    and buildInterfaceVersion < 20000
+
+function Perskan:IsForeverClient()
+    return isForeverClient
+end
+
 local defaults = {
     profile = {
         -- Camera
-        cameraYawMoveSpeed = 90,
+        cameraYawMoveSpeed = 50,
         cameraPivot = false,
         cameraDistanceMaxZoomFactor = 2.5,
         -- Nameplates
         nameplateOtherBottomInset = 0.1,
         nameplateOtherTopInset = 0.09,
-        nameplateWidth = 240,
+        -- Forever's nameplates want a little more room than retail's, so these three
+        -- follow the client the way the name-display options do. Clickable height suits
+        -- both at 65.
+        nameplateWidth = isForeverClient and 242 or 240,
         nameplateClickableHeight = 65,
-        nameplateHealthbarHeight = 10.8,
-        nameplateCastbarHeight = 0,
+        nameplateHealthbarHeight = isForeverClient and 14 or 10.8,
+        nameplateCastbarHeight = isForeverClient and 12 or 0,
         nameplateCastbarNameInside = false,
         nameplateCastbarNameInset = 4,
         nameplateNameOutline = false,
         nameplateFriendlyClickThrough = false,
+        -- On by default where they apply. The controls only exist on Forever, and a
+        -- default that follows the client keeps a profile carried between the two doing
+        -- the right thing in each: AceDB stores only what differs from the default, so
+        -- an untouched setting reads false on retail and true on Forever.
+        nameplateNamesRelevantOnly = isForeverClient,
+        nameplateNameHostilityColor = isForeverClient,
         alwaysShowNameplates = 1,
         nameplateShowAll = 1,
         nameplateShowEnemies = 1,
