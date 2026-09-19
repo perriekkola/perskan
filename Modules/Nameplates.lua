@@ -775,42 +775,6 @@ function Perskan:ApplyNameplateNameDisplay()
     ForEachNameplateFrame(HookNameplateNameDisplay)
 end
 
--- "/pp nameplate" while targeting something. Temporary, for the Forever port: reports
--- what the name display found on the target's plate, so a wrong colour can be traced to
--- the bar, the lookup or the refresh in one go rather than one guess per login.
-function Perskan:ReportNameplateNameDisplay()
-    local function say(...) print("|cff00ff96Perskan|r", ...) end
-
-    local plate = NamePlateForUnit("target")
-    local frame = plate and plate.UnitFrame
-    if not frame then
-        say("no nameplate for your target - target something with one and try again")
-        return
-    end
-
-    local unit = NameplateUnit(frame)
-    local bar = NameplateHealthBar(frame)
-    local nameFS = frame.name
-
-    say("unit token    :", tostring(unit), unit and ("exists=" .. tostring(UnitExists(unit))) or "")
-    say("name fontstring:", nameFS and "found" or "MISSING")
-    say("health bar    :", bar and (bar:GetObjectType() .. (frame.healthBar == bar and " (frame.healthBar)"
-        or frame.HealthBarsContainer == bar and " (HealthBarsContainer)" or " (found by search)")) or "MISSING")
-
-    if bar and bar.GetStatusBarColor then
-        say(("bar colour    : %.2f %.2f %.2f"):format(bar:GetStatusBarColor()))
-    end
-    if nameFS then
-        say(("name colour   : %.2f %.2f %.2f"):format(nameFS:GetVertexColor()))
-    end
-    if unit then
-        say("reaction      :", tostring(UnitReaction("player", unit)),
-            "player=" .. tostring(UnitIsPlayer(unit)), "tapDenied=" .. tostring(IsTapDenied(unit)))
-        say("UnitSelectionColor:", UnitSelectionColor and "present" or "absent")
-        local r, g, b = NameColorFor(unit, frame)
-        say("we would paint:", r and ("%.2f %.2f %.2f"):format(r, g, b) or "nothing")
-    end
-end
 
 --------------------------------------------------------------------------------
 
