@@ -42,6 +42,7 @@ local defaults = {
         -- an untouched setting reads false on retail and true on Forever.
         nameplateNamesRelevantOnly = isForeverClient,
         nameplateNameHostilityColor = isForeverClient,
+        nameplateNameDisableHoverHighlight = isForeverClient,
         alwaysShowNameplates = 1,
         nameplateShowAll = 1,
         nameplateShowEnemies = 1,

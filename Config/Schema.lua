@@ -141,8 +141,13 @@ addon.configSchema = {
               store = "bool", hidden = foreverOnly,
               desc = "Colour nameplate names by how the unit regards you: red hostile, "
                   .. "yellow neutral, green friendly, and grey for anything another "
-                  .. "player has tapped. Players are coloured by class instead, and the "
-                  .. "name under your cursor keeps Blizzard's own highlight.",
+                  .. "player has tapped. Players are coloured by class instead.",
+              apply = function() P():ApplyNameplateNameDisplay() end },
+            { type = "toggle", key = "nameplateNameDisableHoverHighlight",
+              name = "Disable Hover Highlight", store = "bool", hidden = foreverOnly,
+              desc = "Blizzard turns the name under your cursor white. Keep the reaction "
+                  .. "colour there instead.",
+              disabled = function() return not profile().nameplateNameHostilityColor end,
               apply = function() P():ApplyNameplateNameDisplay() end },
             { type = "range", key = "nameplateOtherBottomInset", name = "Bottom Inset",
               desc = "Nameplate bottom inset.", min = -1, max = 1, step = 0.01,

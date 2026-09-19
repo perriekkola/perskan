@@ -727,10 +727,12 @@ local function ApplyNameDisplay(frame)
         nameFS._perskanBaseColor = { r or 1, g or 1, b or 1 }
     end
 
-    -- Blizzard whitens the name under the cursor. Leave it to: painting over that made
-    -- the two take turns, which showed as a white flash on hover. The next pass after the
-    -- cursor moves off puts our colour back.
+    -- Blizzard whitens the name under the cursor. Left alone by default on retail, where
+    -- painting over it made the two take turns and showed as a white flash; with the
+    -- option on we win it instead, which is only flicker-free because the hovered plate
+    -- gets a pass every frame rather than on the poll (see the OnUpdate below).
     local hovered = UnitIsUnit(unit, "mouseover")
+        and not profile.nameplateNameDisableHoverHighlight
 
     local r, g, b
     if profile.nameplateNameHostilityColor then
@@ -848,6 +850,17 @@ Perskan:RegisterModule("Nameplates", function(self)
         if not profile then return end
         if not (profile.nameplateNamesRelevantOnly or profile.nameplateNameHostilityColor) then
             return
+        end
+
+        -- Blizzard repaints the hovered name white on its own schedule, so overriding it
+        -- on the poll would show as a flash at whatever the interval is. There is only
+        -- ever one plate under the cursor, so it gets its own pass every frame.
+        if profile.nameplateNameHostilityColor and profile.nameplateNameDisableHoverHighlight then
+            local plate = NamePlateForUnit("mouseover")
+            local frame = plate and plate.UnitFrame
+            if frame and not frame:IsForbidden() then
+                ApplyNameDisplay(frame)
+            end
         end
 
         sinceNamePoll = sinceNamePoll + elapsed
