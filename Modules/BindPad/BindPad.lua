@@ -80,14 +80,33 @@ local BindPadPetAction = {
 }
 
 -- Initialize the saved variable for BindPad.
-BindPadVars = {
-    tab = BINDPAD_GENERAL_TAB,
-    version = BINDPAD_SAVEFILE_VERSION,
-    GeneralKeyBindings = {},
-}
+-- [Perskan] Was a plain assignment. That relies on the client running an addon's Lua
+-- before it loads the addon's saved variables, so this stub is merely what the saved file
+-- then overwrites. WoW Forever does it the other way round: the assignment landed on top
+-- of the restored data and wiped it every login. The pad drew 49 empty slots while the
+-- saved file still held them, and the keybinding survived only because that client keeps
+-- bindings server-side - with the pad empty there was nothing for UpdateAllHotkeys to
+-- attach, so the key did nothing. Keep whatever is already there and fill in only what is
+-- absent, which is correct under either order: where the saved variables load second they
+-- replace this table wholesale anyway.
+-- [Perskan] Diagnostic probe, as in Options.lua: was anything handed back for this
+-- saved variable before a line of ours touched it?
+local svRestoredAtLoad = (BindPadVars ~= nil)
+
+BindPadVars = BindPadVars or {}
+if BindPadVars.tab == nil then
+    BindPadVars.tab = BINDPAD_GENERAL_TAB
+end
+if BindPadVars.version == nil then
+    BindPadVars.version = BINDPAD_SAVEFILE_VERSION
+end
+if BindPadVars.GeneralKeyBindings == nil then
+    BindPadVars.GeneralKeyBindings = {}
+end
 
 -- Initialize BindPad core object.
 BindPadCore = {
+    svRestoredAtLoad = svRestoredAtLoad,
     drag = {},
     dragswap = {},
     specInfoCache = {},
@@ -146,6 +165,76 @@ function BindPadCore.GetSpecializationInfo(specIndex)
             return "No active spec"
         end
         return activeName, activeIcon
+    end
+end
+
+-- [Perskan] Atlas names come and go between client builds, and an atlas named in XML that
+-- the running client doesn't have raises "Unable to load atlas entry" once per frame built
+-- from the template - 25 errors for one screen of slots. XML has no way to ask whether an
+-- atlas exists, so the plus glyph on the empty-slot button is set from here instead: the
+-- first name this client actually has wins, and a plain texture file backs the list up. A
+-- missing texture *file* renders blank rather than raising, so the chain always ends
+-- somewhere safe.
+local PLUS_ICON_ATLASES = {
+    "common-icon-plus",
+    "communities-chat-icon-plus",
+    "Garr_Building-AddFollowerPlus",
+}
+local PLUS_ICON_TEXTURE = "Interface\\Buttons\\UI-PlusButton-Up"
+local PLUS_ICON_SETTERS = {
+    "SetNormalTexture", "SetPushedTexture", "SetDisabledTexture", "SetHighlightTexture",
+}
+local PLUS_ICON_GETTERS = {
+    "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture",
+}
+
+local plusIconAtlas, plusIconChecked
+
+local function ResolvePlusIconAtlas()
+    if plusIconChecked then
+        return plusIconAtlas
+    end
+    plusIconChecked = true
+
+    if C_Texture and C_Texture.GetAtlasInfo then
+        for _, name in ipairs(PLUS_ICON_ATLASES) do
+            if C_Texture.GetAtlasInfo(name) then
+                plusIconAtlas = name
+                break
+            end
+        end
+    end
+
+    return plusIconAtlas
+end
+
+function BindPadCore.SetPlusIcon(button)
+    if not button then
+        return
+    end
+
+    -- The file goes on first, so the four texture objects exist whatever comes next, then
+    -- they upgrade to the atlas on a client that has one.
+    for _, setter in ipairs(PLUS_ICON_SETTERS) do
+        if button[setter] then
+            button[setter](button, PLUS_ICON_TEXTURE)
+        end
+    end
+
+    local atlas = ResolvePlusIconAtlas()
+    if atlas then
+        for _, getter in ipairs(PLUS_ICON_GETTERS) do
+            local texture = button[getter] and button[getter](button)
+            if texture then
+                texture:SetAtlas(atlas)
+            end
+        end
+    end
+
+    -- Carries over the alphaMode="ADD" the XML used to set on the highlight.
+    local highlight = button.GetHighlightTexture and button:GetHighlightTexture()
+    if highlight then
+        highlight:SetBlendMode("ADD")
     end
 end
 
