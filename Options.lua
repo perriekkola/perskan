@@ -25,10 +25,13 @@ local defaults = {
         -- Nameplates
         nameplateOtherBottomInset = 0.1,
         nameplateOtherTopInset = 0.09,
-        nameplateWidth = 240,
+        -- Forever's nameplates want a little more room than retail's, so these three
+        -- follow the client the way the name-display options do. Clickable height suits
+        -- both at 65.
+        nameplateWidth = isForeverClient and 242 or 240,
         nameplateClickableHeight = 65,
-        nameplateHealthbarHeight = 10.8,
-        nameplateCastbarHeight = 0,
+        nameplateHealthbarHeight = isForeverClient and 14 or 10.8,
+        nameplateCastbarHeight = isForeverClient and 12 or 0,
         nameplateCastbarNameInside = false,
         nameplateCastbarNameInset = 4,
         nameplateNameOutline = false,
