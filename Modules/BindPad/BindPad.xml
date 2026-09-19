@@ -181,7 +181,10 @@
         <Frames>
             <!-- [Perskan] Was the UI-PlusButton-* set - a raised bevelled square from the
                  original interface - tucked into the slot's top-left corner. Now the
-                 current flat plus glyph, centred in the empty slot. -->
+                 current flat plus glyph, centred in the empty slot. The art is set from
+                 BindPadCore.SetPlusIcon rather than named here: an atlas the running
+                 client doesn't have raises "Unable to load atlas entry" from XML, once
+                 per slot, and XML can't test for one. -->
             <Button name="$parentAddButton" parentKey="addbutton" alpha="0.6">
                 <Size x="11" y="11" />
                 <Anchors>
@@ -190,6 +193,7 @@
                 <Scripts>
                     <OnLoad>
                         self:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+                        BindPadCore.SetPlusIcon(self)
                     </OnLoad>
                     <OnClick>
                         BindPadMacroAddButton_OnClick(self:GetParent())
@@ -207,10 +211,6 @@
                         GameTooltip:Hide()
                     </OnLeave>
                 </Scripts>
-                <NormalTexture atlas="common-icon-plus" />
-                <PushedTexture atlas="common-icon-plus" />
-                <DisabledTexture atlas="common-icon-plus" />
-                <HighlightTexture atlas="common-icon-plus" alphaMode="ADD" />
             </Button>
         </Frames>
         <Scripts>
