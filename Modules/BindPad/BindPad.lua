@@ -16,8 +16,29 @@ local function concat(arg1, arg2)
     end
 end
 
-local isRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE
-local isMists = WOW_PROJECT_ID == WOW_PROJECT_MISTS_CLASSIC
+-- [Perskan] Compare against a project constant only when the client defines it. On a
+-- client that knows none of them, WOW_PROJECT_ID and the constant are both nil and a
+-- plain `==` would report every flavour as a match at once.
+local function IsProject(constantName)
+    local id = _G[constantName]
+    return id ~= nil and WOW_PROJECT_ID == id
+end
+
+local isMists = IsProject("WOW_PROJECT_MISTS_CLASSIC")
+local isClassicFlavour = isMists
+    or IsProject("WOW_PROJECT_CLASSIC")
+    or IsProject("WOW_PROJECT_BURNING_CRUSADE_CLASSIC")
+    or IsProject("WOW_PROJECT_WRATH_CLASSIC")
+    or IsProject("WOW_PROJECT_CATACLYSM_CLASSIC")
+
+-- [Perskan] Every branch `isRetail` guards is really asking "modern API or the globals
+-- that replaced it", so let the API answer when the project ID can't. A client whose
+-- WOW_PROJECT_ID this file has never seen - a new beta client, say - is not MAINLINE, and
+-- the project-ID test alone sent all of them down the path that calls globals the modern
+-- client no longer has. The Classic flavours keep answering by project ID: some of them
+-- carry a C_Spell namespace without the rest of the modern spellbook API.
+local isRetail = IsProject("WOW_PROJECT_MAINLINE")
+    or (not isClassicFlavour and C_Spell ~= nil and C_Spell.GetSpellName ~= nil)
 
 local NUM_MACRO_ICONS_SHOWN = 20
 local NUM_ICONS_PER_ROW = 5
@@ -76,7 +97,17 @@ BindPadCore = {
 
 local BindPadCore = BindPadCore
 
-local GetSpecialization = isRetail and GetSpecialization or GetActiveTalentGroup
+-- [Perskan] Retail moved the specialization globals onto C_SpecializationInfo and newer
+-- clients have dropped the globals entirely, so resolve both spellings by feature
+-- detection. Mists keeps reading the talent group, as upstream did: its specialization
+-- API numbers specs differently from GetActiveTalentGroup, and the result is stored as a
+-- saved-variable key, so switching spelling there would repoint saved profiles.
+local GetSpecialization = isMists and _G.GetActiveTalentGroup
+    or (C_SpecializationInfo and C_SpecializationInfo.GetSpecialization)
+    or _G.GetSpecialization
+    or _G.GetActiveTalentGroup
+local GetSpecializationInfo = (C_SpecializationInfo and C_SpecializationInfo.GetSpecializationInfo)
+    or _G.GetSpecializationInfo
 local GetItemInfo = C_Item.GetItemInfo and C_Item.GetItemInfo or GetItemInfo
 local GetItemSpell = C_Item.GetItemSpell and C_Item.GetItemSpell or GetItemSpell
 local PickupItem = C_Item.PickupItem and C_Item.PickupItem or PickupItem
@@ -87,7 +118,10 @@ local GetEquipmentSetInfo = C_EquipmentSet.GetEquipmentSetInfo and C_EquipmentSe
 local GetSpellBookItemInfo = C_SpellBook.GetSpellBookItemInfo and C_SpellBook.GetSpellBookItemInfo or GetSpellBookItemInfo
 
 function BindPadCore.GetSpecializationInfo(specIndex)
-    if isRetail then
+    -- [Perskan] Keyed off the resolved lookup rather than isRetail: a client can be on the
+    -- modern path and still be missing this particular spelling, and the callers below
+    -- both cope with an empty answer.
+    if GetSpecializationInfo and not isMists then
         local id, name, description, icon, background, role, primaryStat = GetSpecializationInfo(specIndex)
         return name, icon
     elseif isMists then
@@ -96,7 +130,7 @@ function BindPadCore.GetSpecializationInfo(specIndex)
             local _, name, _, icon = GetTalentTabInfo(i, false, false, specIndex)
             return name, icon
         end
-    else
+    elseif GetNumTalentTabs then
         local activeName
         local activeIcon
         local activeSpent = 0
@@ -116,8 +150,9 @@ function BindPadCore.GetSpecializationInfo(specIndex)
 end
 
 -- [Perskan] BindPad ships inside Perskan's Pack. This function and the guard in
--- InitBindPadOnce are the only edits to the original file: the feature stays inert,
--- and applies none of its saved bindings, unless the profile switches it on.
+-- InitBindPadOnce are the feature gate: BindPad stays inert, and applies none of its
+-- saved bindings, unless the profile switches it on. Every other deviation from upstream
+-- in this file is marked [Perskan] too.
 function BindPadCore.IsEnabledByPerskan()
     return (Perskan and Perskan.db and Perskan.db.profile.bindPadEnabled) and true or false
 end
@@ -1149,10 +1184,12 @@ end
 -- yet, and BindPad feeds the result straight into profileForTalentGroup as a table key.
 -- Assigning to t[nil] is a hard error in Lua - not a silent no-op - so on such a
 -- character InitProfile blew up at login, before BindPad had claimed any of its
--- bindings. Falls back to the first slot: the value only records which BindPad profile a
--- spec maps to, and a character with no spec has exactly one to record.
+-- bindings. The lookup itself can also be missing, on a client that carries neither
+-- spelling of it. Falls back to the first slot in both cases: the value only records
+-- which BindPad profile a spec maps to, and a character with no spec - or a client that
+-- won't say - has exactly one to record.
 function BindPadCore.GetSpecIndex()
-    return GetSpecialization() or 1
+    return (GetSpecialization and GetSpecialization()) or 1
 end
 
 function BindPadCore.GetCurrentProfileNum()
@@ -1758,7 +1795,9 @@ function BindPadCore.GetTalentSpec(specIndex)
     end
     local name, icon = BindPadCore.GetSpecializationInfo(specIndex)
 
-    return name
+    -- [Perskan] Every caller feeds this straight into format(), which errors on nil, and
+    -- the lookup now returns nothing at all on a client with no specialization API.
+    return name or ""
 end
 
 function BindPadCore.DoList(arg)
