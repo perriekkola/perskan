@@ -80,11 +80,25 @@ local BindPadPetAction = {
 }
 
 -- Initialize the saved variable for BindPad.
-BindPadVars = {
-    tab = BINDPAD_GENERAL_TAB,
-    version = BINDPAD_SAVEFILE_VERSION,
-    GeneralKeyBindings = {},
-}
+-- [Perskan] Was a plain assignment. That relies on the client running an addon's Lua
+-- before it loads the addon's saved variables, so this stub is merely what the saved file
+-- then overwrites. WoW Forever does it the other way round: the assignment landed on top
+-- of the restored data and wiped it every login. The pad drew 49 empty slots while the
+-- saved file still held them, and the keybinding survived only because that client keeps
+-- bindings server-side - with the pad empty there was nothing for UpdateAllHotkeys to
+-- attach, so the key did nothing. Keep whatever is already there and fill in only what is
+-- absent, which is correct under either order: where the saved variables load second they
+-- replace this table wholesale anyway.
+BindPadVars = BindPadVars or {}
+if BindPadVars.tab == nil then
+    BindPadVars.tab = BINDPAD_GENERAL_TAB
+end
+if BindPadVars.version == nil then
+    BindPadVars.version = BINDPAD_SAVEFILE_VERSION
+end
+if BindPadVars.GeneralKeyBindings == nil then
+    BindPadVars.GeneralKeyBindings = {}
+end
 
 -- Initialize BindPad core object.
 BindPadCore = {
