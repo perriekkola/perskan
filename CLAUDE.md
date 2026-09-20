@@ -24,7 +24,7 @@ was deliberately moved away from.
   registry and exposes live-apply methods on `Perskan` (e.g. `Perskan:ApplyXpBarScale()`).
   Modules read `Perskan.db.profile` live (never cache it — AceDB repoints the table on a
   profile switch). Files: `CVars`, `FrameScaling`, `ActionBars`, `GreyOnCooldown`,
-  `RangeColoring`, `HideElements`, `Auras`, `PlayerBuffs` (gated on
+  `RangeColoring`, `HideElements`, `FramerateDisplay`, `Auras`, `PlayerBuffs` (gated on
   `filterPlayerBuffs`), `Nameplates`, `DamageMeter` (gated on
   `enableDamageMeterCustomization`), `BuffBars`, `DelveMap`, `DelveData`/`DelvePanel`,
   `ChatCopyPaste`, `KeyBindings`, `BindPadTweaks`, `ItemLevel`. `DelveData.lua` is the one
@@ -122,9 +122,9 @@ was deliberately moved away from.
   `hidden = notOnForever` (Config/Schema.lua) instead of sitting there doing nothing.
   Retail is untouched. It runs the other way too: `foreverOnly` marks a control that only
   exists on that client, which is how `Modules/Nameplates.lua` exposes its name-relevance
-  and reaction-colouring options and `Modules/FrameScaling.lua` its XP bar width (that
+  and reaction-colouring options, `Modules/FrameScaling.lua` its XP bar width (that
   one sizes `MainStatusTrackingBarContainer`, not the `StatusTrackingBarManager` the
-  scale option drives). Both default to on there and off on retail, by keying
+  scale option drives) and `Modules/FramerateDisplay.lua` its framerate anchor. Both default to on there and off on retail, by keying
   the `defaults.profile` entry to the same client check - AceDB stores only what differs
   from the default, so one profile carried between the two clients does the right thing in
   each. What the port needed beyond that: AceDB-3.0 at minor 36 or later

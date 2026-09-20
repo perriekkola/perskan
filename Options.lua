@@ -58,6 +58,7 @@ local defaults = {
         -- Misc
         soundAmbienceVolume = 0.1,
         autoLootDefault = 1,
+        anchorFramerateTop = isForeverClient,
         addChatSizes = true,
         enableDamageMeter = 1,
         -- Frame Scaling

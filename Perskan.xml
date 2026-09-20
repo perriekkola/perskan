@@ -5,6 +5,7 @@
   <!-- Feature modules register their setup functions into Perskan.modules. -->
   <Script file="Modules\CVars.lua" />
   <Script file="Modules\FrameScaling.lua" />
+  <Script file="Modules\FramerateDisplay.lua" />
   <Script file="Modules\ActionBars.lua" />
   <Script file="Modules\GreyOnCooldown.lua" />
   <Script file="Modules\RangeColoring.lua" />

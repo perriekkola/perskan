@@ -580,6 +580,12 @@ addon.configSchema = {
             { type = "toggle", key = "autoLootDefault", name = "Auto Loot", store = "int01",
               desc = "Loot automatically by default.", cvar = "autoLootDefault" },
 
+            { type = "toggle", key = "anchorFramerateTop", name = "Framerate At Top Of Screen",
+              store = "bool", hidden = foreverOnly,
+              desc = "Pin the framerate readout to the top centre of the screen rather "
+                  .. "than leaving it where the client puts it.",
+              apply = function() P():ApplyFramerateAnchor() end },
+
             { type = "divider", name = "Hide UI Elements" },
             { type = "toggle", key = "hideSocialButton", name = "Hide Social Button", store = "bool",
               desc = "Hide the Quick Join social button.",
