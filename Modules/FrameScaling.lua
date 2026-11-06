@@ -88,65 +88,122 @@ function Perskan:ApplyXpBarScale()
     end
 end
 
--- Resizing the container does not move what is inside it: the bars keep the width they
--- were last laid out at, so the fill stops matching the frame. Opening and closing Edit
--- Mode repaired it only because that forces a layout pass, so ask for one outright.
--- Whichever of these the client carries, first one that runs wins.
-local function RelayoutXpBar(frame)
-    for _, method in ipairs({ "UpdateBarsShown", "Layout" }) do
-        if type(frame[method]) == "function" and pcall(frame[method], frame) then
-            return true
-        end
-    end
-
-    -- The manager owns the container, and can lay it out when the container itself
-    -- offers nothing to call.
+-- What Blizzard would size the container to on its own: the manager's expected width,
+-- scaled by Edit Mode's Size percentage when the layout carries one
+-- (EditModeStatusTrackingBarSystemMixin:UpdateSystemSetting does the same sum).
+local function BlizzardXpBarWidth(frame)
     local manager = _G.StatusTrackingBarManager
-    if manager and manager ~= frame then
-        for _, method in ipairs({ "UpdateBarsShown", "LayoutBar", "Layout" }) do
-            if type(manager[method]) == "function" and pcall(manager[method], manager) then
-                return true
+    if not (manager and manager.GetExpectedWidth) then return nil end
+
+    local ok, width = pcall(manager.GetExpectedWidth, manager)
+    if not ok or type(width) ~= "number" then return nil end
+
+    local sizeSetting = Enum and Enum.EditModeStatusTrackingBarSetting
+        and Enum.EditModeStatusTrackingBarSetting.Size
+    if sizeSetting and frame.HasSetting and frame.GetSettingValue then
+        local okHas, has = pcall(frame.HasSetting, frame, sizeSetting)
+        if okHas and has then
+            local okValue, percent = pcall(frame.GetSettingValue, frame, sizeSetting)
+            if okValue and type(percent) == "number" and percent > 0 then
+                width = width * percent / 100
             end
         end
     end
+    return width
+end
 
-    return false
+-- Resizing the container moves only its frame art and divider ticks. The fill bars
+-- inside keep the width they were last laid out at until the manager's
+-- CheckForLayoutChange - the same call Edit Mode makes after its own resize - sizes them
+-- again off the container. The rested tick is placed against the bar's width, so it
+-- goes after.
+local function RelayoutXpBar()
+    local manager = _G.StatusTrackingBarManager
+    if not manager then return end
+    if type(manager.CheckForLayoutChange) == "function" then
+        pcall(manager.CheckForLayoutChange, manager)
+    end
+    if type(manager.UpdateBarTicks) == "function" then
+        pcall(manager.UpdateBarTicks, manager)
+    end
 end
 
 -- 0 means leave Blizzard's own width alone, the same way a castbar height of 0 does on
--- nameplates. Anything else is held against Blizzard's own layout passes by a
--- self-correcting SetWidth hook.
+-- nameplates. Anything else is held against Blizzard's resizes - Edit Mode uses SetSize,
+-- not SetWidth, on login, layout changes and its Size slider - by hooks on both. The
+-- hooks only flag the change: the correction runs on the next frame from our own
+-- frame, so none of it happens inside Edit Mode's execution, and it lands after
+-- whatever layout pass Blizzard runs straight after its resize.
 local applyingXpBarWidth = false
+local xpBarWidthTouched = false
+local xpBarWidthDriver
+
+local function XpBarWidthDriver()
+    if not xpBarWidthDriver then
+        xpBarWidthDriver = CreateFrame("Frame")
+        xpBarWidthDriver:Hide()
+        xpBarWidthDriver:SetScript("OnUpdate", function(self)
+            self:Hide()
+            Perskan:ApplyXpBarWidth()
+        end)
+        xpBarWidthDriver:SetScript("OnEvent", function(self)
+            self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+            Perskan:ApplyXpBarWidth()
+        end)
+    end
+    return xpBarWidthDriver
+end
+
+-- Next frame, from our own frame.
+local function QueueXpBarWidth()
+    XpBarWidthDriver():Show()
+end
 
 function Perskan:ApplyXpBarWidth()
-    -- One guard for the whole pass rather than one around each write: the relayout below
-    -- sets widths of its own, and every one of them comes back through the hook.
+    -- The relayout below sizes frames of its own; nothing it does should loop back here.
     if applyingXpBarWidth then return end
 
     local frame = XpBarWidthFrame()
     if not frame then return end
 
     local width = self.db.profile.xpBarWidth or 0
-
-    if frame._perskanBaseWidth == nil then
-        frame._perskanBaseWidth = frame:GetWidth()
+    local wanted
+    if width > 0 then
+        wanted = width
+    elseif xpBarWidthTouched then
+        -- Back to 0 after we held a width: hand it back to Blizzard's own, once.
+        wanted = BlizzardXpBarWidth(frame)
+    else
+        return
     end
-
-    local wanted = (width > 0) and width or frame._perskanBaseWidth
     if not wanted or wanted <= 0 then return end
 
+    -- Edit Mode lays the bottom bars out against this container; leave it be in combat
+    -- if anything protected depends on it, and catch up afterwards.
+    if InCombatLockdown() and frame:IsProtected() then
+        XpBarWidthDriver():RegisterEvent("PLAYER_REGEN_ENABLED")
+        return
+    end
+
     applyingXpBarWidth = true
-    if frame:GetWidth() ~= wanted then
+    if math.abs(frame:GetWidth() - wanted) > 0.5 then
         frame:SetWidth(wanted)
     end
-    RelayoutXpBar(frame)
+    RelayoutXpBar()
     applyingXpBarWidth = false
+
+    xpBarWidthTouched = width > 0
 
     if not frame._perskanWidthHooked then
         frame._perskanWidthHooked = true
-        hooksecurefunc(frame, "SetWidth", function()
-            Perskan:ApplyXpBarWidth()
-        end)
+        local function OnResized()
+            if applyingXpBarWidth then return end
+            if (Perskan.db.profile.xpBarWidth or 0) > 0 then
+                QueueXpBarWidth()
+            end
+        end
+        hooksecurefunc(frame, "SetWidth", OnResized)
+        hooksecurefunc(frame, "SetSize", OnResized)
     end
 end
 
