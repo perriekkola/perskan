@@ -71,6 +71,38 @@ local function damageMeterAnchorOff()
     return damageMeterCustomizationOff() or not profile().damageMeterAnchorEnabled
 end
 
+-- Every nameplate option back to its default, applied live. Clearing a key lets AceDB
+-- fall back to `defaults.profile`, so a client-keyed default (Forever vs retail) comes
+-- back as the right one for this client. The keys are read off the category itself,
+-- so a nameplate setting added later is covered without touching this.
+local NAMEPLATE_APPLIERS = {
+    "ApplyCVars",
+    "ApplyNameplateSize",
+    "ApplyNameplateHealthbarHeight",
+    "ApplyNameplateCastbarHeight",
+    "ApplyNameplateCastbarNamePlacement",
+    "ApplyNameplateNameOutline",
+    "ApplyNameplateFriendlyClickThrough",
+    "ApplyNameplateNameDisplay",
+}
+
+local function ResetNameplateSettings()
+    local db = profile()
+    for _, category in ipairs(addon.configSchema) do
+        if category.key == "nameplates" then
+            for _, control in ipairs(category.controls) do
+                if control.key and not control.get then
+                    db[control.key] = nil
+                end
+            end
+        end
+    end
+    for _, name in ipairs(NAMEPLATE_APPLIERS) do
+        if P()[name] then pcall(P()[name], P()) end
+    end
+    if P().RefreshConfig then P():RefreshConfig() end
+end
+
 addon.configSchema = {
     --------------------------------------------------------------------------------
     {
@@ -171,6 +203,12 @@ addon.configSchema = {
             { type = "divider", name = "Personal Resource Display" },
             { type = "toggle", key = "nameplateShowSelf", name = "Show Personal Resource Display",
               store = "int01", cvar = "nameplateShowSelf" },
+
+            { type = "divider", name = "Reset" },
+            { type = "button", name = "Reset Nameplate Settings", width = 220,
+              desc = "Put every setting on this page back to Perskan's default and apply "
+                  .. "it now. Other categories are left alone.",
+              onClick = ResetNameplateSettings },
         },
     },
     --------------------------------------------------------------------------------
@@ -453,12 +491,14 @@ addon.configSchema = {
               desc = "Scale of the talking head frame.", min = 0.5, max = 2.0, step = 0.1,
               apply = function() P():ApplyTalkingHeadScale() end },
             { type = "range", key = "xpBarScale", name = "XP / Status Bar Scale",
-              desc = "Scale of the XP and reputation bars.", min = 0.5, max = 2.0, step = 0.1,
+              desc = "Scale of the XP and reputation bars - both status bars, when a "
+                  .. "second one is showing.", min = 0.5, max = 2.0, step = 0.1,
               apply = function() P():ApplyXpBarScale() end },
             { type = "range", key = "xpBarWidth", name = "XP / Status Bar Width",
               hidden = foreverOnly,
-              desc = "Exact width of the XP and reputation bars, in pixels. 0 keeps "
-                  .. "Blizzard's own width, which follows the screen.",
+              desc = "Exact width of the XP and reputation bars, in pixels - both status "
+                  .. "bars, when a second one is showing. 0 keeps Blizzard's own width, "
+                  .. "which follows the screen.",
               min = 0, max = 1200, step = 1,
               apply = function() P():ApplyXpBarWidth() end },
             { type = "range", key = "extraActionButtonScale", name = "Extra Action Button Scale",

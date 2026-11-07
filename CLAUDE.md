@@ -123,8 +123,9 @@ was deliberately moved away from.
   Retail is untouched. It runs the other way too: `foreverOnly` marks a control that only
   exists on that client, which is how `Modules/Nameplates.lua` exposes its name-relevance
   and reaction-colouring options, `Modules/FrameScaling.lua` its XP bar width (that
-  one sizes `MainStatusTrackingBarContainer`, not the `StatusTrackingBarManager` the
-  scale option drives) and `Modules/FramerateDisplay.lua` its framerate anchor. Both default to on there and off on retail, by keying
+  one sizes both `MainStatusTrackingBarContainer` and `SecondaryStatusTrackingBarContainer`
+  - Edit Mode's Status Bar 1 and 2 - not the `StatusTrackingBarManager`; the scale option
+  drives the manager and, where they don't sit under it, both containers too) and `Modules/FramerateDisplay.lua` its framerate anchor. Both default to on there and off on retail, by keying
   the `defaults.profile` entry to the same client check - AceDB stores only what differs
   from the default, so one profile carried between the two clients does the right thing in
   each. What the port needed beyond that: AceDB-3.0 at minor 36 or later

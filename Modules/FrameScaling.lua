@@ -64,12 +64,38 @@ local function WhenFrameExists(globalName, fn)
     end)
 end
 
--- Width is not the manager's to give: the scale option drives StatusTrackingBarManager,
--- but the frame that actually draws the bar - and the one whose width means anything -
--- is MainStatusTrackingBarContainer. The manager is only a fallback for a client that
--- doesn't carry the container.
-local function XpBarWidthFrame()
-    return _G.MainStatusTrackingBarContainer or _G.StatusTrackingBarManager
+-- The status bars are drawn by one container each: MainStatusTrackingBarContainer and
+-- SecondaryStatusTrackingBarContainer, Edit Mode's "Status Bar 1" and "Status Bar 2".
+-- The second one shows a reputation or honor bar alongside XP, and it is a separate
+-- Edit Mode system with its own size and anchor, so every XP bar setting goes to both.
+-- The manager is only a fallback for a client that carries neither container.
+local STATUS_BAR_CONTAINERS = {
+    "MainStatusTrackingBarContainer",
+    "SecondaryStatusTrackingBarContainer",
+}
+
+local function XpBarFrames()
+    local frames = {}
+    for _, name in ipairs(STATUS_BAR_CONTAINERS) do
+        if _G[name] then frames[#frames + 1] = _G[name] end
+    end
+    if #frames == 0 and _G.StatusTrackingBarManager then
+        frames[1] = _G.StatusTrackingBarManager
+    end
+    return frames
+end
+
+-- A container that sits under the manager already inherits the manager's scale;
+-- scaling it as well would apply the setting twice.
+local function ScalesWithManager(frame)
+    local manager = _G.StatusTrackingBarManager
+    if not manager or frame == manager then return true end
+    local parent = frame:GetParent()
+    while parent do
+        if parent == manager then return true end
+        parent = parent:GetParent()
+    end
+    return false
 end
 
 --------------------------------------------------------------------------------
@@ -83,8 +109,14 @@ function Perskan:ApplyEncounterBarScale()
 end
 
 function Perskan:ApplyXpBarScale()
+    local scale = self.db.profile.xpBarScale or 1
     if StatusTrackingBarManager then
-        StatusTrackingBarManager:SetScale(self.db.profile.xpBarScale or 1)
+        StatusTrackingBarManager:SetScale(scale)
+    end
+    for _, frame in ipairs(XpBarFrames()) do
+        if not ScalesWithManager(frame) and frame:GetScale() ~= scale then
+            frame:SetScale(scale)
+        end
     end
 end
 
@@ -159,51 +191,55 @@ local function QueueXpBarWidth()
     XpBarWidthDriver():Show()
 end
 
+local function HookXpBarWidth(frame)
+    if frame._perskanWidthHooked then return end
+    frame._perskanWidthHooked = true
+    local function OnResized()
+        if applyingXpBarWidth then return end
+        if (Perskan.db.profile.xpBarWidth or 0) > 0 then
+            QueueXpBarWidth()
+        end
+    end
+    hooksecurefunc(frame, "SetWidth", OnResized)
+    hooksecurefunc(frame, "SetSize", OnResized)
+end
+
 function Perskan:ApplyXpBarWidth()
     -- The relayout below sizes frames of its own; nothing it does should loop back here.
     if applyingXpBarWidth then return end
 
-    local frame = XpBarWidthFrame()
-    if not frame then return end
+    local frames = XpBarFrames()
+    if #frames == 0 then return end
 
     local width = self.db.profile.xpBarWidth or 0
-    local wanted
-    if width > 0 then
-        wanted = width
-    elseif xpBarWidthTouched then
-        -- Back to 0 after we held a width: hand it back to Blizzard's own, once.
-        wanted = BlizzardXpBarWidth(frame)
-    else
-        return
-    end
-    if not wanted or wanted <= 0 then return end
+    if width <= 0 and not xpBarWidthTouched then return end
 
-    -- Edit Mode lays the bottom bars out against this container; leave it be in combat
-    -- if anything protected depends on it, and catch up afterwards.
-    if InCombatLockdown() and frame:IsProtected() then
-        XpBarWidthDriver():RegisterEvent("PLAYER_REGEN_ENABLED")
-        return
+    -- Edit Mode lays the bottom bars out against these containers; leave them be in
+    -- combat if anything protected depends on them, and catch up afterwards.
+    if InCombatLockdown() then
+        for _, frame in ipairs(frames) do
+            if frame:IsProtected() then
+                XpBarWidthDriver():RegisterEvent("PLAYER_REGEN_ENABLED")
+                return
+            end
+        end
     end
 
     applyingXpBarWidth = true
-    if math.abs(frame:GetWidth() - wanted) > 0.5 then
-        frame:SetWidth(wanted)
+    for _, frame in ipairs(frames) do
+        -- Back to 0 after we held a width: hand each bar back Blizzard's own, once.
+        local wanted = width > 0 and width or BlizzardXpBarWidth(frame)
+        if wanted and wanted > 0 and math.abs(frame:GetWidth() - wanted) > 0.5 then
+            frame:SetWidth(wanted)
+        end
     end
     RelayoutXpBar()
     applyingXpBarWidth = false
 
     xpBarWidthTouched = width > 0
 
-    if not frame._perskanWidthHooked then
-        frame._perskanWidthHooked = true
-        local function OnResized()
-            if applyingXpBarWidth then return end
-            if (Perskan.db.profile.xpBarWidth or 0) > 0 then
-                QueueXpBarWidth()
-            end
-        end
-        hooksecurefunc(frame, "SetWidth", OnResized)
-        hooksecurefunc(frame, "SetSize", OnResized)
+    for _, frame in ipairs(frames) do
+        HookXpBarWidth(frame)
     end
 end
 
@@ -230,13 +266,25 @@ Perskan:RegisterModule("FrameScaling", function(self)
     InstallScaledContainer("StatusTrackingBarManager", function()
         return Perskan.db.profile.xpBarScale or 1
     end)
+    -- The bar containers too, where they don't already inherit the manager's scale.
+    for _, name in ipairs(STATUS_BAR_CONTAINERS) do
+        WhenFrameExists(name, function()
+            if not ScalesWithManager(_G[name]) then
+                InstallScaledContainer(name, function()
+                    return Perskan.db.profile.xpBarScale or 1
+                end)
+            end
+        end)
+    end
     InstallScaledContainer("ExtraAbilityContainer", function()
         return Perskan.db.profile.extraActionButtonScale or 1
     end)
 
-    WhenFrameExists("MainStatusTrackingBarContainer", function()
-        Perskan:ApplyXpBarWidth()
-    end)
+    for _, name in ipairs(STATUS_BAR_CONTAINERS) do
+        WhenFrameExists(name, function()
+            Perskan:ApplyXpBarWidth()
+        end)
+    end
 
     -- On a fresh login Edit Mode lays the bar out again once its layouts arrive, after
     -- everything above has run, and the fill bars are laid out against whatever width
