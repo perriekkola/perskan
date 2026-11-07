@@ -238,6 +238,15 @@ Perskan:RegisterModule("FrameScaling", function(self)
         Perskan:ApplyXpBarWidth()
     end)
 
+    -- On a fresh login Edit Mode lays the bar out again once its layouts arrive, after
+    -- everything above has run, and the fill bars are laid out against whatever width
+    -- the container had then. Re-assert after each of those passes; a /reload only
+    -- looked right because the layouts were already cached.
+    self:OnBlizzardLayout(function()
+        Perskan:ApplyXpBarScale()
+        Perskan:ApplyXpBarWidth()
+    end)
+
     -- TalkingHeadFrame lives in a load-on-demand addon; hook PlayCurrent so the scale
     -- is (re)applied each time a talking head plays.
     local function HookTalkingHead()

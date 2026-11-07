@@ -142,6 +142,29 @@ function Perskan:RegisterModule(name, setupFn, optionalKey)
     self.modules[#self.modules + 1] = { name = name, setup = setupFn, key = optionalKey }
 end
 
+-- Runs fn whenever Blizzard may have just laid the screen out over us: each loading
+-- screen and each Edit Mode layout load. On a fresh login (unlike a /reload) the
+-- layouts arrive from the server after PLAYER_ENTERING_WORLD, and Edit Mode then
+-- re-anchors and re-sizes its systems - the XP bar and the damage meter among them -
+-- over whatever an addon set at login. fn runs twice per trigger: next frame, after
+-- the layout pass that raised the event, and again a moment later for the passes
+-- that trail it. Both run from our own timer, never inside Blizzard's execution.
+-- fn must be idempotent.
+local RELAYOUT_EVENTS = { "PLAYER_ENTERING_WORLD", "EDIT_MODE_LAYOUTS_UPDATED" }
+local RELAYOUT_SETTLE_DELAY = 1
+
+function Perskan:OnBlizzardLayout(fn)
+    local frame = CreateFrame("Frame")
+    for _, event in ipairs(RELAYOUT_EVENTS) do
+        -- Not every client carries Edit Mode's event.
+        pcall(frame.RegisterEvent, frame, event)
+    end
+    frame:SetScript("OnEvent", function()
+        C_Timer.After(0, fn)
+        C_Timer.After(RELAYOUT_SETTLE_DELAY, fn)
+    end)
+end
+
 -- Carry settings from renamed keys over to their replacements, once per profile.
 -- Dropped keys (the aura cooldown-number options that 12.0's private aura system made
 -- impossible) are simply left in the saved table; AceDB ignores what isn't in defaults.
