@@ -491,12 +491,14 @@ addon.configSchema = {
               desc = "Scale of the talking head frame.", min = 0.5, max = 2.0, step = 0.1,
               apply = function() P():ApplyTalkingHeadScale() end },
             { type = "range", key = "xpBarScale", name = "XP / Status Bar Scale",
-              desc = "Scale of the XP and reputation bars.", min = 0.5, max = 2.0, step = 0.1,
+              desc = "Scale of the XP and reputation bars - both status bars, when a "
+                  .. "second one is showing.", min = 0.5, max = 2.0, step = 0.1,
               apply = function() P():ApplyXpBarScale() end },
             { type = "range", key = "xpBarWidth", name = "XP / Status Bar Width",
               hidden = foreverOnly,
-              desc = "Exact width of the XP and reputation bars, in pixels. 0 keeps "
-                  .. "Blizzard's own width, which follows the screen.",
+              desc = "Exact width of the XP and reputation bars, in pixels - both status "
+                  .. "bars, when a second one is showing. 0 keeps Blizzard's own width, "
+                  .. "which follows the screen.",
               min = 0, max = 1200, step = 1,
               apply = function() P():ApplyXpBarWidth() end },
             { type = "range", key = "extraActionButtonScale", name = "Extra Action Button Scale",
