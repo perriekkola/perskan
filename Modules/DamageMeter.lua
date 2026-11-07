@@ -153,19 +153,28 @@ Perskan:RegisterModule("DamageMeter", function(self)
 
     Perskan.ApplyDamageMeterSettings = ApplyDamageMeterSettings
 
+    local function ApplyIfPresent()
+        if DamageMeter or DamageMeterSessionWindow1 then
+            ApplyDamageMeterSettings()
+        end
+    end
+
+    -- Edit Mode owns the meter's anchor and size. On a fresh login its layouts arrive
+    -- after PLAYER_ENTERING_WORLD and re-anchor the meter over what we set (and the
+    -- session windows may not exist yet when the first event fires at all), so
+    -- re-assert after every Blizzard layout pass rather than once.
+    self:OnBlizzardLayout(ApplyIfPresent)
+
     local setupFrame = CreateFrame("Frame")
-    setupFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     setupFrame:RegisterEvent("ADDON_LOADED")
     -- Positioning is skipped in combat; re-assert once it ends.
     setupFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-
-    local initialized = false
-    setupFrame:SetScript("OnEvent", function(_, event)
-        if DamageMeterSessionWindow1 and not initialized then
-            initialized = true
-            ApplyDamageMeterSettings()
-        elseif event == "PLAYER_REGEN_ENABLED" and initialized then
-            ApplyDamageMeterSettings()
+    setupFrame:SetScript("OnEvent", function(frame, event)
+        if event == "ADDON_LOADED" then
+            -- Only to catch a load-on-demand meter; done once it exists.
+            if not (DamageMeter or DamageMeterSessionWindow1) then return end
+            frame:UnregisterEvent("ADDON_LOADED")
         end
+        ApplyIfPresent()
     end)
 end, "enableDamageMeterCustomization")
