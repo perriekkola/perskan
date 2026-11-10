@@ -48,6 +48,7 @@ local LIVE_APPLIERS = {
     "ApplyHideSocialButton",
     "ApplyHideBagsBar",
     "ApplyTargetFocusAuraSize",
+    "ApplyLootRollPosition",
 }
 
 function Perskan:ApplyProfileSettings()
