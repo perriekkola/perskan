@@ -27,7 +27,7 @@ was deliberately moved away from.
   `RangeColoring`, `HideElements`, `FramerateDisplay`, `Auras`, `PlayerBuffs` (gated on
   `filterPlayerBuffs`), `Nameplates`, `DamageMeter` (gated on
   `enableDamageMeterCustomization`), `BuffBars`, `DelveMap`, `DelveData`/`DelvePanel`,
-  `ChatCopyPaste`, `KeyBindings`, `BindPadTweaks`, `ItemLevel`. `DelveData.lua` is the one
+  `ChatCopyPaste`, `KeyBindings`, `BindPadTweaks`, `ItemLevel`, `LootRolls`. `DelveData.lua` is the one
   file that registers nothing: it is the delve difficulty table `DelvePanel.lua` reads,
   ported from DelveSpeedTracker (Bloom) and meant to be tuned from experience.
 - **Vendored addons**: `Modules/BindPad/` (BindPad, Tageshi) and
@@ -90,6 +90,16 @@ was deliberately moved away from.
   "attempted to index a table that cannot be accessed while tainted (execution tainted by
   'Perskan')". This is what removed the tracked-bar stacking options in 1.1.40; see the
   long comment at the top of `Modules/BuffBars.lua` before trying it again.
+- **Loot roll mover**: `Modules/LootRolls.lua` moves `GroupLootContainer` (the need/greed
+  roll stack) by pointing it at a stand-in frame that is dragged in Edit Mode. Retail and
+  Forever share Blizzard's loot roll and managed-frame code, so it is the same on both. The
+  container is a bottom-managed frame that `BottomManagedFrameContainer` re-anchors on every
+  roll, so a `SetPoint` hook takes it back each time. Don't write `ignoreFramePositionManager`
+  or `ignoreInLayout` onto it to opt it out of the stack - both are read in Blizzard's layout
+  execution. Edit Mode is followed by `hooksecurefunc` on `EditModeManagerFrame`'s
+  `EnterEditMode`/`ExitEditMode`, not an `EventRegistry` callback, and the stand-in draws
+  Edit Mode's selection nine-slice itself rather than inheriting
+  `EditModeSystemSelectionTemplate`, whose scripts call `EditModeManagerFrame:SelectSystem`.
 - **Retail 12.x note**: unit-frame and raid-frame auras are engine-owned
   (`AuraContainer`/`AuraButton`, private auras). Individual aura icons and their
   cooldowns are not reachable from an addon; the only public knobs are the container's

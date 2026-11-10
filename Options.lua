@@ -59,6 +59,13 @@ local defaults = {
         soundAmbienceVolume = 0.1,
         autoLootDefault = 1,
         anchorFramerateTop = isForeverClient,
+        -- Loot rolls: off leaves them in Blizzard's stack; on, they follow a stand-in
+        -- moved in Edit Mode.
+        moveLootRolls = false,
+        lootRollPoint = "BOTTOM",
+        lootRollRelativePoint = "BOTTOM",
+        lootRollX = 0,
+        lootRollY = 260,
         addChatSizes = true,
         enableDamageMeter = 1,
         -- Frame Scaling

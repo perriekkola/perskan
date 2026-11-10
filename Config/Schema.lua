@@ -626,6 +626,18 @@ addon.configSchema = {
                   .. "than leaving it where the client puts it.",
               apply = function() P():ApplyFramerateAnchor() end },
 
+            { type = "divider", name = "Loot Rolls" },
+            { type = "toggle", key = "moveLootRolls", name = "Move Loot Rolls In Edit Mode",
+              store = "bool",
+              desc = "Adds the need/greed/pass roll frames to Edit Mode: open Edit Mode and "
+                  .. "drag the Loot Rolls box to where the rolls should appear. Right-click "
+                  .. "the box to put it back. Off leaves them where Blizzard puts them.",
+              apply = function() P():ApplyLootRollPosition() end },
+            { type = "button", name = "Reset Loot Roll Position", width = 220,
+              desc = "Move the loot rolls back to their starting spot above the action bars.",
+              onClick = function() P():ResetLootRollPosition() end,
+              disabled = function() return not profile().moveLootRolls end },
+
             { type = "divider", name = "Hide UI Elements" },
             { type = "toggle", key = "hideSocialButton", name = "Hide Social Button", store = "bool",
               desc = "Hide the Quick Join social button.",

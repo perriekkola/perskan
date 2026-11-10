@@ -22,6 +22,7 @@
   <Script file="Modules\KeyBindings.lua" />
   <Script file="Modules\BindPadTweaks.lua" />
   <Script file="Modules\ItemLevel.lua" />
+  <Script file="Modules\LootRolls.lua" />
 
   <!-- Vendored Simple Item Level: own namespace and saved variable, see Namespace.lua. -->
   <Script file="Modules\SimpleItemLevel\Namespace.lua" />
