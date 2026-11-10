@@ -100,6 +100,10 @@ was deliberately moved away from.
   `EnterEditMode`/`ExitEditMode`, not an `EventRegistry` callback, and the stand-in draws
   Edit Mode's selection nine-slice itself rather than inheriting
   `EditModeSystemSelectionTemplate`, whose scripts call `EditModeManagerFrame:SelectSystem`.
+  Clicking it opens our own settings panel (size, test rolls, reset) built from the same
+  templates as Edit Mode's system dialog; the test rolls are our frames drawn with the roll
+  frame's art, since the real `GroupLootFrame`s need a live roll ID. Size is `SetScale` on
+  the roll frames (children of UIParent, not of the container) and the container.
 - **Retail 12.x note**: unit-frame and raid-frame auras are engine-owned
   (`AuraContainer`/`AuraButton`, private auras). Individual aura icons and their
   cooldowns are not reachable from an addon; the only public knobs are the container's

@@ -629,12 +629,17 @@ addon.configSchema = {
             { type = "divider", name = "Loot Rolls" },
             { type = "toggle", key = "moveLootRolls", name = "Move Loot Rolls In Edit Mode",
               store = "bool",
-              desc = "Adds the need/greed/pass roll frames to Edit Mode: open Edit Mode and "
-                  .. "drag the Loot Rolls box to where the rolls should appear. Right-click "
-                  .. "the box to put it back. Off leaves them where Blizzard puts them.",
+              desc = "Adds the need/greed/pass roll frames to Edit Mode. Open Edit Mode and "
+                  .. "drag the Loot Rolls box to where the rolls should appear; click it for "
+                  .. "their size, test rolls and a reset. Off leaves them where Blizzard puts them.",
               apply = function() P():ApplyLootRollPosition() end },
-            { type = "button", name = "Reset Loot Roll Position", width = 220,
-              desc = "Move the loot rolls back to their starting spot above the action bars.",
+            { type = "range", key = "lootRollScale", name = "Loot Roll Size",
+              desc = "Scale of the loot roll frames. Also on the Loot Rolls box in Edit Mode.",
+              min = 0.5, max = 2.0, step = 0.05,
+              apply = function() P():ApplyLootRollPosition() end,
+              disabled = function() return not profile().moveLootRolls end },
+            { type = "button", name = "Reset Loot Rolls", width = 220,
+              desc = "Put the loot rolls back to their starting spot and size.",
               onClick = function() P():ResetLootRollPosition() end,
               disabled = function() return not profile().moveLootRolls end },
 

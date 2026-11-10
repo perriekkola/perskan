@@ -66,6 +66,7 @@ local defaults = {
         lootRollRelativePoint = "BOTTOM",
         lootRollX = 0,
         lootRollY = 260,
+        lootRollScale = 1,
         addChatSizes = true,
         enableDamageMeter = 1,
         -- Frame Scaling
