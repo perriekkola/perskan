@@ -27,7 +27,7 @@ was deliberately moved away from.
   `RangeColoring`, `HideElements`, `FramerateDisplay`, `Auras`, `PlayerBuffs` (gated on
   `filterPlayerBuffs`), `Nameplates`, `DamageMeter` (gated on
   `enableDamageMeterCustomization`), `BuffBars`, `DelveMap`, `DelveData`/`DelvePanel`,
-  `ChatCopyPaste`, `KeyBindings`, `BindPadTweaks`, `ItemLevel`, `LootRolls`. `DelveData.lua` is the one
+  `MapZoneInfo` (Forever only), `ChatCopyPaste`, `KeyBindings`, `BindPadTweaks`, `ItemLevel`, `LootRolls`. `DelveData.lua` is the one
   file that registers nothing: it is the delve difficulty table `DelvePanel.lua` reads,
   ported from DelveSpeedTracker (Bloom) and meant to be tuned from experience.
 - **Vendored addons**: `Modules/BindPad/` (BindPad, Tageshi) and
@@ -134,6 +134,9 @@ was deliberately moved away from.
   nameplate spell-name and name-outline pieces (castbar *height* still applies) — so their
   controls carry
   `hidden = notOnForever` (Config/Schema.lua) instead of sitting there doing nothing.
+  The Map category itself stays, because on Forever it holds `Modules/MapZoneInfo.lua`'s
+  toggles: the hovered zone's level range and fishing skill, drawn on our own fontstring
+  under Blizzard's area label (read, never hooked) from a Classic zone table in that file.
   Retail is untouched. It runs the other way too: `foreverOnly` marks a control that only
   exists on that client, which is how `Modules/Nameplates.lua` exposes its name-relevance
   and reaction-colouring options, `Modules/FrameScaling.lua` its XP bar width (that

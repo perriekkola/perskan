@@ -427,21 +427,32 @@ addon.configSchema = {
     --------------------------------------------------------------------------------
     {
         key = "map",
-        hidden = notOnForever,
         title = "Map",
         icon = "Interface\\Icons\\INV_Misc_Map02",
         controls = {
             { type = "toggle", key = "showDelvesOnContinentMap", name = "Show Delves On Continent Map",
-              store = "bool",
+              store = "bool", hidden = notOnForever,
               desc = "Roll every zone's delve entrances up onto the continent map. Blizzard's "
                   .. "own Delves map filter still applies.",
               apply = function() P():ApplyDelveMapPins() end },
             { type = "toggle", key = "delvesBountifulOnly", name = "Bountiful Delves Only",
-              store = "bool",
+              store = "bool", hidden = notOnForever,
               desc = "Only show bountiful delves. Same setting as the checkbox in the map's "
                   .. "tracking menu.",
               disabled = function() return not profile().showDelvesOnContinentMap end,
               apply = function() P():ApplyDelveMapPins() end },
+
+            { type = "toggle", key = "mapZoneLevels", name = "Show Zone Level Range",
+              store = "bool", hidden = foreverOnly,
+              desc = "Hovering a zone on the world map shows its recommended level range "
+                  .. "under the zone name, coloured against your level.",
+              apply = function() P():ApplyMapZoneInfo() end },
+            { type = "toggle", key = "mapZoneFishing", name = "Show Zone Fishing Skill",
+              store = "bool", hidden = foreverOnly,
+              desc = "Hovering a zone on the world map shows the fishing skill needed to "
+                  .. "fish there without anything getting away: green when you have it, "
+                  .. "yellow when some will get away, red when nothing will bite.",
+              apply = function() P():ApplyMapZoneInfo() end },
         },
     },
     --------------------------------------------------------------------------------
