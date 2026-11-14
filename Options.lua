@@ -97,6 +97,10 @@ local defaults = {
         -- World Map
         showDelvesOnContinentMap = true,
         delvesBountifulOnly = false,
+        -- Zone level range and fishing skill under the hovered zone's name. Forever only,
+        -- so on by default there and off on retail (AceDB stores only what differs).
+        mapZoneLevels = isForeverClient,
+        mapZoneFishing = isForeverClient,
         -- Delves
         delvePanelEnabled = true,
         delvePanelShown = false,
