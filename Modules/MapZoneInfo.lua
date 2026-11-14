@@ -1,9 +1,11 @@
--- Zone level range and fishing skill under the zone name on the world map (WoW Forever).
+-- Zone level range, fishing skill and dungeons on the world map (WoW Forever).
 --
 -- Hovering a zone on a continent map makes Blizzard's area label print the zone's name
--- at the top of the map. This adds a line or two under it: the zone's recommended level
--- range, coloured against the player's level, and the fishing skill needed to fish there
--- without anything getting away, coloured against the player's own fishing skill.
+-- at the top of the map. This adds lines under it: the zone's recommended level range,
+-- coloured against the player's level, the fishing skill needed to fish there without
+-- anything getting away, coloured against the player's own fishing skill, and the
+-- zone's dungeons and raids with their levels. Viewing a zone's own map shows the same
+-- dungeon list in a small panel in the map's top-right corner.
 --
 -- Drawn on our own frame and fontstring and driven by our own poll while the map is
 -- open, deliberately. Blizzard's label frame is only read - its text and visibility, to
@@ -88,7 +90,7 @@ local ZONES = {
 --     No fishing level published yet.
 --   Zephras Isle: the Skyborne starting island, 1-12, starter-zone fishing.
 local NAMED_ZONES = {
-    { "The Riverglades", 35, 45, 130 },
+    { "Riverglades", 35, 45, 130 },
     { "Mount Hyjal", 60, 60 },
     { "Shen'dralas", 40, 45 },
     { "Zephras Isle", 1, 12, -70 },
@@ -111,6 +113,64 @@ local function ZoneByName(name)
     return ZONES_BY_NAME["The " .. name]
 end
 
+-- Forever's instance list, from Warcraft Wiki's "World of Warcraft: Forever" page:
+-- Forever retuned the Classic dungeons' levels and added its own, and only has the raids
+-- listed here. { name, minLevel, maxLevel, zone, ... }; `raid` is the player limit.
+-- Zones are the canonical names above. Blackrock Mountain is reached from both Searing
+-- Gorge and Burning Steppes, so its instances list under both.
+local DUNGEONS = {
+    { "The Hall of Thanes", 13, 18, "Ironforge" },
+    { "Ragefire Chasm", 13, 19, "Orgrimmar" },
+    { "Ruins of Lordaeron", 15, 22, "Undercity" },
+    { "The Deadmines", 18, 24, "Westfall" },
+    { "Wailing Caverns", 19, 25, "The Barrens" },
+    { "Shadowfang Keep", 23, 29, "Silverpine Forest" },
+    { "Excavation Site: Wetlands", 24, 29, "Wetlands" },
+    { "Blackfathom Deeps", 25, 31, "Ashenvale" },
+    { "The Stockade", 26, 32, "Stormwind City" },
+    { "City of Dalaran", 28, 33, "Alterac Mountains" },
+    { "Razorfen Kraul", 30, 36, "The Barrens" },
+    { "Gnomeregan", 31, 37, "Dun Morogh" },
+    { "SM: Graveyard", 31, 37, "Tirisfal Glades" },
+    { "SM: Library", 34, 40, "Tirisfal Glades" },
+    { "The Drowned City", 35, 40, "Stranglethorn Vale" },
+    { "SM: Armory", 37, 43, "Tirisfal Glades" },
+    { "Razorfen Downs", 38, 44, "The Barrens" },
+    { "SM: Cathedral", 39, 45, "Tirisfal Glades" },
+    { "Krol'dok Stronghold", 40, 45, "Riverglades" },
+    { "Uldaman", 44, 50, "Badlands" },
+    { "Zul'Farrak", 45, 51, "Tanaris" },
+    { "Alcaz Prison", 48, 53, "Dustwallow Marsh" },
+    { "Maraudon", 48, 54, "Desolace" },
+    { "Sunken Temple", 52, 58, "Swamp of Sorrows" },
+    { "Blackrock Depths", 52, 60, "Searing Gorge", "Burning Steppes" },
+    { "Blackmaw Hold", 55, 60, "Azshara" },
+    { "Dire Maul East", 55, 60, "Feralas" },
+    { "Lower Blackrock Spire", 55, 60, "Searing Gorge", "Burning Steppes" },
+    { "Upper Blackrock Spire", 55, 60, "Searing Gorge", "Burning Steppes" },
+    { "Dire Maul West", 58, 60, "Feralas" },
+    { "Dire Maul North", 58, 60, "Feralas" },
+    { "Scholomance", 58, 60, "Western Plaguelands" },
+    { "Shaper's Terrace", 58, 60, "Un'Goro Crater" },
+    { "Stratholme", 58, 60, "Eastern Plaguelands" },
+    { "Barrow Deeps", 60, 60, "Mount Hyjal", raid = 10 },
+    { "Hyjal Summit", 60, 60, "Mount Hyjal", raid = 20 },
+    { "Onyxia's Lair", 60, 60, "Dustwallow Marsh", raid = 40 },
+}
+
+-- Zone name -> its instances, already in level order (DUNGEONS is).
+local DUNGEONS_BY_ZONE = {}
+for _, dungeon in ipairs(DUNGEONS) do
+    for i = 4, #dungeon do
+        local list = DUNGEONS_BY_ZONE[dungeon[i]]
+        if not list then
+            list = {}
+            DUNGEONS_BY_ZONE[dungeon[i]] = list
+        end
+        list[#list + 1] = dungeon
+    end
+end
+
 local FISHING_SPELL_ID = 7620
 
 --------------------------------------------------------------------------------
@@ -121,7 +181,7 @@ local function profile() return Perskan.db.profile end
 
 local function Enabled()
     local p = profile()
-    return p.mapZoneLevels or p.mapZoneFishing
+    return p.mapZoneLevels or p.mapZoneFishing or p.mapZoneDungeons
 end
 
 local function FishingSkillName()
@@ -158,6 +218,22 @@ local function LevelColor(minLevel, maxLevel)
     return CreateColor(c.r, c.g, c.b)
 end
 
+local function LevelRangeText(minLevel, maxLevel)
+    if minLevel == maxLevel then return tostring(minLevel) end
+    return ("%d-%d"):format(minLevel, maxLevel)
+end
+
+-- "18-24", or "Raid 10" for a raid; coloured like quest difficulty.
+local function DungeonLevelText(dungeon)
+    local s = dungeon.raid and ("Raid " .. dungeon.raid) or LevelRangeText(dungeon[2], dungeon[3])
+    return LevelColor(dungeon[2], dungeon[3]):WrapTextInColorCode(s)
+end
+
+-- The zone's instances, by its canonical name or the name the client gave.
+local function DungeonsFor(zone, name)
+    return (zone and DUNGEONS_BY_ZONE[zone[1]]) or (name and DUNGEONS_BY_ZONE[name])
+end
+
 local function FishingColor(required, zoneLevel, skill)
     if not skill then return HIGHLIGHT_FONT_COLOR end
     if skill >= required then return GREEN_FONT_COLOR end
@@ -192,7 +268,7 @@ local function StripCodes(s)
     return (s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
 end
 
-local function BuildText(zone, mapID, labelText)
+local function BuildText(zone, mapID, labelText, zoneName)
     local p = profile()
     local lines = {}
 
@@ -204,9 +280,8 @@ local function BuildText(zone, mapID, labelText)
             if lo and hi and lo > 0 and hi > 0 then minLevel, maxLevel = lo, hi end
         end
         if minLevel and maxLevel then
-            local range = minLevel == maxLevel and tostring(minLevel)
-                or ("%d-%d"):format(minLevel, maxLevel)
-            lines[#lines + 1] = LevelColor(minLevel, maxLevel):WrapTextInColorCode("Level " .. range)
+            lines[#lines + 1] = LevelColor(minLevel, maxLevel):WrapTextInColorCode(
+                "Level " .. LevelRangeText(minLevel, maxLevel))
         end
     end
 
@@ -215,6 +290,14 @@ local function BuildText(zone, mapID, labelText)
         local required = math.max(1, zoneLevel + FISHING_NO_GETAWAY_BONUS)
         lines[#lines + 1] = FishingColor(required, zoneLevel, fishingSkill):WrapTextInColorCode(
             ("Fishing %d"):format(required))
+    end
+
+    local dungeons = p.mapZoneDungeons and DungeonsFor(zone, zoneName)
+    if dungeons then
+        for _, dungeon in ipairs(dungeons) do
+            lines[#lines + 1] = HIGHLIGHT_FONT_COLOR:WrapTextInColorCode(dungeon[1])
+                .. " " .. DungeonLevelText(dungeon)
+        end
     end
 
     return table.concat(lines, "\n")
@@ -229,7 +312,119 @@ local function Clear()
     lastKey = nil
 end
 
+--------------------------------------------------------------------------------
+-- Dungeon panel (a zone's own map)
+--------------------------------------------------------------------------------
+
+local panel
+local panelRows = {}
+local panelMapID = false
+
+local PANEL_PADDING = 10
+local PANEL_TITLE_HEIGHT = 18
+local PANEL_ROW_HEIGHT = 14
+local PANEL_COLUMN_GAP = 16
+
+-- Stock tooltip art where the client has the template; plain otherwise.
+local function BuildPanel()
+    local container = WorldMapFrame.ScrollContainer or WorldMapFrame
+    local ok, frame = pcall(CreateFrame, "Frame", nil, display, "TooltipBackdropTemplate")
+    if not ok or not frame then
+        frame = CreateFrame("Frame", nil, display)
+    end
+    frame:SetPoint("TOPRIGHT", container, "TOPRIGHT", -8, -8)
+    frame:EnableMouse(false)
+
+    frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    frame.title:SetPoint("TOPLEFT", PANEL_PADDING, -PANEL_PADDING)
+    frame:Hide()
+    panel = frame
+end
+
+local function AcquireRow(i)
+    local row = panelRows[i]
+    if not row then
+        row = {
+            name = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"),
+            level = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"),
+        }
+        row.name:SetJustifyH("LEFT")
+        row.level:SetJustifyH("RIGHT")
+        panelRows[i] = row
+    end
+    return row
+end
+
+local function DungeonsForMap(mapID)
+    local zone, name = ZONES[mapID], nil
+    if not zone then
+        local info = C_Map.GetMapInfo(mapID)
+        name = info and info.name
+        zone = name and ZoneByName(name)
+    end
+    return DungeonsFor(zone, name)
+end
+
+-- Rebuilt only when the map changes (or something resets panelMapID).
+local function RefreshPanel(mapID)
+    if mapID == panelMapID then return end
+    panelMapID = mapID
+    if not panel then return end
+
+    for _, row in ipairs(panelRows) do
+        row.name:Hide()
+        row.level:Hide()
+    end
+
+    local dungeons = profile().mapZoneDungeons and mapID and DungeonsForMap(mapID)
+    if not dungeons then
+        panel:Hide()
+        return
+    end
+
+    local raids = 0
+    local nameWidth, levelWidth = 0, 0
+    for i, dungeon in ipairs(dungeons) do
+        local row = AcquireRow(i)
+        row.name:SetText(dungeon[1])
+        row.level:SetText(DungeonLevelText(dungeon))
+        row.name:ClearAllPoints()
+        row.level:ClearAllPoints()
+        local y = -PANEL_PADDING - PANEL_TITLE_HEIGHT - (i - 1) * PANEL_ROW_HEIGHT
+        row.name:SetPoint("TOPLEFT", PANEL_PADDING, y)
+        row.level:SetPoint("TOPRIGHT", -PANEL_PADDING, y)
+        row.name:Show()
+        row.level:Show()
+        nameWidth = math.max(nameWidth, row.name:GetStringWidth())
+        levelWidth = math.max(levelWidth, row.level:GetStringWidth())
+        if dungeon.raid then raids = raids + 1 end
+    end
+
+    if raids == 0 then
+        panel.title:SetText("Dungeons")
+    elseif raids == #dungeons then
+        panel.title:SetText("Raids")
+    else
+        panel.title:SetText("Dungeons & Raids")
+    end
+
+    local width = math.max(panel.title:GetStringWidth(), nameWidth + PANEL_COLUMN_GAP + levelWidth)
+    panel:SetSize(width + PANEL_PADDING * 2,
+        PANEL_PADDING * 2 + PANEL_TITLE_HEIGHT + #dungeons * PANEL_ROW_HEIGHT)
+
+    -- Above the map's pins, level with Blizzard's own area label.
+    local label = FindBlizzardLabel()
+    if label then
+        display:SetFrameStrata(label:GetFrameStrata())
+        display:SetFrameLevel(label:GetFrameLevel() + 1)
+        panel:SetFrameLevel(display:GetFrameLevel() + 1)
+    end
+    panel:Show()
+end
+
 local function Update()
+    RefreshPanel(WorldMapFrame:GetMapID())
+
     local label = FindBlizzardLabel()
     if not label or not label:IsVisible() then return Clear() end
 
@@ -261,7 +456,7 @@ local function Update()
     cleared = false
 
     local zone = ZONES[info.mapID] or ZoneByName(info.name)
-    text:SetText(BuildText(zone, info.mapID, labelText))
+    text:SetText(BuildText(zone, info.mapID, labelText, info.name))
 
     -- Sit under the description when Blizzard shows one, otherwise under the name.
     local below = label.Name
@@ -289,8 +484,12 @@ local function Build()
     text:SetJustifyH("CENTER")
     text:SetSpacing(2)
 
+    BuildPanel()
+
     display:SetScript("OnShow", function()
         fishingSkill = PlayerFishingSkill()
+        -- The player may have levelled since; recolour.
+        panelMapID = false
         cleared = false
         Clear()
     end)
@@ -301,6 +500,7 @@ function Perskan:ApplyMapZoneInfo()
     if not self:IsForeverClient() then return end
     Build()
     if not display then return end
+    panelMapID = false
     cleared = false
     Clear()
     display:SetShown(Enabled() and true or false)

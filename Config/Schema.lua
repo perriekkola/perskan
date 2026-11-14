@@ -453,6 +453,12 @@ addon.configSchema = {
                   .. "fish there without anything getting away: green when you have it, "
                   .. "yellow when some will get away, red when nothing will bite.",
               apply = function() P():ApplyMapZoneInfo() end },
+            { type = "toggle", key = "mapZoneDungeons", name = "Show Zone Dungeons",
+              store = "bool", hidden = foreverOnly,
+              desc = "List each zone's dungeons and raids with their levels: under the zone "
+                  .. "name when hovering it on a continent map, and in the top-right "
+                  .. "corner of the zone's own map.",
+              apply = function() P():ApplyMapZoneInfo() end },
         },
     },
     --------------------------------------------------------------------------------
