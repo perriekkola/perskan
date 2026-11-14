@@ -5,7 +5,7 @@
 -- coloured against the player's level, the fishing skill needed to fish there without
 -- anything getting away, coloured against the player's own fishing skill, and the
 -- zone's dungeons and raids with their levels. Viewing a zone's own map shows the same
--- dungeon list in a small panel in the map's bottom-left corner.
+-- dungeon list in a small panel in the map's top-right corner.
 --
 -- Drawn on our own frame and fontstring and driven by our own poll while the map is
 -- open, deliberately. Blizzard's label frame is only read - its text and visibility, to
@@ -332,7 +332,7 @@ local function BuildPanel()
     if not ok or not frame then
         frame = CreateFrame("Frame", nil, display)
     end
-    frame:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 8, 8)
+    frame:SetPoint("TOPRIGHT", container, "TOPRIGHT", -8, -8)
     frame:EnableMouse(false)
 
     frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")

@@ -456,7 +456,7 @@ addon.configSchema = {
             { type = "toggle", key = "mapZoneDungeons", name = "Show Zone Dungeons",
               store = "bool", hidden = foreverOnly,
               desc = "List each zone's dungeons and raids with their levels: under the zone "
-                  .. "name when hovering it on a continent map, and in the bottom-left "
+                  .. "name when hovering it on a continent map, and in the top-right "
                   .. "corner of the zone's own map.",
               apply = function() P():ApplyMapZoneInfo() end },
         },
