@@ -78,17 +78,18 @@ local ZONES = {
 }
 
 -- Zones Forever added. Their uiMapIDs aren't known, so these are matched by name only
--- (and so only on English clients until someone fills the IDs in). Ranges are what the
--- guides agreed on at launch, and fishing is left out where they didn't agree.
+-- (and so only on English clients until someone fills the IDs in). Levels are Warcraft
+-- Wiki's zone infoboxes where it has one; fishing is left out where no source gives it.
 --   Riverglades: 35-45. The client lets anything bite there for now (forever-bugs
 --     issue 189); 130 is the zone level that issue expects - 225 for no getaways, the
 --     same as Stranglethorn.
---   Mount Hyjal: 55-60 in the Group Finder. No reliable fishing level yet.
---   Shen'dralas: guides say 38-43 or 40-45; 40-45 used. No fishing level yet.
+--   Mount Hyjal: 60. No fishing level published yet.
+--   Shen'dralas: the wiki has no range yet; guides say 38-43 or 40-45, 40-45 used.
+--     No fishing level published yet.
 --   Zephras Isle: the Skyborne starting island, 1-12, starter-zone fishing.
 local NAMED_ZONES = {
     { "The Riverglades", 35, 45, 130 },
-    { "Mount Hyjal", 55, 60 },
+    { "Mount Hyjal", 60, 60 },
     { "Shen'dralas", 40, 45 },
     { "Zephras Isle", 1, 12, -70 },
 }
@@ -203,8 +204,9 @@ local function BuildText(zone, mapID, labelText)
             if lo and hi and lo > 0 and hi > 0 then minLevel, maxLevel = lo, hi end
         end
         if minLevel and maxLevel then
-            lines[#lines + 1] = LevelColor(minLevel, maxLevel):WrapTextInColorCode(
-                ("Level %d-%d"):format(minLevel, maxLevel))
+            local range = minLevel == maxLevel and tostring(minLevel)
+                or ("%d-%d"):format(minLevel, maxLevel)
+            lines[#lines + 1] = LevelColor(minLevel, maxLevel):WrapTextInColorCode("Level " .. range)
         end
     end
 
