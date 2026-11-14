@@ -135,8 +135,11 @@ was deliberately moved away from.
   controls carry
   `hidden = notOnForever` (Config/Schema.lua) instead of sitting there doing nothing.
   The Map category itself stays, because on Forever it holds `Modules/MapZoneInfo.lua`'s
-  toggles: the hovered zone's level range and fishing skill, drawn on our own fontstring
-  under Blizzard's area label (read, never hooked) from a Classic zone table in that file.
+  toggles: the hovered zone's level range, fishing skill and dungeons, drawn on our own
+  fontstring under Blizzard's area label (read, never hooked), plus a dungeon panel in the
+  corner of a zone's own map. The zone table is Classic's plus Forever's new zones (matched
+  by name until their map IDs are known); the dungeon table is Forever's own list, whose
+  levels differ from Classic's.
   Retail is untouched. It runs the other way too: `foreverOnly` marks a control that only
   exists on that client, which is how `Modules/Nameplates.lua` exposes its name-relevance
   and reaction-colouring options, `Modules/FrameScaling.lua` its XP bar width (that
