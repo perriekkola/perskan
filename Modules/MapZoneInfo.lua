@@ -77,9 +77,37 @@ local ZONES = {
     [1456] = { "Thunder Bluff", nil, nil, -20 },
 }
 
+-- Zones Forever added. Their uiMapIDs aren't known, so these are matched by name only
+-- (and so only on English clients until someone fills the IDs in). Ranges are what the
+-- guides agreed on at launch, and fishing is left out where they didn't agree.
+--   Riverglades: 35-45. The client lets anything bite there for now (forever-bugs
+--     issue 189); 130 is the zone level that issue expects - 225 for no getaways, the
+--     same as Stranglethorn.
+--   Mount Hyjal: 55-60 in the Group Finder. No reliable fishing level yet.
+--   Shen'dralas: guides say 38-43 or 40-45; 40-45 used. No fishing level yet.
+--   Zephras Isle: the Skyborne starting island, 1-12, starter-zone fishing.
+local NAMED_ZONES = {
+    { "The Riverglades", 35, 45, 130 },
+    { "Mount Hyjal", 55, 60 },
+    { "Shen'dralas", 40, 45 },
+    { "Zephras Isle", 1, 12, -70 },
+}
+
 local ZONES_BY_NAME = {}
 for _, zone in pairs(ZONES) do
     ZONES_BY_NAME[zone[1]] = zone
+end
+for _, zone in ipairs(NAMED_ZONES) do
+    ZONES_BY_NAME[zone[1]] = zone
+end
+
+-- "The Riverglades" and "Riverglades" are both in use; match either form of a name.
+local function ZoneByName(name)
+    local zone = ZONES_BY_NAME[name]
+    if zone then return zone end
+    local bare = name:match("^The (.+)$")
+    if bare then return ZONES_BY_NAME[bare] end
+    return ZONES_BY_NAME["The " .. name]
 end
 
 local FISHING_SPELL_ID = 7620
@@ -230,7 +258,7 @@ local function Update()
     lastKey = key
     cleared = false
 
-    local zone = ZONES[info.mapID] or ZONES_BY_NAME[info.name]
+    local zone = ZONES[info.mapID] or ZoneByName(info.name)
     text:SetText(BuildText(zone, info.mapID, labelText))
 
     -- Sit under the description when Blizzard shows one, otherwise under the name.
