@@ -578,6 +578,32 @@
                     </OnLeave>
                 </Scripts>
             </CheckButton>
+            <!-- [Perskan] A fourth option, for clients with spell ranks (WoW Forever).
+                 Hidden here and on retail; BindPadCore.LayoutMaxRankButton shows it and
+                 makes the panel one row taller to hold it. -->
+            <CheckButton name="$parentMaxRankButton" inherits="BindPadCheckButtonTemplate" hidden="true">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="$parentShowHotkeyButton" relativePoint="BOTTOMLEFT" x="0" y="-2" />
+                </Anchors>
+                <HitRectInsets>
+                    <AbsInset left="0" right="-150" top="0" bottom="0" />
+                </HitRectInsets>
+                <Scripts>
+                    <OnLoad>
+                        self.Text:SetText(BINDPAD_TEXT_MAX_RANK)
+                    </OnLoad>
+                    <OnClick>
+                        BindPadFrame_MaxRankToggle(self)
+                    </OnClick>
+                    <OnEnter>
+                        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                        GameTooltip:SetText(BINDPAD_TOOLTIP_MAX_RANK, nil, nil, nil, nil, 1)
+                    </OnEnter>
+                    <OnLeave>
+                        GameTooltip:Hide()
+                    </OnLeave>
+                </Scripts>
+            </CheckButton>
             <Button name="$parentOpenSpellBookButton" inherits="BindPadUIPanelButtonTemplate" text="BINDPAD_TEXT_SPELLBOOK">
                 <Size x="84" y="22" />
                 <Anchors>

@@ -381,6 +381,10 @@ function BindPadFrame_OnShow()
     BindPadVars.showKeyInTooltipFlag = nil
     BindPadFrameShowHotkeyButton:SetChecked(BindPadVars.showHotkey)
 
+    -- [Perskan] The highest-rank option, on clients that have spell ranks.
+    BindPadCore.LayoutMaxRankButton()
+    BindPadFrameMaxRankButton:SetChecked(BindPadCore.UsesMaxRank())
+
     -- Update profile tab
     for i = 1, BINDPAD_MAXPROFILETAB, 1 do
         local profiletab = _G["BindPadProfileTab" .. i]
@@ -699,6 +703,15 @@ function BindPadSlot_OnEnter(self)
             end
             if padSlot.rank then
                 GameTooltip:AddLine(padSlot.rank, 1.0, 0.7, 0.7)
+            end
+        end
+        -- [Perskan] The tooltip above is the rank that was dropped here, which is not
+        -- necessarily the rank the key casts. Say which it is.
+        if BindPadCore.HasSpellRanks() then
+            if BindPadCore.IsRankPinned(padSlot) then
+                GameTooltip:AddLine(BINDPAD_TOOLTIP_DOWNRANK .. padSlot.rank, 1.0, 0.7, 0.7)
+            elseif BindPadCore.GetSpellRankText(padSlot.spellid) then
+                GameTooltip:AddLine(BINDPAD_TOOLTIP_CASTS_MAX_RANK, 0.7, 1.0, 0.7)
             end
         end
     elseif TYPE_MACRO == padSlot.type then
@@ -1123,7 +1136,12 @@ function BindPadCore.PlaceIntoSlot(id, type, detail, subdetail, spellid)
         end
         padSlot.bookType = subdetail
         padSlot.name = spellName
+        -- [Perskan] Was always nil. With the highest-rank option off (WoW Forever), the
+        -- slot remembers the rank that was dropped on it - see the Spell ranks section.
         padSlot.rank = nil
+        if not BindPadCore.UsesMaxRank() then
+            padSlot.rank = BindPadCore.GetSpellRankText(spellid)
+        end
         padSlot.spellid = spellid
         padSlot.texture = texture
     elseif type == "petaction" then
@@ -1528,6 +1546,124 @@ function BindPadCore.GetSpellNum(bookType)
     return spellNum
 end
 
+--
+-- [Perskan] Spell ranks (WoW Forever).
+--
+-- This file is the retail BindPad, where a spell has one rank: a spell slot is stored and
+-- cast by bare name. On a client with ranks a bare name casts the highest rank known, so
+-- every slot already followed the player's newest rank, and the rank actually dropped on
+-- the pad was thrown away - there was no way to bind a lower one.
+--
+-- The "Always use highest rank" checkbox makes that a choice, on Forever only. Checked
+-- (the default, and what this file always did) nothing changes. Unchecked, a spell
+-- dropped on the pad keeps its rank in padSlot.rank and is cast as "Name(Rank N)", the
+-- way upstream's Classic build does it.
+--
+-- A slot's rank is part of its binding name ("SPELL Name(Rank N)"), so two ranks of one
+-- spell can sit on two keys. That name is fixed when the slot is filled and does not
+-- follow the checkbox: only the spell attribute behind it is rewritten, to the bare name
+-- while the box is checked. Toggling therefore never moves a keybinding.
+--
+-- On retail HasSpellRanks() is false and all of this is inert.
+--
+function BindPadCore.HasSpellRanks()
+    return (Perskan and Perskan.IsForeverClient and Perskan:IsForeverClient()) and true or false
+end
+
+function BindPadCore.UsesMaxRank()
+    -- Stored only once it has been switched off, so nil reads as the default.
+    return not BindPadCore.HasSpellRanks() or BindPadVars.useMaxRank ~= false
+end
+
+-- The rank text of a spell ("Rank 3"), or nil for a spell that has none. Subtext is also
+-- where "Racial", "Shapeshift" and the like live; a rank is the kind with a number in it,
+-- which holds in every locale.
+function BindPadCore.GetSpellRankText(spellid)
+    if not spellid then
+        return nil
+    end
+    local subtext
+    if C_Spell and C_Spell.GetSpellSubtext then
+        subtext = C_Spell.GetSpellSubtext(spellid)
+    elseif GetSpellSubtext then
+        subtext = GetSpellSubtext(spellid)
+    end
+    if type(subtext) == "string" and strfind(subtext, "%d") then
+        return subtext
+    end
+    return nil
+end
+
+-- What a spell slot is known by in its binding and its attributes on BindPadKey.
+function BindPadCore.GetSpellSlotKey(padSlot)
+    if padSlot.rank and BindPadCore.HasSpellRanks() then
+        return padSlot.name .. "(" .. padSlot.rank .. ")"
+    end
+    return padSlot.name
+end
+
+function BindPadCore.IsRankPinned(padSlot)
+    return (padSlot.rank and not BindPadCore.UsesMaxRank()) and true or false
+end
+
+-- What a spell slot casts.
+function BindPadCore.GetSpellCastName(padSlot)
+    if BindPadCore.IsRankPinned(padSlot) then
+        return BindPadCore.GetSpellSlotKey(padSlot)
+    end
+    return padSlot.name
+end
+
+-- The action a spell on an action button or in a tooltip answers to, for the hotkey
+-- display: the binding of that exact rank where there is one, the bare name otherwise.
+-- Not conditional on the checkbox, because a slot's binding name isn't either.
+function BindPadCore.GetSpellAction(spellName, spellid)
+    if spellName and BindPadCore.HasSpellRanks() then
+        local rank = BindPadCore.GetSpellRankText(spellid)
+        if rank then
+            local action = "SPELL " .. spellName .. "(" .. rank .. ")"
+            if BindPadCore.GetBindingKeyFromAction(action) then
+                return action
+            end
+        end
+    end
+    return concat("SPELL ", spellName)
+end
+
+function BindPadFrame_MaxRankToggle(self)
+    -- BindPadKey is a secure button; its attributes can't be written in combat.
+    if InCombatLockdown() then
+        self:SetChecked(BindPadCore.UsesMaxRank())
+        BindPadFrame_OutputText(BINDPAD_TEXT_CANNOT_BIND)
+        return
+    end
+
+    BindPadVars.useMaxRank = (not not self:GetChecked())
+    for padSlot in BindPadCore.AllSlotInfoIter() do
+        if TYPE_SPELL == padSlot.type then
+            BindPadCore.UpdateMacroText(padSlot)
+        end
+    end
+    BindPadCore.UpdateAllHotkeys()
+end
+
+-- The checkbox is declared hidden in BindPad.xml, below the other three. Where it
+-- applies, the panel grows by one row to hold it and the column moves up to match.
+local MAX_RANK_ROW_HEIGHT = 26
+function BindPadCore.LayoutMaxRankButton()
+    if BindPadCore.maxRankButtonLaidOut or not BindPadCore.HasSpellRanks() then
+        return
+    end
+    BindPadCore.maxRankButtonLaidOut = true
+
+    BindPadFrame:SetHeight(BindPadFrame:GetHeight() + MAX_RANK_ROW_HEIGHT)
+    local point, relativeTo, relativePoint, x, y = BindPadFrameCharacterButton:GetPoint(1)
+    if point then
+        BindPadFrameCharacterButton:SetPoint(point, relativeTo, relativePoint, x, y + MAX_RANK_ROW_HEIGHT)
+    end
+    BindPadFrameMaxRankButton:Show()
+end
+
 function BindPadCore.FindSpellBookIdByName(srchName, srchRank, bookType)
     for i = 1, BindPadCore.GetSpellNum(bookType), 1 do
         local spellName = C_SpellBook and C_SpellBook.GetSpellBookItemName(i, bookType) or GetSpellBookItemName(i, bookType)
@@ -1705,9 +1841,11 @@ function BindPadCore.UpdateMacroText(padSlot)
         BindPadKey:SetAttribute("*type-ITEM " .. padSlot.name, "item")
         BindPadKey:SetAttribute("*item-ITEM " .. padSlot.name, padSlot.name)
     elseif TYPE_SPELL == padSlot.type then
-        local spellName = padSlot.name
-        BindPadKey:SetAttribute("*type-SPELL " .. spellName, "spell")
-        BindPadKey:SetAttribute("*spell-SPELL " .. spellName, spellName)
+        -- [Perskan] Was padSlot.name for both the attribute name and the spell cast. They
+        -- differ for a slot that remembers its rank - see the Spell ranks section.
+        local slotKey = BindPadCore.GetSpellSlotKey(padSlot)
+        BindPadKey:SetAttribute("*type-SPELL " .. slotKey, "spell")
+        BindPadKey:SetAttribute("*spell-SPELL " .. slotKey, BindPadCore.GetSpellCastName(padSlot))
     elseif TYPE_MACRO == padSlot.type then
         BindPadKey:SetAttribute("*type-MACRO " .. padSlot.name, "macro")
         BindPadKey:SetAttribute("*macro-MACRO " .. padSlot.name, padSlot.name)
@@ -1778,7 +1916,8 @@ function BindPadCore.CreateBindPadMacroAction(padSlot)
     if TYPE_ITEM == padSlot.type then
         return "CLICK BindPadKey:ITEM " .. padSlot.name
     elseif TYPE_SPELL == padSlot.type then
-        return "CLICK BindPadKey:SPELL " .. padSlot.name
+        -- [Perskan] Was padSlot.name; the rank is part of the name where the slot has one.
+        return "CLICK BindPadKey:SPELL " .. BindPadCore.GetSpellSlotKey(padSlot)
     elseif TYPE_MACRO == padSlot.type then
         return "CLICK BindPadKey:MACRO " .. padSlot.name
     elseif TYPE_BPMACRO == padSlot.type then
@@ -1795,7 +1934,8 @@ function BindPadCore.ConvertToBindPadMacro()
         padSlot.linktext = nil
         padSlot.macrotext = SLASH_USE1 .. " [mod:SELFCAST,@player][mod:FOCUSCAST,@focus][] " .. padSlot.name
     elseif TYPE_SPELL == padSlot.type then
-        padSlot.macrotext = SLASH_CAST1 .. " [mod:SELFCAST,@player][mod:FOCUSCAST,@focus][] " .. padSlot.name
+        -- [Perskan] Was padSlot.name: the macro keeps the rank the slot was casting.
+        padSlot.macrotext = SLASH_CAST1 .. " [mod:SELFCAST,@player][mod:FOCUSCAST,@focus][] " .. BindPadCore.GetSpellCastName(padSlot)
         padSlot.type = TYPE_BPMACRO
         padSlot.bookType = nil
         padSlot.rank = nil
@@ -2162,7 +2302,8 @@ function BindPadCore.GameTooltipSetSpellByID(self, spellID)
     else
         spellName = C_Spell.GetSpellName(spellID)
     end
-    BindPadCore.InsertBindingTooltip(concat("SPELL ", spellName))
+    -- [Perskan] Was concat("SPELL ", spellName).
+    BindPadCore.InsertBindingTooltip(BindPadCore.GetSpellAction(spellName, spellID))
 end
 
 function BindPadCore.GameTooltipSetSpellBookItem(self, slot, bookType)
@@ -2344,7 +2485,8 @@ function BindPadCore.GetActionCommand(actionSlot)
         else
             spellName = C_Spell.GetSpellName(id)
         end
-        return concat("SPELL ", spellName)
+        -- [Perskan] Was concat("SPELL ", spellName).
+        return BindPadCore.GetSpellAction(spellName, id)
     elseif type == "item" then
         return concat("ITEM ", GetItemInfo(id))
     elseif type == "macro" then

@@ -36,6 +36,11 @@ BINDPAD_TEXT_FOR_ALL_CHARACTERS = "For all characters";
 BINDPAD_TEXT_SPELLBOOK = "Spellbook";
 BINDPAD_TEXT_MACROS = "Macros";
 BINDPAD_TEXT_BAGS = "Bags";
+-- [Perskan] The highest-rank option (WoW Forever). English only: the two translated
+-- blocks below don't override these, so every locale falls back to them.
+BINDPAD_TEXT_MAX_RANK = "Always use highest rank";
+BINDPAD_TOOLTIP_MAX_RANK = "Spells on the pad cast the highest rank you know, and move up on their own as you learn new ranks.\n\nUncheck to bind exact ranks instead: a spell added while this is off casts the rank you dropped on the pad.";
+BINDPAD_TOOLTIP_CASTS_MAX_RANK = "Casts the highest rank you know";
 BINDPAD_TEXT_ERR_UNIQUENAME = "You must enter unique name for BindPadMacro.";
 BINDPAD_TEXT_ERR_SPELL_INCOMBAT = "Cannot pickup spell icon while in combat.";
 BINDPAD_TEXT_ERR_MACRO_INCOMBAT = "Cannot pickup macro icon while in combat.";
