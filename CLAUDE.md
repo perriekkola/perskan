@@ -36,7 +36,14 @@ was deliberately moved away from.
   upstream is marked `[Perskan]` in-file: a feature gate in BindPad, BindPad's widget art
   moved onto Blizzard's current templates and atlases (`BindPad.xml`), and
   namespace/saved-variable pinning in Simple Item Level (files loaded from another
-  addon's toc otherwise receive *its* name and private table from `...`). Thin glue
+  addon's toc otherwise receive *its* name and private table from `...`). BindPad also
+  carries one Forever-only feature of ours, the "Always use highest rank" checkbox in its
+  panel (`BindPadVars.useMaxRank`, on unless stored `false`): the vendored file is the
+  retail build, which casts a spell slot by bare name - the highest rank, on a client with
+  ranks - so unchecked, a dropped spell keeps its rank in `padSlot.rank` and is cast as
+  `Name(Rank N)`. The rank is part of the slot's binding name and is fixed when the slot is
+  filled; the checkbox only rewrites the spell attribute behind it, so toggling never moves
+  a key. See the "Spell ranks" section in `BindPad.lua`. Thin glue
   modules - `KeyBindings.lua`, `ItemLevel.lua` - expose them to the settings window.
 - **Action button visuals** are split by property so features stack rather than fight:
   `GreyOnCooldown` owns desaturation (cooldowns), `RangeColoring` owns vertex colour
